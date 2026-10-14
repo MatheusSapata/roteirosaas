@@ -458,6 +458,11 @@
         </div>
         <p class="lp-final-note">Sem fidelidade · 7 dias de garantia · Cancelamento simples</p>
         <RouterLink to="/login" class="lp-login">Já é cliente? Entrar</RouterLink>
+        <!-- Aviso exigido para anunciar no Facebook/Instagram. -->
+        <p class="lp-disclaimer">
+          Este site não faz parte do Facebook nem da Meta Platforms, Inc. e não é endossado pelo Facebook de nenhuma forma.
+          Facebook é uma marca registrada da Meta Platforms, Inc.
+        </p>
       </div>
     </section>
   </div>
@@ -532,7 +537,7 @@ const PAGE_DESCRIPTION =
 
 const METRICS = [
   { value: "+200", label: "Agências ativas" },
-  { value: "+800", label: "Páginas criadas" },
+  { value: "+1.000", label: "Páginas criadas" },
   { value: "3 min", label: "Pra se cadastrar" },
   { value: "7 dias", label: "Garantia total" }
 ];
@@ -2824,6 +2829,16 @@ onBeforeUnmount(() => {
   margin-top: 18px !important;
   color: var(--t-muted);
   font-size: 13px;
+}
+.lp-disclaimer {
+  max-width: 640px;
+  margin-top: 22px !important;
+  padding-top: 16px;
+  border-top: 1px solid var(--t-line);
+  color: var(--t-muted);
+  font-size: 11.5px;
+  line-height: 1.5;
+  opacity: 0.8;
 }
 .lp-login {
   margin-top: 12px;
