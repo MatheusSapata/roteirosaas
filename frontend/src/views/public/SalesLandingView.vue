@@ -786,14 +786,27 @@ const monthlyPromo = computed(() => {
   if (endsAt !== null && endsAt <= nowMs.value) return null;
   return { amount: offer.first_payment_amount, endsAt };
 });
+// Segundos que faltam para as 23:59:59 de hoje no horário de Brasília.
+const saoPauloClock = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/Sao_Paulo",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hourCycle: "h23"
+});
+const secondsLeftToday = (ms: number) => {
+  const parts = Object.fromEntries(saoPauloClock.formatToParts(ms).map(part => [part.type, Number(part.value)]));
+  return Math.max(0, 86399 - ((parts.hour || 0) * 3600 + (parts.minute || 0) * 60 + (parts.second || 0)));
+};
+// Contagem da promoção: sempre até as 23h59 de hoje (recomeça à meia-noite); se a promoção
+// acabar antes disso, conta até o fim dela.
 const promoCountdown = computed(() => {
-  const endsAt = monthlyPromo.value?.endsAt;
-  if (!endsAt) return "";
-  const total = Math.max(0, Math.floor((endsAt - nowMs.value) / 1000));
-  const days = Math.floor(total / 86400);
+  const promo = monthlyPromo.value;
+  if (!promo) return "";
+  let total = secondsLeftToday(nowMs.value);
+  if (promo.endsAt !== null) total = Math.min(total, Math.max(0, Math.floor((promo.endsAt - nowMs.value) / 1000)));
   const pad = (value: number) => String(value).padStart(2, "0");
-  const clock = `${pad(Math.floor((total % 86400) / 3600))}:${pad(Math.floor((total % 3600) / 60))}:${pad(total % 60)}`;
-  return days > 0 ? `${days}d ${clock}` : clock;
+  return `${pad(Math.floor(total / 3600))}:${pad(Math.floor((total % 3600) / 60))}:${pad(total % 60)}`;
 });
 // "Menos de R$ X por dia": o próximo real inteiro acima do valor diário.
 const perDay = computed(() => {
