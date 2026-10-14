@@ -9,6 +9,7 @@ from app.api.deps import get_current_active_user, get_current_superuser, get_db
 from app.core.request_ip import get_client_ip
 from app.models.user import User
 from app.schemas.checkout import (
+    CheckoutSalesPlanOut,
     CheckoutCardStartRequest,
     CheckoutCouponPreviewIn,
     CheckoutCouponPreviewOut,
@@ -33,6 +34,7 @@ from app.services.checkout import (
     define_password_for_paid_checkout,
     get_checkout_session_by_token,
     get_checkout_settings,
+    get_public_sales_plan as checkout_service_sales_plan,
     list_checkout_tracking,
     get_checkout_offer_reports,
     get_checkout_tracking_document_detail,
@@ -116,6 +118,12 @@ def get_admin_checkout_offer_reports(
 ) -> list[CheckoutOfferReportItemOut]:
     rows = get_checkout_offer_reports(db, start_date=start_date, end_date=end_date)
     return [CheckoutOfferReportItemOut.model_validate(item) for item in rows]
+
+
+@router.get("/public/sales-plan", response_model=CheckoutSalesPlanOut)
+def get_public_sales_plan(db: Session = Depends(get_db)) -> CheckoutSalesPlanOut:
+    """Plano único à venda (oferta mensal e anual), para a página de vendas e a tela de planos."""
+    return CheckoutSalesPlanOut.model_validate(checkout_service_sales_plan(db))
 
 
 @router.get("/public/config/{offer_key}", response_model=CheckoutConfigResponse)

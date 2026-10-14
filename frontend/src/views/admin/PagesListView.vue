@@ -512,7 +512,7 @@ import { storeToRefs } from "pinia";
 import api from "../../services/api";
 import { useAgencyStore } from "../../store/useAgencyStore";
 import { useAuthStore } from "../../store/useAuthStore";
-import { getPlanLabel } from "../../utils/planLabels";
+import { getCustomerPlanLabel } from "../../utils/planLabels";
 import { createAdminLocalizer, getAdminLanguage } from "../../utils/adminI18n";
 import PageTemplatePreview from "../../components/admin/PageTemplatePreview.vue";
 import { listPageTemplates } from "../../services/templates";
@@ -640,7 +640,7 @@ const viewCopySource = {
         es: "Actualiza tu plan para seguir publicando itinerarios profesionales para tu agencia."
       },
       close: { pt: "Fechar", es: "Cerrar" },
-      viewPlans: { pt: "Ver planos", es: "Ver planes" }
+      viewPlans: { pt: "Ver assinatura", es: "Ver suscripción" }
     },
     rowMenu: {
       duplicate: { pt: "Duplicar", es: "Duplicar" },
@@ -1319,7 +1319,7 @@ const extractPlanLimitInfo = (err: unknown) => {
       planKey = planMatch[1];
     }
   }
-  let planLabel = planKey ? getPlanLabel(planKey) : "";
+  let planLabel = planKey ? getCustomerPlanLabel(planKey) : "";
   if (!planLabel && detail) {
     planLabel = detail;
   }

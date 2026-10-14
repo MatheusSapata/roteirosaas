@@ -21,6 +21,7 @@ from app.models.user import User
 from app.schemas.checkout import (
     CheckoutAppearanceOut,
     CheckoutCouponOut,
+    CheckoutOfferIn,
     CheckoutOfferOut,
     CheckoutOfferReportItemOut,
     CheckoutPixelOut,
@@ -832,6 +833,53 @@ def get_checkout_settings(db: Session) -> CheckoutSettings:
     return record
 
 
+SALES_SLOT_LABELS = {"monthly": "Mensal", "annual": "Anual"}
+
+
+def _validate_sales_slots(offers: list[CheckoutOfferIn]) -> None:
+    """Plano único: no máximo uma oferta como Mensal e uma como Anual, cada uma com o ciclo
+    de cobrança igual ao que representa (senão a página mostraria um preço e cobraria outro)."""
+    seen: dict[str, str] = {}
+    for offer in offers:
+        slot = offer.sales_slot
+        if not slot:
+            continue
+        label = SALES_SLOT_LABELS[slot]
+        if slot in seen:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Só uma oferta pode ser a {label} da página de vendas ({seen[slot]} e {offer.key}).",
+            )
+        if offer.billing_cycle != slot:
+            raise HTTPException(
+                status_code=400,
+                detail=f"A oferta {offer.key} está como {label} na página de vendas, mas cobra no ciclo {SALES_SLOT_LABELS[offer.billing_cycle].lower()}.",
+            )
+        seen[slot] = offer.key
+
+
+def get_public_sales_plan(db: Session) -> dict[str, Any]:
+    """Ofertas do plano único (mensal e anual) para a página de vendas e a tela de planos.
+    Vale a oferta ativa marcada no Admin Master; sem marcação, a primeira oferta ativa do plano
+    Escala naquele ciclo, para a página não ficar sem preço enquanto a configuração não é feita."""
+    record = get_checkout_settings(db)
+    result: dict[str, Any] = {"monthly": None, "annual": None}
+    if not record.is_active:
+        return result
+    active = [CheckoutOfferOut.model_validate(raw) for raw in _serialize_offers(record)]
+    active = [offer for offer in active if offer.active]
+    for slot in ("monthly", "annual"):
+        chosen = next((offer for offer in active if offer.sales_slot == slot), None)
+        if chosen is None:
+            chosen = next(
+                (offer for offer in active if offer.billing_cycle == slot and _normalize_plan_key(offer.plan_key) == "scale"),
+                None,
+            )
+        if chosen is not None:
+            result[slot] = {"key": chosen.key, "title": chosen.title, "billing_cycle": chosen.billing_cycle, "amount": chosen.amount}
+    return result
+
+
 def update_checkout_settings(db: Session, payload: CheckoutSettingsUpdate) -> CheckoutSettings:
     record = get_checkout_settings(db)
     checkouts = [item.model_dump(mode="json") for item in payload.checkouts]
@@ -841,6 +889,7 @@ def update_checkout_settings(db: Session, payload: CheckoutSettingsUpdate) -> Ch
         active_checkouts = [checkouts[0]]
 
     fallback_checkout_key = active_checkouts[0]["key"] if active_checkouts else "default"
+    _validate_sales_slots(payload.offers)
     offers = []
     for item in payload.offers:
         raw_offer = item.model_dump(mode="json")

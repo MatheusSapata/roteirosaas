@@ -19,7 +19,7 @@
           <p class="pf-plan-v">{{ currentPlanLabel }}</p>
         </div>
         <span class="pf-plan-status" :class="planStatusTone">{{ billingStatusLabel }}</span>
-        <button type="button" class="pf-plan-btn" @click="goPlans">Ver planos</button>
+        <button type="button" class="pf-plan-btn" @click="goPlans">Ver assinatura</button>
       </div>
 
       <div class="pf-facts">
@@ -372,7 +372,7 @@ import { onMounted, ref, computed, reactive, watch, nextTick, onBeforeUnmount } 
 import { useRouter } from "vue-router";
 import api from "../../services/api";
 import { useAuthStore } from "../../store/useAuthStore";
-import { getPlanLabel } from "../../utils/planLabels";
+import { getCustomerPlanLabel } from "../../utils/planLabels";
 import { createAdminLocalizer, getAdminLanguage } from "../../utils/adminI18n";
 import cardBrands from "../../assets/card-brands.json";
 
@@ -419,7 +419,7 @@ const viewCopy = {
       pt: "Atualize o cartão ou encerre a renovação quando precisar.",
       es: "Actualiza la tarjeta o detén la renovación cuando lo necesites."
     }),
-    viewPlans: t({ pt: "Ver planos disponíveis", es: "Ver planes disponibles" }),
+    viewPlans: t({ pt: "Ver assinatura", es: "Ver suscripción" }),
     validUntilPrefix: t({ pt: "Válido até", es: "Válido hasta" }),
     cancelLink: t({ pt: "Cancelar renovação", es: "Cancelar renovación" }),
     keepAccessNote: t({
@@ -628,7 +628,7 @@ const billingCycleLabel = computed(() => {
   return viewCopy.billing.cycle.default;
 });
 
-const currentPlanLabel = computed(() => getPlanLabel(billing.value?.plan || user.value?.plan));
+const currentPlanLabel = computed(() => getCustomerPlanLabel(billing.value?.plan || user.value?.plan));
 
 const paymentMethodType = computed(() => String(billing.value?.payment_method_type || "").toLowerCase());
 
@@ -1085,7 +1085,7 @@ const trialInfo = computed(() => {
   const trialEndsAt = user.value?.trial_ends_at;
   if (!trialPlan || !trialEndsAt) return null;
   return {
-    plan: getPlanLabel(trialPlan),
+    plan: getCustomerPlanLabel(trialPlan),
     endsAt: formatDate(trialEndsAt)
   };
 });

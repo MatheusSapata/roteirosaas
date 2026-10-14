@@ -1,10 +1,10 @@
 {
   "id": "plano-e-assinatura",
-  "titulo": "Planos e assinatura",
-  "gerado": "2026-10-09",
+  "titulo": "Assinatura",
+  "gerado": "2026-10-14",
   "passos": [
     {
-      "legenda": "No Perfil, veja o plano atual e a próxima renovação",
+      "legenda": "No Perfil, veja sua assinatura e a próxima renovação",
       "ponto": {
         "x": 21.11,
         "y": 15.28,
@@ -13,18 +13,23 @@
       }
     },
     {
-      "legenda": "Clique em Ver planos",
+      "legenda": "Clique em Ver assinatura",
       "ponto": {
-        "x": 87.12,
+        "x": 85.42,
         "y": 17.76,
-        "w": 8.15,
+        "w": 9.86,
         "h": 5.78
       }
     },
     {
-      "legenda": "Compare os planos e mude quando quiser",
-      "detalhe": "O plano atual aparece marcado.",
-      "ponto": null
+      "legenda": "Escolha mensal ou anual",
+      "detalhe": "Os recursos são os mesmos: muda só a forma de pagar.",
+      "ponto": {
+        "x": 71.6,
+        "y": 18.28,
+        "w": 15.29,
+        "h": 6.11
+      }
     }
   ]
 }

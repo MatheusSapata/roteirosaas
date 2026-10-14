@@ -99,7 +99,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       { titulo: "Monte a página no editor", texto: "A página abre no editor como rascunho. Adicione as seções e publique quando estiver pronta.", tela: 3 }
     ],
     duvidas: [
-      ["Quantas páginas posso ter?", "O limite do plano vale para páginas publicadas: até 3 no Profissional, até 10 no Agência e sem limite no Escala. Rascunhos não contam."],
+      ["Quantas páginas posso ter?", "Na assinatura do Roteiro Online, páginas publicadas sem limite. Quem ainda está num plano antigo segue o limite dele (até 3 no Profissional e até 10 no Agência). Rascunhos não contam."],
       ["Criei do zero e a página veio vazia. É normal?", "Sim. Use **+ Seção** no editor para adicionar a primeira seção, ou peça ao **Assistente IA** para montar a estrutura."],
       ["Não aparece nenhum modelo", "Os modelos são publicados pela equipe do Roteiro Online. Se a lista estiver vazia, comece do zero ou duplique uma página sua."]
     ],
@@ -461,7 +461,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       { titulo: "Escreva o título e a descrição", texto: "É o que o visitante lê. O **Texto do botão** também muda.", tela: 3 },
       { titulo: "Marque os campos", texto: "Nome completo, Telefone / WhatsApp, E-mail, CPF, Cidade e Data de nascimento. **+ Adicionar campo** cria perguntas livres.", tela: 4 },
       { titulo: "Confira a prévia", tela: 6 },
-      { titulo: "Ative a Notificação inteligente", texto: "Manda uma mensagem automática no WhatsApp para quem preencheu. Disponível no plano Escala.", tela: 7 },
+      { titulo: "Ative a Notificação inteligente", texto: "Manda uma mensagem automática no WhatsApp para quem preencheu. Vem na assinatura do Roteiro Online.", tela: 7 },
       { titulo: "Salve", tela: 8 }
     ],
     blocos: [{ tipo: "dica", texto: "Em **Status inicial do lead**, escolha a etapa do funil em que os leads deste formulário entram." }],
@@ -562,7 +562,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       { titulo: "Na página, abra Rastreamento", texto: "No editor, ícone **Rastreamento** da barra de configurações.", tela: 6 },
       { titulo: "Escolha o pixel e os eventos", texto: "**Page view**, **Cliques em CTAs** e **Leads** (envios de formulário). Salve a página.", tela: 7 }
     ],
-    blocos: [{ tipo: "texto", texto: "O número de códigos depende do plano: 1 no Profissional e até 3 no Agência." }],
+    blocos: [{ tipo: "texto", texto: "Na assinatura do Roteiro Online não há limite de códigos. Nos planos antigos, o limite é 1 no Profissional e 3 no Agência." }],
     relacionados: ["publicar-pagina", "formulario-na-pagina"],
     substituiAulas: ["pixel do meta", "pixel do facebook", "configurar o pixel", "configurando o pixel"]
   },
@@ -675,7 +675,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       { titulo: "Envie o ícone da aba", texto: "Com o domínio ativo, o favicon aparece na aba do navegador.", tela: 4 }
     ],
     blocos: [
-      { tipo: "texto", texto: "Domínio próprio é um recurso do plano Escala." },
+      { tipo: "texto", texto: "Domínio próprio vem na assinatura do Roteiro Online." },
       { tipo: "dica", texto: "A propagação do DNS pode levar algumas horas. Use **Atualizar** para conferir a situação." }
     ],
     relacionados: ["titulo-e-link", "configurar-agencia"]
@@ -718,28 +718,24 @@ export const HELP_ARTICLES: HelpArticle[] = [
   {
     id: "plano-e-assinatura",
     modulo: "conta",
-    titulo: "Planos e assinatura",
-    resumo: "Compare os planos e mude o seu quando quiser.",
-    atualizado: "2026-10-09",
+    titulo: "Assinatura",
+    resumo: "Plano único com tudo incluso, pago por mês ou por ano.",
+    atualizado: "2026-10-14",
     rota: "/admin/planos",
-    rotaRotulo: "Ver planos",
-    busca: "plano assinatura upgrade downgrade profissional agencia escala renovar cancelar preco",
+    rotaRotulo: "Ver assinatura",
+    busca: "plano assinatura mensal anual upgrade renovar cancelar preco profissional agencia escala",
     passos: [
-      { titulo: "Veja o plano atual", texto: "No Perfil, com a próxima renovação e a forma de pagamento.", tela: 1 },
-      { titulo: "Clique em Ver planos", tela: 2 },
-      { titulo: "Compare e mude", texto: "O plano atual aparece marcado.", tela: 3 }
+      { titulo: "Veja sua assinatura", texto: "No Perfil, com a próxima renovação e a forma de pagamento.", tela: 1 },
+      { titulo: "Clique em Ver assinatura", tela: 2 },
+      { titulo: "Escolha mensal ou anual", texto: "Os recursos são os mesmos: muda só a forma de pagar. No anual você economiza.", tela: 3 }
     ],
     blocos: [
       {
-        tipo: "tabela",
-        colunas: ["Plano", "Páginas publicadas", "Destaques"],
-        linhas: [
-          ["Profissional", "Até 3", "1 pixel, botão de WhatsApp em cada seção, galeria de fotos."],
-          ["Agência", "Até 10", "Até 3 pixels, duplicação de páginas e o módulo de leads."],
-          ["Escala", "Sem limite", "Vários destinos ao mesmo tempo e domínio próprio."]
-        ]
+        tipo: "texto",
+        texto: "A assinatura inclui tudo: roteiros ilimitados, Módulo Leads, domínio próprio, caixa de entrada do WhatsApp, pixels, Assistente IA e equipe com até 5 usuários."
       },
-      { tipo: "texto", texto: "Ao cancelar a renovação, o plano segue ativo até o fim do período pago." }
+      { tipo: "texto", texto: "Quem está num plano antigo (Profissional ou Agência) continua nele, com o mesmo valor, até assinar." },
+      { tipo: "texto", texto: "Ao cancelar a renovação, a assinatura segue ativa até o fim do período pago." }
     ],
     relacionados: ["faturas", "perfil-e-senha"]
   }
