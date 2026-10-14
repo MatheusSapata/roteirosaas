@@ -278,6 +278,7 @@
               <tr>
                 <th class="px-4 py-3">Checkout</th>
                 <th class="px-4 py-3">Key</th>
+                <th class="px-4 py-3">Modelo</th>
                 <th class="px-4 py-3">Tema</th>
                 <th class="px-4 py-3">Imagens</th>
                 <th class="px-4 py-3">Status</th>
@@ -286,13 +287,14 @@
             </thead>
             <tbody class="divide-y divide-slate-100 bg-white">
               <tr v-if="!form.checkouts.length">
-                <td colspan="6" class="px-4 py-8 text-center text-sm text-slate-500">Nenhum checkout cadastrado.</td>
+                <td colspan="7" class="px-4 py-8 text-center text-sm text-slate-500">Nenhum checkout cadastrado.</td>
               </tr>
               <tr v-for="checkout in form.checkouts" :key="checkout.local_id">
                 <td class="px-4 py-4">
                   <div class="font-semibold text-slate-900">{{ checkout.name }}</div>
                 </td>
                 <td class="px-4 py-4 font-mono text-xs text-slate-600">{{ checkout.key }}</td>
+                <td class="px-4 py-4 text-slate-600">{{ checkout.layout === 'banner' ? 'Banner no topo' : 'Clássico' }}</td>
                 <td class="px-4 py-4 text-slate-600">{{ checkout.theme_mode === 'light' ? 'White' : 'Dark' }}</td>
                 <td class="px-4 py-4 text-slate-600">
                   {{ imageState(checkout.desktop_image_url) }} desktop • {{ imageState(checkout.mobile_banner_url) }} mobile
@@ -911,7 +913,7 @@
         <div class="flex items-start justify-between gap-4">
           <div>
             <h3 class="text-xl font-bold text-slate-900">{{ checkoutModal.editingId ? "Editar checkout" : "Novo checkout" }}</h3>
-            <p class="mt-1 text-sm text-slate-500">Defina tema e banners que serão reutilizados pelas ofertas vinculadas.</p>
+            <p class="mt-1 text-sm text-slate-500">Defina modelo, tema e banners que serão reutilizados pelas ofertas vinculadas.</p>
           </div>
           <button type="button" class="rounded-full border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-600" @click="closeCheckoutModal">Fechar</button>
         </div>
@@ -936,25 +938,47 @@
             <input v-model="checkoutModal.form.active" type="checkbox" />
             Checkout ativo
           </label>
+          <fieldset class="space-y-2 md:col-span-2">
+            <legend class="text-sm font-semibold text-slate-700">Modelo</legend>
+            <div class="grid gap-3 sm:grid-cols-2">
+              <label
+                v-for="option in CHECKOUT_LAYOUTS"
+                :key="option.value"
+                class="flex cursor-pointer gap-3 rounded-2xl border px-4 py-3 text-sm transition"
+                :class="(checkoutModal.form.layout || 'classic') === option.value ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 hover:bg-slate-50'"
+              >
+                <input v-model="checkoutModal.form.layout" type="radio" name="checkout-layout" :value="option.value" class="mt-1" />
+                <span>
+                  <span class="block font-semibold text-slate-900">{{ option.label }}</span>
+                  <span class="mt-0.5 block text-slate-500">{{ option.description }}</span>
+                </span>
+              </label>
+            </div>
+          </fieldset>
         </div>
 
         <div class="mt-5 grid gap-5">
+          <!-- O modelo com banner no topo pede faixas largas; o clássico, a imagem da coluna lateral. -->
           <ImageUploadField
+            :key="`desktop-${checkoutModal.form.layout || 'classic'}`"
             v-model="checkoutModal.form.desktop_image_url"
-            label="Banner desktop"
-            hint="Imagem da coluna lateral no desktop."
+            :label="checkoutModal.form.layout === 'banner' ? 'Banner do computador' : 'Banner desktop'"
+            :hint="checkoutModal.form.layout === 'banner' ? 'Faixa larga no topo do checkout. Tamanho sugerido: 1600 × 500 px.' : 'Imagem da coluna lateral no desktop.'"
             layout="row"
             replace-label="Substituir"
             :enable-crop="true"
+            :crop-aspect="checkoutModal.form.layout === 'banner' ? 16 / 5 : undefined"
             editor-title="Ajuste a imagem desktop do checkout"
           />
           <ImageUploadField
+            :key="`mobile-${checkoutModal.form.layout || 'classic'}`"
             v-model="checkoutModal.form.mobile_banner_url"
-            label="Banner mobile"
-            hint="Imagem do topo exibida no checkout mobile."
+            :label="checkoutModal.form.layout === 'banner' ? 'Banner do celular' : 'Banner mobile'"
+            :hint="checkoutModal.form.layout === 'banner' ? 'Tamanho sugerido: 1080 × 600 px. Sem ele, o celular mostra o banner do computador.' : 'Imagem do topo exibida no checkout mobile.'"
             layout="row"
             replace-label="Substituir"
             :enable-crop="true"
+            :crop-aspect="checkoutModal.form.layout === 'banner' ? 9 / 5 : undefined"
             editor-title="Ajuste o banner mobile do checkout"
           />
         </div>
@@ -989,6 +1013,7 @@ import {
   getAdminCheckoutSettings,
   saveAdminCheckoutSettings,
   type CheckoutAppearance,
+  type CheckoutLayout,
   type CheckoutCoupon,
   type CheckoutOfferReportItem,
   type CheckoutOffer,
@@ -1099,11 +1124,21 @@ const blankCoupon = (): CouponRow => ({
   active: true,
 });
 
+const CHECKOUT_LAYOUTS: Array<{ value: CheckoutLayout; label: string; description: string }> = [
+  { value: "classic", label: "Clássico", description: "Imagem na coluna da esquerda no computador e faixa no topo do celular." },
+  {
+    value: "banner",
+    label: "Banner no topo (estilo Viaje On)",
+    description: "Banner largo no topo, etapas em cartões, resumo ao lado e total com o botão fixos no rodapé do celular."
+  }
+];
+
 const blankCheckout = (): CheckoutRow => ({
   local_id: nextLocalId("checkout"),
   key: "",
   name: "",
   theme_mode: "dark",
+  layout: "classic",
   desktop_image_url: null,
   mobile_banner_url: null,
   active: true,
@@ -1378,13 +1413,14 @@ const applySettings = (data: Partial<CheckoutSettings> & Record<string, any>) =>
   const rawCoupons = Array.isArray(data.coupons) ? data.coupons : [];
 
   const fallbackCheckouts: CheckoutRow[] = rawCheckouts.length
-    ? rawCheckouts.map(item => ({ ...item, local_id: nextLocalId("checkout") }))
+    ? rawCheckouts.map(item => ({ ...item, layout: item.layout === "banner" ? "banner" : "classic", local_id: nextLocalId("checkout") }))
     : [
         {
           local_id: nextLocalId("checkout"),
           key: "default",
           name: "Checkout padrão",
           theme_mode: data.theme_mode === "light" ? "light" : "dark",
+          layout: "classic",
           desktop_image_url: data.desktop_image_url || null,
           mobile_banner_url: data.mobile_banner_url || null,
           active: true,

@@ -1,12 +1,15 @@
 import api from "./api";
 
 export type CheckoutThemeMode = "light" | "dark";
+/** "classic": imagem na coluna lateral; "banner": banner no topo, mobile first (estilo Viaje On). */
+export type CheckoutLayout = "classic" | "banner";
 export type CheckoutDiscountType = "fixed" | "percent";
 
 export interface CheckoutAppearance {
   key: string;
   name: string;
   theme_mode: CheckoutThemeMode;
+  layout?: CheckoutLayout;
   desktop_image_url?: string | null;
   mobile_banner_url?: string | null;
   active: boolean;
@@ -93,6 +96,7 @@ export interface CheckoutSettings {
 
 export interface CheckoutPublicConfig {
   theme_mode: CheckoutThemeMode;
+  layout?: CheckoutLayout;
   desktop_image_url?: string | null;
   mobile_banner_url?: string | null;
   offer: CheckoutOffer;

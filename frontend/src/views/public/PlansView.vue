@@ -213,7 +213,7 @@ const trialEndsAtText = computed(() => {
 const billingInfo = ref<BillingInfo | null>(null);
 const salesPlan = ref<SalesPlan>({ monthly: null, annual: null });
 const salesPlanLoading = ref(true);
-const cycle = ref<BillingCycle>("annual");
+const cycle = ref<BillingCycle>("monthly");
 const loadingKey = ref<string | null>(null);
 const errorMessage = ref<string | null>(null);
 const successMessage = ref<string | null>(null);
@@ -308,9 +308,9 @@ onMounted(async () => {
   if (billing.status === "fulfilled") billingInfo.value = billing.value.data;
   if (plan.status === "fulfilled") salesPlan.value = plan.value;
   salesPlanLoading.value = false;
-  // Abre no ciclo de quem já assina; senão no anual (melhor valor), se houver.
+  // Abre no ciclo de quem já assina; senão no mensal (no anual só se não houver mensal).
   if (isScaleActive.value) cycle.value = currentCycle.value;
-  else if (!salesPlan.value.annual) cycle.value = "monthly";
+  else if (!salesPlan.value.monthly && salesPlan.value.annual) cycle.value = "annual";
 });
 </script>
 

@@ -133,6 +133,7 @@ def get_public_checkout_config(offer_key: str, db: Session = Depends(get_db)) ->
     checkout = resolve_offer_checkout(settings, offer)
     return CheckoutConfigResponse(
         theme_mode=checkout.theme_mode,
+        layout=checkout.layout,
         desktop_image_url=checkout.desktop_image_url,
         mobile_banner_url=checkout.mobile_banner_url,
         offer=offer,
