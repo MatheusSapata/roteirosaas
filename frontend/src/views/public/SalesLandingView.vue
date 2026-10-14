@@ -255,7 +255,7 @@
     <section class="lp-sec is-green">
       <div class="lp-wrap">
         <p class="lp-kicker">Como funciona</p>
-        <h2 class="lp-h2">Onboarding em <span class="is-brand">menos de 3 minutos</span></h2>
+        <h2 class="lp-h2">Tudo pronto em <span class="is-brand">menos de 3 minutos</span></h2>
         <div class="lp-steps">
           <div v-for="(step, index) in STEPS" :key="step.title" class="lp-step">
             <span class="lp-step-num">0{{ index + 1 }}</span>
