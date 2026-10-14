@@ -65,12 +65,25 @@
             <p v-if="cycle === 'annual' && math && math.savings > 0" class="pv-anchor">
               {{ t(copy.from) }} <s>{{ formatBRL(math.twelveMonths) }}</s> {{ t(copy.for) }}
             </p>
-            <div class="pv-price">
-              <span class="cur">R$</span><span class="val">{{ priceNumber(currentOffer.amount) }}</span>
-              <span class="per">{{ cycle === "annual" ? t(copy.perYear) : t(copy.perMonth) }}</span>
+            <p v-else-if="promoAmount" class="pv-anchor">
+              {{ t(copy.from) }} <s>{{ formatBRL(currentOffer.amount) }}</s> {{ t(copy.for) }}
+            </p>
+            <!-- Anual parcelado: a parcela em destaque e o valor à vista embaixo. -->
+            <div v-if="annualInstallment" class="pv-price">
+              <span class="cur">{{ annualInstallment.count }}x de R$</span><span class="val">{{ formatBRL(annualInstallment.value, { cents: "always" }).replace(/^R\$\s*/, "") }}</span>
             </div>
-            <p v-if="cycle === 'annual' && math" class="pv-eq">
+            <div v-else class="pv-price">
+              <span class="cur">R$</span><span class="val">{{ priceNumber(promoAmount || currentOffer.amount) }}</span>
+              <span class="per">{{ promoAmount ? t(copy.firstMonth) : cycle === "annual" ? t(copy.perYear) : t(copy.perMonth) }}</span>
+            </div>
+            <p v-if="annualInstallment" class="pv-eq">
+              {{ t(copy.or) }} <b>{{ formatBRL(currentOffer.amount) }} {{ t(copy.upfront) }}</b>
+            </p>
+            <p v-else-if="cycle === 'annual' && math" class="pv-eq">
               {{ t(copy.equals) }} <b>{{ formatBRL(math.perMonth, { cents: "always" }) }} {{ t(copy.aMonth) }}</b>
+            </p>
+            <p v-else-if="promoAmount" class="pv-eq">
+              {{ t(copy.thenMonthly) }} <b>{{ formatBRL(currentOffer.amount) }}{{ t(copy.perMonth) }}</b>. {{ t(copy.noLockIn) }}
             </p>
             <p v-else class="pv-eq">{{ t(copy.monthlyNote) }}</p>
             <p v-if="cycle === 'annual' && math && math.savings > 0" class="pv-save">
@@ -145,6 +158,11 @@ const copy = {
   equals: L("equivale a", "equivale a"),
   aMonth: L("por mês", "por mes"),
   monthlyNote: L("Renova todo mês. Sem fidelidade.", "Se renueva cada mes. Sin permanencia."),
+  or: L("ou", "o"),
+  upfront: L("à vista", "al contado"),
+  firstMonth: L("no 1º mês", "el 1er mes"),
+  thenMonthly: L("Depois,", "Después,"),
+  noLockIn: L("Sem fidelidade.", "Sin permanencia."),
   save: L("Economize", "Ahorra"),
   lessThan: L("1 ano por menos de", "1 año por menos de"),
   monthsOfMonthly: L("meses do mensal", "meses del mensual"),
@@ -221,6 +239,19 @@ const isCurrentCycle = computed(() => isScaleActive.value && cycle.value === cur
 
 const math = computed(() => salesPlanMath(salesPlan.value.monthly?.amount, salesPlan.value.annual?.amount));
 const currentOffer = computed(() => salesPlan.value[cycle.value] || salesPlan.value.monthly || salesPlan.value.annual);
+// Anual no cartão em até 12x (valor da parcela vem do Admin Master).
+const annualInstallment = computed(() => {
+  const offer = currentOffer.value;
+  if (!offer || offer.billing_cycle !== "annual" || (offer.max_installments || 1) <= 1 || !offer.installment_value) return null;
+  return { count: offer.max_installments || 1, value: offer.installment_value };
+});
+// Promoção da 1ª mensalidade: só para quem ainda não paga um plano (o checkout confirma).
+const promoAmount = computed(() => {
+  const offer = currentOffer.value;
+  if (!offer || offer.billing_cycle !== "monthly" || !offer.first_payment_amount) return "";
+  if (isLegacyPlan.value || isScale.value) return "";
+  return offer.first_payment_amount;
+});
 const cycleLabel = (value: BillingCycle) => (value === "annual" ? t(copy.annual) : t(copy.monthly));
 const priceNumber = (amount: string) => formatBRL(amount).replace(/^R\$\s*/, "");
 

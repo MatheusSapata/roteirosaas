@@ -76,6 +76,10 @@ class AsaasClient:
     def list_payments(self, **params: Any) -> dict[str, Any]:
         return self._request("GET", "/payments", params=params)
 
+    def tokenize_credit_card(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Salva o cartão no Asaas e devolve o creditCardToken (para cobranças futuras sem o cartão)."""
+        return self._request("POST", "/creditCard/tokenizeCreditCard", json=payload)
+
     def create_subscription(self, payload: dict[str, Any]) -> dict[str, Any]:
         return self._request("POST", "/subscriptions", json=payload)
 

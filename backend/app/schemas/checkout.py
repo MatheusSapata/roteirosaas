@@ -2,7 +2,9 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from zoneinfo import ZoneInfo
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 CheckoutThemeMode = Literal["light", "dark"]
@@ -69,6 +71,15 @@ class CheckoutOfferIn(BaseModel):
     # Plano único da página de vendas e da tela de planos: a oferta que aparece como a
     # assinatura mensal ou a anual. Uma oferta por ciclo, com o mesmo ciclo de cobrança.
     sales_slot: Literal["monthly", "annual"] | None = None
+    # Parcelas no cartão (só no anual; 1 = só à vista). As parcelas seguem a tabela de repasse
+    # das taxas do Asaas (app/services/card_installments.py); um valor fixo por número de
+    # parcelas (ex.: {"12": 97.00}) vale no lugar da conta.
+    max_installments: int = Field(default=1, ge=1, le=12)
+    installment_fixed_values: dict[str, Decimal] = Field(default_factory=dict)
+    # Promoção da 1ª mensalidade (só no mensal e só para quem assina pela primeira vez):
+    # a 1ª cobrança sai por first_payment_amount até first_payment_ends_at; depois, o valor cheio.
+    first_payment_amount: Decimal | None = Field(default=None, gt=0)
+    first_payment_ends_at: datetime | None = None
 
     @field_validator("key")
     @classmethod
@@ -86,6 +97,49 @@ class CheckoutOfferIn(BaseModel):
     def normalize_checkout_key(cls, value: str | None) -> str | None:
         normalized = (value or "").strip().lower()
         return normalized or None
+
+    @field_validator("installment_fixed_values", mode="before")
+    @classmethod
+    def normalize_installment_fixed_values(cls, value: Any) -> Any:
+        from app.services.card_installments import normalize_fixed_values
+
+        if not isinstance(value, dict):
+            return {}
+        return {str(count): amount for count, amount in normalize_fixed_values(value).items()}
+
+    @field_validator("first_payment_amount", mode="before")
+    @classmethod
+    def normalize_first_payment_amount(cls, value: Any) -> Any:
+        return None if value in (None, "") else value
+
+    @field_validator("first_payment_ends_at", mode="before")
+    @classmethod
+    def normalize_first_payment_ends_at(cls, value: Any) -> Any:
+        if value in (None, ""):
+            return None
+        return value
+
+    @field_validator("first_payment_ends_at")
+    @classmethod
+    def ends_at_with_timezone(cls, value: datetime | None) -> datetime | None:
+        # Sem fuso, a data vem da tela do admin no horário de Brasília.
+        if value is not None and value.tzinfo is None:
+            return value.replace(tzinfo=ZoneInfo("America/Sao_Paulo"))
+        return value
+
+    @model_validator(mode="after")
+    def keep_rules_per_cycle(self) -> "CheckoutOfferIn":
+        # Parcelas só no anual; promoção da 1ª mensalidade só no mensal.
+        if self.billing_cycle == "monthly":
+            self.max_installments = 1
+            self.installment_fixed_values = {}
+        else:
+            self.first_payment_amount = None
+            self.first_payment_ends_at = None
+        self.installment_fixed_values = {
+            count: amount for count, amount in self.installment_fixed_values.items() if int(count) <= self.max_installments
+        }
+        return self
 
 
 class CheckoutOfferOut(CheckoutOfferIn):
@@ -141,6 +195,12 @@ class CheckoutSalesPlanOfferOut(BaseModel):
     title: str
     billing_cycle: Literal["monthly", "annual"]
     amount: Decimal
+    # Maior parcelamento no cartão (ex.: 12x de R$ 97,00); 1 = só à vista.
+    max_installments: int = 1
+    installment_value: Decimal | None = None
+    # Promoção da 1ª mensalidade em vigor (None quando não há ou já acabou).
+    first_payment_amount: Decimal | None = None
+    first_payment_ends_at: datetime | None = None
 
 
 class CheckoutSalesPlanOut(BaseModel):
@@ -258,6 +318,17 @@ class CheckoutSessionOut(BaseModel):
     requires_password_setup: bool = True
     is_upgrade: bool = False
     locked_profile_fields: dict[str, bool] | None = None
+    # Valor da 1ª cobrança quando a promoção da 1ª mensalidade vale para esta compra.
+    first_payment_amount: Decimal | None = None
+    # Parcelas do cartão para esta compra (1x à vista sempre primeiro).
+    installment_options: list["CheckoutInstallmentOptionOut"] = Field(default_factory=list)
+
+
+class CheckoutInstallmentOptionOut(BaseModel):
+    count: int
+    value: Decimal
+    total: Decimal
+    no_interest: bool = False
 
 
 class CheckoutPixStartRequest(BaseModel):
@@ -368,3 +439,6 @@ class CheckoutOfferReportItemOut(BaseModel):
     direct_count: int = 0
     total_count: int = 0
     last_signed_at: datetime | None = None
+
+
+CheckoutSessionOut.model_rebuild()

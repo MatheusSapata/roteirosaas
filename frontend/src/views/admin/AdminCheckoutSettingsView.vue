@@ -63,6 +63,7 @@
               </div>
               <template v-if="slot.offer">
                 <div class="sp-price am-num">{{ formatCurrency(slot.offer.amount) }}<small>{{ slot.id === "annual" ? "/ano" : "/mês" }}</small></div>
+                <div v-if="slotExtra(slot.offer)" class="sp-extra">{{ slotExtra(slot.offer) }}</div>
                 <div class="sp-meta"><b>{{ slot.offer.title }}</b> · <span class="am-mono">/checkout/{{ slot.offer.key }}</span></div>
                 <p v-for="warning in slot.warnings" :key="warning" class="sp-warn">{{ warning }}</p>
               </template>
@@ -735,6 +736,63 @@
               O plano interno deve ser o Escala (roteiros ilimitados, Leads e domínio).
             </span>
           </label>
+          <!-- Anual: parcelas no cartão. Vazio = taxa padrão; preenchido = valor fixo da parcela. -->
+          <div v-if="offerModal.form.billing_cycle === 'annual'" class="op-box md:col-span-2">
+            <div class="op-head">
+              <div>
+                <b>Parcelas no cartão</b>
+                <span>
+                  Cada parcela repassa ao cliente a taxa do cartão e a antecipação do Asaas (mesma tabela do Sistema Viajeon).
+                  Para fixar o valor de uma parcela, preencha o campo dela. À vista não tem acréscimo.
+                </span>
+              </div>
+              <label class="op-max">
+                Até
+                <select v-model.number="offerModal.form.max_installments">
+                  <option v-for="count in 12" :key="count" :value="count">{{ count === 1 ? "só à vista" : `${count}x` }}</option>
+                </select>
+              </label>
+            </div>
+            <div v-if="(offerModal.form.max_installments || 1) > 1" class="op-grid">
+              <div v-for="row in offerInstallmentRows" :key="row.count" class="op-row" :class="{ 'is-fixed': row.fixed }">
+                <span class="op-count">{{ row.count === 1 ? "À vista" : `${row.count}x` }}</span>
+                <span v-if="row.count === 1" class="op-value">{{ formatBRL(row.value, { cents: "always" }) }}</span>
+                <input
+                  v-else
+                  v-model="offerModal.form.installment_fixed_values![String(row.count)]"
+                  class="op-input"
+                  inputmode="decimal"
+                  :placeholder="formatBRL(computedRow(row.count), { cents: 'always' })"
+                  :aria-label="`Valor fixo da parcela em ${row.count}x`"
+                />
+                <span class="op-total">total {{ formatBRL(row.total, { cents: "always" }) }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Mensal: 1ª mensalidade promocional por tempo limitado. -->
+          <div v-if="offerModal.form.billing_cycle === 'monthly'" class="op-box md:col-span-2">
+            <div class="op-head">
+              <div>
+                <b>1ª mensalidade promocional</b>
+                <span>
+                  Só para quem assina pela primeira vez (quem migra de plano paga o valor cheio). Vale no cartão e no Pix automático;
+                  da 2ª mensalidade em diante, o valor cheio. Na data final, a página de vendas e o checkout voltam ao valor cheio sozinhos.
+                </span>
+              </div>
+            </div>
+            <div class="grid gap-3 md:grid-cols-2">
+              <label class="space-y-2 text-sm font-semibold text-slate-700">
+                <span>Valor da 1ª mensalidade</span>
+                <input v-model="offerModal.form.first_payment_amount" class="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm" inputmode="decimal" placeholder="Vazio = sem promoção" />
+              </label>
+              <label class="space-y-2 text-sm font-semibold text-slate-700">
+                <span>Termina em (horário de Brasília)</span>
+                <input v-model="offerModal.form.first_payment_ends_at" type="datetime-local" class="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm" />
+              </label>
+            </div>
+          </div>
+
           <label class="inline-flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 md:col-span-2">
             <input v-model="offerModal.form.active" type="checkbox" />
             Oferta ativa
@@ -940,6 +998,7 @@ import {
   type CheckoutTrackingDocumentDetail,
 } from "../../services/checkout";
 import { formatBRL, salesPlanMath } from "../../utils/salesPlan";
+import { computedInstallmentValue, installmentPreview } from "../../utils/cardInstallments";
 
 type TabId = "offers" | "pixels" | "coupons" | "checkouts" | "reports" | "tracking";
 
@@ -990,6 +1049,35 @@ const blankOffer = (slot: SalesSlot | null = null): OfferRow => ({
   subtitle: "",
   checkout_key: "",
   sales_slot: slot,
+  max_installments: slot === "annual" ? 12 : 1,
+  installment_fixed_values: slot === "annual" ? { "12": "97.00" } : {},
+  first_payment_amount: "",
+  first_payment_ends_at: "",
+});
+
+// A data final da promoção chega com fuso (ISO); o campo da tela usa o horário de Brasília.
+const toSaoPauloInput = (iso?: string | null) => {
+  if (!iso) return "";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const parts = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).format(date);
+  return parts.replace(" ", "T");
+};
+
+const withOfferDefaults = (item: CheckoutOffer) => ({
+  ...item,
+  max_installments: item.billing_cycle === "annual" ? Number(item.max_installments || 1) : 1,
+  installment_fixed_values: { ...(item.installment_fixed_values || {}) },
+  first_payment_amount: item.first_payment_amount ? String(item.first_payment_amount) : "",
+  first_payment_ends_at: toSaoPauloInput(item.first_payment_ends_at),
 });
 
 const blankPixel = (): PixelRow => ({
@@ -1306,7 +1394,7 @@ const applySettings = (data: Partial<CheckoutSettings> & Record<string, any>) =>
   form.is_active = typeof data.is_active === "boolean" ? data.is_active : true;
   form.checkouts = fallbackCheckouts;
   form.offers = rawOffers.map(item => ({
-    ...item,
+    ...withOfferDefaults(item),
     local_id: nextLocalId("offer"),
     checkout_key: item.checkout_key || fallbackCheckouts[0]?.key || "",
   }));
@@ -1320,12 +1408,27 @@ const applySettings = (data: Partial<CheckoutSettings> & Record<string, any>) =>
 
 const serializePayload = () => ({
   is_active: form.is_active,
-  offers: form.offers.map(({ local_id, ...item }) => ({
-    ...item,
-    amount: normalizeMoneyInput(item.amount),
-    footer_product_label: item.footer_product_label?.trim() || item.title.trim(),
-    checkout_key: item.checkout_key?.trim() || null,
-  })),
+  offers: form.offers.map(({ local_id, ...item }) => {
+    const annual = item.billing_cycle === "annual";
+    const fixedValues = Object.fromEntries(
+      Object.entries(item.installment_fixed_values || {})
+        .map(([count, value]) => [count, String(value ?? "").replace(/[^\d,.]/g, "")])
+        .filter(([, value]) => value)
+        .map(([count, value]) => [count, normalizeMoneyInput(value)])
+    );
+    const promo = String(item.first_payment_amount || "").replace(/[^\d,.]/g, "");
+    return {
+      ...item,
+      amount: normalizeMoneyInput(item.amount),
+      footer_product_label: item.footer_product_label?.trim() || item.title.trim(),
+      checkout_key: item.checkout_key?.trim() || null,
+      max_installments: annual ? Number(item.max_installments || 1) : 1,
+      installment_fixed_values: annual ? fixedValues : {},
+      // Sem fuso: o servidor entende como horário de Brasília (o mesmo do campo).
+      first_payment_amount: !annual && promo ? normalizeMoneyInput(promo) : null,
+      first_payment_ends_at: !annual && promo && item.first_payment_ends_at ? item.first_payment_ends_at : null,
+    };
+  }),
   pixels: form.pixels.map(({ local_id, ...item }) => ({
     ...item,
     name: item.name.trim(),
@@ -1446,7 +1549,39 @@ const save = async () => {
 const openOfferModal = (row?: OfferRow, slot: SalesSlot | null = null) => {
   offerModal.open = true;
   offerModal.editingId = row?.local_id || null;
-  offerModal.form = row ? { ...row, sales_slot: row.sales_slot ?? null } : blankOffer(slot);
+  offerModal.form = row
+    ? { ...row, sales_slot: row.sales_slot ?? null, installment_fixed_values: { ...(row.installment_fixed_values || {}) } }
+    : blankOffer(slot);
+};
+
+// Prévia das parcelas no modal (o checkout usa a conta do servidor, que é a mesma).
+const offerAmountNumber = computed(() => Number(normalizeMoneyInput(offerModal.form.amount)) || 0);
+const offerInstallmentRows = computed(() =>
+  installmentPreview(offerAmountNumber.value, offerModal.form.max_installments || 1, offerModal.form.installment_fixed_values || {})
+);
+const computedRow = (count: number) => computedInstallmentValue(offerAmountNumber.value, count);
+
+const promoEndLabel = (local?: string | null) => {
+  const match = String(local || "").match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  return match ? `${match[3]}/${match[2]} às ${match[4]}:${match[5]}` : "";
+};
+const promoEnded = (local?: string | null) => {
+  if (!local) return false;
+  const end = new Date(`${local}:00-03:00`);
+  return !Number.isNaN(end.getTime()) && end.getTime() <= Date.now();
+};
+// Linha extra no "Plano à venda": parcelamento do anual e promoção da 1ª mensalidade.
+const slotExtra = (offer: OfferRow) => {
+  if (offer.billing_cycle === "annual") {
+    const rows = installmentPreview(Number(normalizeMoneyInput(offer.amount)) || 0, offer.max_installments || 1, offer.installment_fixed_values || {});
+    const top = rows[rows.length - 1];
+    return top && top.count > 1 ? `ou ${top.count}x de ${formatBRL(top.value, { cents: "always" })} no cartão` : "Só à vista";
+  }
+  if (!offer.first_payment_amount) return "";
+  const promo = formatBRL(Number(normalizeMoneyInput(offer.first_payment_amount)), { cents: "always" });
+  if (promoEnded(offer.first_payment_ends_at)) return `Promoção de 1ª mensalidade (${promo}) encerrada`;
+  const end = promoEndLabel(offer.first_payment_ends_at);
+  return `1ª mensalidade por ${promo}${end ? ` até ${end}` : " (sem data final)"}`;
 };
 
 // A oferta da página de vendas cobra no ciclo que representa: um acompanha o outro.
@@ -1761,6 +1896,94 @@ watch(reportPeriodPreset, value => {
 }
 .sp-btn:hover {
   border-color: var(--primary);
+}
+.sp-extra {
+  color: var(--status-success-foreground);
+  font-size: 13px;
+  font-weight: 700;
+}
+.op-box {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  background: #f8fafc;
+}
+.op-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.op-head b {
+  display: block;
+  color: #0f172a;
+  font-size: 14px;
+}
+.op-head span {
+  display: block;
+  margin-top: 2px;
+  color: #64748b;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.op-max {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 600;
+}
+.op-max select {
+  padding: 6px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+}
+.op-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 8px;
+}
+.op-row {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  align-items: center;
+  gap: 2px 8px;
+  padding: 8px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+}
+.op-row.is-fixed {
+  border-color: #12b981;
+  box-shadow: inset 3px 0 0 #12b981;
+}
+.op-count {
+  grid-row: span 2;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 700;
+}
+.op-value,
+.op-input {
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 600;
+}
+.op-input {
+  width: 100%;
+  padding: 4px 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+.op-total {
+  color: #64748b;
+  font-size: 11.5px;
 }
 .sp-math {
   margin-top: 12px;
