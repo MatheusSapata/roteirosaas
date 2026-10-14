@@ -723,7 +723,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     atualizado: "2026-10-14",
     rota: "/admin/planos",
     rotaRotulo: "Ver assinatura",
-    busca: "plano assinatura mensal anual upgrade renovar cancelar preco profissional agencia escala",
+    busca: "plano assinatura mensal anual upgrade migrar renovar cancelar preco parcelar parcelas cartao profissional agencia escala",
     passos: [
       { titulo: "Veja sua assinatura", texto: "No Perfil, com a próxima renovação e a forma de pagamento.", tela: 1 },
       { titulo: "Clique em Ver assinatura", tela: 2 },
@@ -734,7 +734,14 @@ export const HELP_ARTICLES: HelpArticle[] = [
         tipo: "texto",
         texto: "A assinatura inclui tudo: roteiros ilimitados, Módulo Leads, domínio próprio, caixa de entrada do WhatsApp, pixels, Assistente IA e equipe com até 5 usuários."
       },
-      { tipo: "texto", texto: "Quem está num plano antigo (Profissional ou Agência) continua nele, com o mesmo valor, até assinar." },
+      {
+        tipo: "texto",
+        texto: "O anual pode ser pago à vista ou parcelado no cartão. Quem parcela renova no ano seguinte do mesmo jeito: nas mesmas parcelas, no cartão usado na compra."
+      },
+      {
+        tipo: "texto",
+        texto: "Quem está num plano antigo (Profissional ou Agência) continua nele, com o mesmo valor, até assinar. Para passar para o plano novo (ou do mensal para o anual), use Ver assinatura: depois do pagamento, a cobrança do plano anterior é encerrada."
+      },
       { tipo: "texto", texto: "Ao cancelar a renovação, a assinatura segue ativa até o fim do período pago." }
     ],
     relacionados: ["faturas", "perfil-e-senha"]

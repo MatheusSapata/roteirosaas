@@ -1,5 +1,12 @@
 <template>
   <div class="lp public-tokens">
+    <!-- Faixa da promoção da 1ª mensalidade (só enquanto ela vale; a data vem do Admin Master). -->
+    <a v-if="monthlyPromo" href="#planos" class="lp-promo-bar" @click.prevent="goToPlans('monthly')">
+      <span class="lp-promo-tag">Oferta por tempo limitado</span>
+      <span>1ª mensalidade por <b>{{ formatBRL(monthlyPromo.amount, { cents: "auto" }) }}</b><span class="lp-hide-sm"> no plano mensal</span></span>
+      <span v-if="promoCountdown" class="lp-promo-time">termina em {{ promoCountdown }}</span>
+    </a>
+
     <!-- 01 Capa (escura): texto à esquerda, vídeo quadrado à direita (no celular, o vídeo fica entre o texto e os botões). -->
     <section class="lp-sec is-night lp-hero">
       <div class="lp-wrap lp-hero-grid">
@@ -33,7 +40,7 @@
         </div>
         <div class="lp-hero-actions">
           <div class="lp-ctas">
-            <a href="#planos" class="lp-btn" @click.prevent="goToPlans">Quero assinar <ArrowRight :size="18" aria-hidden="true" /></a>
+            <a href="#planos" class="lp-btn" @click.prevent="goToPlans()">Quero assinar <ArrowRight :size="18" aria-hidden="true" /></a>
             <a :href="DEMO_URL" class="lp-btn-ghost" target="_blank" rel="noopener">Agendar demonstração</a>
           </div>
           <p class="lp-note"><ShieldCheck :size="15" aria-hidden="true" /><span>Plano único com tudo incluso · 7 dias de garantia<span class="lp-hide-sm"> · Sem fidelidade</span></span></p>
@@ -51,7 +58,50 @@
       </div>
     </section>
 
-    <!-- 03 Dores -->
+    <!-- 03 Assistente IA (escura): a página sai pronta a partir do que a agência já tem -->
+    <section class="lp-sec is-night lp-sec-ai">
+      <div class="lp-wrap lp-ai">
+        <div class="lp-ai-copy">
+          <p class="lp-kicker">Assistente de IA</p>
+          <h2 class="lp-h2">Descreva a viagem. <span class="is-brand">A IA monta a página.</span></h2>
+          <p class="lp-sub">
+            Mande o roteiro do jeito que você tem. O assistente escreve os textos e organiza o dia a dia, o que está incluso,
+            os preços e as dúvidas. Você só revisa e publica.
+          </p>
+          <ol class="lp-ai-steps">
+            <li v-for="(step, index) in AI_STEPS" :key="step.title">
+              <span class="lp-ai-num" aria-hidden="true">{{ index + 1 }}</span>
+              <div>
+                <h3>{{ step.title }}</h3>
+                <p>{{ step.text }}</p>
+              </div>
+            </li>
+          </ol>
+          <div class="lp-ai-chips" aria-label="O que você pode mandar">
+            <span v-for="chip in AI_INPUTS" :key="chip.label"><component :is="chip.icon" :size="14" aria-hidden="true" />{{ chip.label }}</span>
+          </div>
+        </div>
+        <div class="lp-ai-visual">
+          <div class="lp-canva-bar" aria-hidden="true"><i></i><i></i><i></i><span>Assistente IA do Roteiro Online</span></div>
+          <!-- Gravado do editor de verdade por tools/help-media/lp-assistente.mjs. -->
+          <video
+            ref="aiVideo"
+            :poster="assistantPoster"
+            autoplay
+            muted
+            loop
+            playsinline
+            preload="metadata"
+            aria-label="Animação do Assistente IA: a agência descreve a viagem, a IA monta a página com banner, roteiro dia a dia, inclusos, preços e dúvidas, e a página é aplicada com um clique"
+          >
+            <source :src="assistantWebm" type="video/webm" />
+            <source :src="assistantMp4" type="video/mp4" />
+          </video>
+        </div>
+      </div>
+    </section>
+
+    <!-- 04 Dores -->
     <section class="lp-sec is-mist">
       <div class="lp-wrap">
         <h2 class="lp-h2">
@@ -216,7 +266,7 @@
           </div>
         </div>
         <div class="lp-steps-cta">
-          <a href="#planos" class="lp-btn" @click.prevent="goToPlans">Quero começar agora <ArrowRight :size="18" aria-hidden="true" /></a>
+          <a href="#planos" class="lp-btn" @click.prevent="goToPlans()">Quero começar agora <ArrowRight :size="18" aria-hidden="true" /></a>
         </div>
       </div>
     </section>
@@ -300,6 +350,7 @@
           </div>
           <div class="lp-price-box" :class="{ 'is-loading': salesPlanLoading }">
             <span v-if="cycle === 'annual' && salesMath && salesMath.savings > 0 && currentOffer" class="lp-best">Melhor escolha</span>
+            <span v-else-if="cycle === 'monthly' && monthlyPromo" class="lp-best is-urgent">Oferta por tempo limitado</span>
             <div v-if="salesPlan.monthly && salesPlan.annual" class="lp-cycle" role="tablist" aria-label="Forma de pagamento">
               <button type="button" role="tab" :aria-selected="cycle === 'monthly'" :class="{ on: cycle === 'monthly' }" @click="cycle = 'monthly'">Mensal</button>
               <button type="button" role="tab" :aria-selected="cycle === 'annual'" :class="{ on: cycle === 'annual' }" @click="cycle = 'annual'">
@@ -307,15 +358,30 @@
               </button>
             </div>
             <template v-if="currentOffer">
+              <p v-if="cycle === 'monthly' && monthlyPromo && promoCountdown" class="lp-promo-clock">
+                <Timer :size="14" aria-hidden="true" />termina em <b>{{ promoCountdown }}</b>
+              </p>
               <p v-if="cycle === 'annual' && salesMath && salesMath.savings > 0" class="lp-anchor">
                 de <s>{{ formatBRL(salesMath.twelveMonths) }}</s> por
               </p>
-              <div class="lp-price">
+              <p v-else-if="cycle === 'monthly' && monthlyPromo" class="lp-anchor">
+                de <s>{{ formatBRL(currentOffer.amount) }}</s> por
+              </p>
+              <!-- Anual: a parcela em destaque (ex.: 12x de R$ 97) e o valor à vista embaixo. -->
+              <div v-if="annualInstallment" class="lp-price">
+                <span class="cur">{{ annualInstallment.count }}x de R$</span><span class="val">{{ centsNumber(annualInstallment.value) }}</span>
+              </div>
+              <div v-else-if="cycle === 'monthly' && monthlyPromo" class="lp-price">
+                <span class="cur">R$</span><span class="val">{{ priceNumber(monthlyPromo.amount) }}</span><span class="per">no 1º mês</span>
+              </div>
+              <div v-else class="lp-price">
                 <span class="cur">R$</span><span class="val">{{ priceNumber(currentOffer.amount) }}</span><span class="per">{{ cycle === "annual" ? "/ano" : "/mês" }}</span>
               </div>
-              <p v-if="cycle === 'annual' && salesMath" class="lp-price-eq">
+              <p v-if="annualInstallment" class="lp-price-eq">ou <b>{{ formatBRL(currentOffer.amount) }} à vista</b></p>
+              <p v-else-if="cycle === 'annual' && salesMath" class="lp-price-eq">
                 equivale a <b>{{ formatBRL(salesMath.perMonth, { cents: "always" }) }} por mês</b>
               </p>
+              <p v-else-if="monthlyPromo" class="lp-price-eq">Depois, <b>{{ formatBRL(currentOffer.amount) }}/mês</b>. Sem fidelidade.</p>
               <p v-else class="lp-price-eq">Renova todo mês. <b>Sem fidelidade.</b></p>
               <p v-if="cycle === 'annual' && salesMath && salesMath.savings > 0" class="lp-price-save">
                 Economize {{ formatBRL(salesMath.savings) }}<span class="lp-hide-sm">: 1 ano por menos de {{ salesMath.lessThanMonths }} meses do mensal</span>
@@ -387,7 +453,7 @@
           Assine, entre na plataforma e publique em menos de 30 minutos. Se não gostar, devolvemos 100% do valor em 7 dias.
         </p>
         <div class="lp-ctas">
-          <a href="#planos" class="lp-btn" @click.prevent="goToPlans">Quero assinar <ArrowRight :size="18" aria-hidden="true" /></a>
+          <a href="#planos" class="lp-btn" @click.prevent="goToPlans()">Quero assinar <ArrowRight :size="18" aria-hidden="true" /></a>
           <a :href="DEMO_URL" class="lp-btn-ghost" target="_blank" rel="noopener">Agendar demonstração</a>
         </div>
         <p class="lp-final-note">Sem fidelidade · 7 dias de garantia · Cancelamento simples</p>
@@ -417,6 +483,7 @@ import {
   EyeOff,
   FileText,
   Ghost,
+  Mic,
   Globe,
   Hotel,
   Images,
@@ -445,6 +512,9 @@ import logoWhite from "../../assets/lp/logo-branco.webp";
 import editorMp4 from "../../assets/lp/editor.mp4";
 import editorWebm from "../../assets/lp/editor.webm";
 import editorPoster from "../../assets/lp/editor-poster.webp";
+import assistantMp4 from "../../assets/lp/assistente.mp4";
+import assistantWebm from "../../assets/lp/assistente.webm";
+import assistantPoster from "../../assets/lp/assistente-poster.webp";
 import exemploAbrolhos from "../../assets/lp/exemplo-abrolhos.webp";
 import exemploFoz from "../../assets/lp/exemplo-foz.webp";
 import exemploItalia from "../../assets/lp/exemplo-italia.webp";
@@ -483,6 +553,19 @@ const PAINS = [
     title: "você esteja concorrendo por preço",
     text: "Se a apresentação não sustenta o valor, o único argumento que sobra é desconto. Apresente melhor, venda pelo preço certo."
   }
+];
+
+// Assistente IA: como a página sai pronta e o que a agência pode mandar.
+const AI_STEPS = [
+  { title: "Conte a viagem do seu jeito", text: "Escreva, grave um áudio ou mande o PDF e os prints que você já tem." },
+  { title: "A IA monta a página inteira", text: "Banner, roteiro dia a dia, inclusos, preços e dúvidas, com fotos." },
+  { title: "Revise e publique", text: "Ajuste o que quiser no editor e mande o link no WhatsApp." }
+];
+const AI_INPUTS = [
+  { icon: MessageCircle, label: "Texto" },
+  { icon: Mic, label: "Áudio" },
+  { icon: FileText, label: "PDF" },
+  { icon: Images, label: "Prints e fotos" }
 ];
 
 // Antes e depois. As linhas do "textão" são só a largura de cada linha cinza da bolha.
@@ -671,7 +754,32 @@ const salesPlanLoading = ref(true);
 const cycle = ref<"monthly" | "annual">("annual");
 const salesMath = computed(() => salesPlanMath(salesPlan.value.monthly?.amount, salesPlan.value.annual?.amount));
 const currentOffer = computed(() => salesPlan.value[cycle.value] || salesPlan.value.monthly || salesPlan.value.annual);
-const priceNumber = (amount: string) => formatBRL(amount).replace(/^R\$\s*/, "");
+const priceNumber = (amount: string) => formatBRL(amount, { cents: "auto" }).replace(/^R\$\s*/, "");
+const centsNumber = (amount: string) => formatBRL(amount, { cents: "always" }).replace(/^R\$\s*/, "");
+// Anual parcelado no cartão (ex.: 12x de R$ 97,00), configurado na oferta no Admin Master.
+const annualInstallment = computed(() => {
+  const offer = currentOffer.value;
+  if (cycle.value !== "annual" || !offer || offer.billing_cycle !== "annual" || (offer.max_installments || 1) <= 1 || !offer.installment_value) return null;
+  return { count: offer.max_installments || 1, value: offer.installment_value };
+});
+// Promoção da 1ª mensalidade (só enquanto vale; o servidor já tira a que acabou).
+const nowMs = ref(Date.now());
+const monthlyPromo = computed(() => {
+  const offer = salesPlan.value.monthly;
+  if (!offer?.first_payment_amount) return null;
+  const endsAt = offer.first_payment_ends_at ? new Date(offer.first_payment_ends_at).getTime() : null;
+  if (endsAt !== null && endsAt <= nowMs.value) return null;
+  return { amount: offer.first_payment_amount, endsAt };
+});
+const promoCountdown = computed(() => {
+  const endsAt = monthlyPromo.value?.endsAt;
+  if (!endsAt) return "";
+  const total = Math.max(0, Math.floor((endsAt - nowMs.value) / 1000));
+  const days = Math.floor(total / 86400);
+  const pad = (value: number) => String(value).padStart(2, "0");
+  const clock = `${pad(Math.floor((total % 86400) / 3600))}:${pad(Math.floor((total % 3600) / 60))}:${pad(total % 60)}`;
+  return days > 0 ? `${days}d ${clock}` : clock;
+});
 // "Menos de R$ X por dia": o próximo real inteiro acima do valor diário.
 const perDay = computed(() => {
   const offer = currentOffer.value;
@@ -743,22 +851,30 @@ const FAQ: FaqItem[] = [
 const faqAll = ref(false);
 // Quem pede menos movimento no sistema vê a animação parada, com os controles para tocar.
 const editorVideo = ref<HTMLVideoElement | null>(null);
+const aiVideo = ref<HTMLVideoElement | null>(null);
 
 // "Mensal ou anual?" com os valores do admin; sem eles, a resposta sem números.
 const faqItems = computed<FaqItem[]>(() => {
   const m = salesPlan.value.monthly;
   const a = salesPlan.value.annual;
   const math = salesMath.value;
+  const promo = monthlyPromo.value;
+  const installments =
+    a && (a.max_installments || 1) > 1 && a.installment_value
+      ? ` à vista ou em ${a.max_installments}x de ${formatBRL(a.installment_value, { cents: "always" })} no cartão`
+      : "";
+  const promoNote = promo ? ` Por tempo limitado, a 1ª mensalidade sai por ${formatBRL(promo.amount, { cents: "auto" })}.` : "";
   const cycleAnswer =
     m && a && math && math.savings > 0
-      ? `Nenhuma nos recursos: é a mesma assinatura, com tudo incluso. No mensal você paga ${formatBRL(m.amount)} por mês, sem fidelidade. No anual paga ${formatBRL(a.amount)} por 12 meses (equivale a ${formatBRL(math.perMonth, { cents: "always" })} por mês) e economiza ${formatBRL(math.savings)}.`
+      ? `Nenhuma nos recursos: é a mesma assinatura, com tudo incluso. No mensal você paga ${formatBRL(m.amount)} por mês, sem fidelidade.${promoNote} No anual paga ${formatBRL(a.amount)}${installments} pelos 12 meses e economiza ${formatBRL(math.savings)} frente a 12 mensalidades.`
       : "Nenhuma nos recursos: é a mesma assinatura, com tudo incluso. Muda só a forma de pagar: mês a mês, sem fidelidade, ou o ano inteiro com desconto.";
   const items = [...FAQ];
   items.splice(2, 0, { q: "Qual a diferença entre o mensal e o anual?", a: cycleAnswer });
   return items;
 });
 
-const goToPlans = () => {
+const goToPlans = (target?: "monthly" | "annual") => {
+  if (target && salesPlan.value[target]) cycle.value = target;
   document.getElementById("planos")?.scrollIntoView({ behavior: "smooth", block: "start" });
 };
 
@@ -809,14 +925,17 @@ onMounted(() => {
   restoreDescription = setMeta("description", PAGE_DESCRIPTION);
   void loadSalesPlan();
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (editorVideo.value && reducedMotion) {
-    editorVideo.value.autoplay = false;
-    editorVideo.value.pause();
-    editorVideo.value.controls = true;
+  for (const video of [editorVideo.value, aiVideo.value]) {
+    if (video && reducedMotion) {
+      video.autoplay = false;
+      video.pause();
+      video.controls = true;
+    }
   }
   if (!reducedMotion) {
     countdownTimer = window.setInterval(() => {
       countdownLeft.value = countdownLeft.value > 0 ? countdownLeft.value - 1 : COUNTDOWN_START;
+      nowMs.value = Date.now();
     }, 1000);
   }
   trackPageView();
@@ -1206,6 +1325,39 @@ onBeforeUnmount(() => {
   text-align: left;
 }
 
+/* Faixa da promoção da 1ª mensalidade */
+.lp-promo-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px 14px;
+  min-height: 40px;
+  padding: 7px 16px;
+  background: linear-gradient(90deg, #ff7a2f, #ff9b3d);
+  color: #2a1203;
+  font-size: 14px;
+  text-align: center;
+  text-decoration: none;
+}
+.lp-promo-bar b {
+  font-weight: 800;
+}
+.lp-promo-tag {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #2a1203;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.lp-promo-time {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
 /* 02 Números */
 .lp-metrics-sec {
   padding-top: 22px;
@@ -1239,7 +1391,94 @@ onBeforeUnmount(() => {
   text-transform: uppercase;
 }
 
-/* 03 Dores: cartões brancos com faixa vermelha no topo. */
+/* 03 Assistente IA: texto e passos à esquerda, a animação à direita. */
+.lp-ai {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  align-items: center;
+  gap: clamp(24px, 4vw, 48px);
+}
+.lp-ai-copy .lp-kicker,
+.lp-ai-copy .lp-h2,
+.lp-ai-copy .lp-sub {
+  margin-inline: 0 !important;
+  text-align: left;
+}
+.lp-ai-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 20px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.lp-ai-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--t-line);
+  border-radius: 14px;
+  background: var(--t-card);
+}
+.lp-ai-num {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--mint);
+  color: #05170f;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 800;
+}
+.lp-ai-steps h3 {
+  color: var(--t-ink);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.lp-ai-steps p {
+  margin-top: 2px !important;
+  color: var(--t-muted);
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+.lp-ai-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 14px;
+}
+.lp-ai-chips span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid rgba(29, 233, 160, 0.3);
+  border-radius: 999px;
+  background: rgba(29, 233, 160, 0.08);
+  color: var(--mint);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.lp-ai-visual {
+  overflow: hidden;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 0 0 1px rgba(29, 233, 160, 0.35), 0 30px 70px -30px rgba(29, 233, 160, 0.5);
+}
+.lp-ai-visual video {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 10;
+}
+
+/* 04 Dores: cartões brancos com faixa vermelha no topo. */
 .lp-pains {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -2349,6 +2588,22 @@ onBeforeUnmount(() => {
   color: var(--muted);
   font-size: 14px;
 }
+/* Urgência (laranja só aqui): selo e contagem da promoção da 1ª mensalidade. */
+.lp-best.is-urgent {
+  background: #ff7a2f;
+  color: #2a1203;
+}
+.lp-promo-clock {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #fff1e6;
+  color: #9a3412;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
 .lp-price {
   display: flex;
   align-items: baseline;
@@ -2860,6 +3115,59 @@ onBeforeUnmount(() => {
     margin-bottom: 14px;
   }
 }
+/* Celular: o Assistente IA vira título, animação e passos, nessa ordem; a faixa da promoção encolhe. */
+@media (max-width: 860px) {
+  .lp-ai {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+  .lp-ai-copy {
+    display: contents;
+  }
+  .lp-ai-copy .lp-kicker,
+  .lp-ai-copy .lp-h2 {
+    margin-inline: auto !important;
+    text-align: center;
+  }
+  .lp-ai-copy .lp-sub,
+  .lp-ai-chips {
+    display: none;
+  }
+  .lp-ai-visual {
+    order: 1;
+    margin-top: 16px;
+    border-radius: 12px;
+  }
+  .lp-ai-steps {
+    order: 2;
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .lp-ai-steps li {
+    padding: 10px 12px;
+  }
+  .lp-promo-bar {
+    gap: 2px 10px;
+    min-height: 0;
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+  .lp-promo-tag {
+    display: none;
+  }
+}
+@media (max-width: 860px) and (max-height: 700px) {
+  .lp-ai-steps p {
+    display: none;
+  }
+}
+@media (max-width: 380px) {
+  .lp-promo-bar {
+    font-size: 12px;
+    letter-spacing: -0.01em;
+  }
+}
+
 /* Celular com pouca altura (barra do navegador aberta, aparelhos menores). */
 @media (max-width: 860px) and (max-height: 700px) {
   .lp-swipe {

@@ -10,7 +10,11 @@ from app.models.checkout import CheckoutSession
 from app.models.subscription import Subscription
 from app.models.user import User
 from app.services.asaas import AsaasAPIError, AsaasClient, build_default_split_payload
-from app.services.checkout import find_pix_automatic_authorization_id
+from app.services.checkout import (
+    apply_pending_subscription_values,
+    find_pix_automatic_authorization_id,
+    renew_due_installment_subscriptions,
+)
 from app.services.company_status import BILLING_PROVIDERS, PAYMENT_RETRY_DAYS
 from app.services.viajechat_checkout_flow import tag_abandoned_checkout_sessions
 
@@ -374,6 +378,26 @@ def end_unpaid_subscriptions(now: Optional[datetime] = None) -> int:
     return ended
 
 
+def charge_card_renewals() -> int:
+    """Cobranças no cartão que o sistema faz (e não o Asaas): renovação do anual parcelado e a
+    troca para o valor cheio depois da 1ª mensalidade promocional. Roda antes da expiração, para a
+    renovação paga não virar inadimplência."""
+    if not settings.asaas_api_key:
+        return 0
+    db = SessionLocal()
+    done = 0
+    try:
+        client = AsaasClient(settings.asaas_api_key, settings.asaas_base_url)
+        done += apply_pending_subscription_values(db, client)
+        done += renew_due_installment_subscriptions(db, client)
+    except Exception:
+        db.rollback()
+        logger.exception("Erro nas cobranças de renovação no cartão")
+    finally:
+        db.close()
+    return done
+
+
 def schedule_expiration_job(interval_minutes: int = 60) -> None:
     """
     Inicia uma tarefa assincrona que roda a cada interval_minutes.
@@ -386,6 +410,7 @@ def schedule_expiration_job(interval_minutes: int = 60) -> None:
                 _apply_scheduled_cancellations(datetime.utcnow())
                 tag_abandoned_checkout_sessions(cutoff_minutes=30)
                 create_due_pix_automatic_instructions()
+                charge_card_renewals()
                 expire_subscriptions()
                 end_unpaid_subscriptions()
             except Exception:

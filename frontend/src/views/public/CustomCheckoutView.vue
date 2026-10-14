@@ -171,6 +171,14 @@
                   />
                 </label>
               </div>
+              <label v-if="installmentOptions.length > 1" class="checkout-field">
+                <span>Parcelas</span>
+                <select v-model.number="card.installment_count" class="checkout-select">
+                  <option v-for="option in installmentOptions" :key="option.count" :value="option.count">
+                    {{ installmentOptionLabel(option) }}
+                  </option>
+                </select>
+              </label>
               <button class="checkout-secondary" type="button" @click="goBackToMethod">Pagar com outro método</button>
               <button class="checkout-primary" type="submit" :disabled="submitting || cardAwaitingConfirmation">
                 <span v-if="submitting || cardAwaitingConfirmation" class="checkout-inline-spinner" aria-hidden="true"></span>
@@ -200,6 +208,7 @@
             <div class="checkout-note-box">
               <p>Após o pagamento, você será redirecionado automaticamente.</p>
               <p>Ao confirmar no banco, você autoriza a recorrência mensal ou anual do seu plano.</p>
+              <p v-if="promoAmount">Hoje você paga {{ money(promoAmount) }}. As próximas mensalidades são de {{ formattedAmount }}.</p>
               <p v-if="session?.pix_expiration_date">O QR Code expira em {{ pixExpirationLabel }}.</p>
             </div>
 
@@ -216,7 +225,7 @@
             <div class="checkout-summary-card">
               <h3>Detalhes da compra</h3>
               <div class="checkout-summary-row"><span>Produto</span><strong>{{ config?.offer.title }}</strong></div>
-              <div class="checkout-summary-row"><span>Valor pago</span><strong>{{ formattedAmount }}</strong></div>
+              <div class="checkout-summary-row"><span>Valor pago</span><strong>{{ paidAmountLabel }}</strong></div>
               <div class="checkout-summary-row"><span>Forma de pagamento</span><strong>{{ paymentMethodLabel }}</strong></div>
               <div class="checkout-summary-row"><span>Data e hora</span><strong>{{ paidAtLabel }}</strong></div>
             </div>
@@ -330,14 +339,16 @@
             </div>
             <div class="checkout-footer-right">
               <div class="checkout-footer-total-only">
-                <small>Total a pagar</small>
+                <small>{{ promoAmount ? "Hoje você paga" : "Total a pagar" }}</small>
                 <div class="checkout-footer-price-row">
-                  <span v-if="hasAppliedCoupon && originalAmountLabel" class="checkout-footer-original-price">{{ originalAmountLabel }}</span>
+                  <span v-if="promoAmount" class="checkout-footer-original-price">{{ formattedAmount }}</span>
+                  <span v-else-if="hasAppliedCoupon && originalAmountLabel" class="checkout-footer-original-price">{{ originalAmountLabel }}</span>
                   <div class="checkout-footer-final-price">
-                    <strong>{{ formattedAmount }}</strong>
-                    <span class="checkout-footer-cycle-suffix">/ mês</span>
+                    <strong>{{ footerPrice }}</strong>
+                    <span v-if="footerSuffix" class="checkout-footer-cycle-suffix">{{ footerSuffix }}</span>
                   </div>
                 </div>
+                <span v-if="footerNote" class="checkout-footer-note">{{ footerNote }}</span>
               </div>
             </div>
           </div>
@@ -371,9 +382,11 @@ import {
   startPixCheckout,
   updateUpgradeCheckoutSessionDetails,
   type CheckoutCouponPreview,
+  type CheckoutInstallmentOption,
   type CheckoutPublicConfig,
   type CheckoutSession
 } from "../../services/checkout";
+import { installmentPreview } from "../../utils/cardInstallments";
 import { useAuthStore } from "../../store/useAuthStore";
 import { resolveMediaUrl } from "../../utils/media";
 
@@ -550,6 +563,63 @@ const formattedAmount = computed(() => {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 });
 const hasAppliedCoupon = computed(() => Boolean(effectiveAppliedCouponCode.value && effectiveDiscountAmount.value > 0));
+const money = (value: number | string) => Number(value || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const billingCycle = computed(() => session.value?.billing_cycle || config.value?.offer.billing_cycle || "monthly");
+// 1ª mensalidade promocional: depois da compra começar vale o que o servidor travou na sessão;
+// antes, a da oferta (só para quem assina pela primeira vez e enquanto a promoção está no prazo).
+const promoAmount = computed(() => {
+  if (session.value) return Number(session.value.first_payment_amount || 0);
+  const offer = config.value?.offer;
+  if (!offer || offer.billing_cycle !== "monthly" || isUpgradeFlow.value || !offer.first_payment_amount) return 0;
+  if (offer.first_payment_ends_at && new Date(offer.first_payment_ends_at).getTime() <= Date.now()) return 0;
+  const value = Number(offer.first_payment_amount);
+  return value > 0 && value < effectiveAmount.value ? value : 0;
+});
+// Parcelas do cartão (anual): as do servidor quando a compra já começou; antes, a prévia da oferta.
+const installmentOptions = computed<CheckoutInstallmentOption[]>(() => {
+  if (session.value?.installment_options?.length) return session.value.installment_options;
+  const offer = config.value?.offer;
+  if (!offer || offer.billing_cycle !== "annual" || (offer.max_installments || 1) <= 1 || hasAppliedCoupon.value) return [];
+  return installmentPreview(effectiveAmount.value, offer.max_installments || 1, offer.installment_fixed_values || {}).map(row => ({
+    count: row.count,
+    value: String(row.value),
+    total: String(row.total),
+    no_interest: row.count === 1
+  }));
+});
+const topInstallment = computed(() => (installmentOptions.value.length > 1 ? installmentOptions.value[installmentOptions.value.length - 1] : null));
+const selectedInstallment = computed(() => installmentOptions.value.find(option => option.count === card.installment_count) || null);
+const installmentOptionLabel = (option: CheckoutInstallmentOption) =>
+  option.count === 1
+    ? `À vista: ${money(option.value)}`
+    : `${option.count}x de ${money(option.value)} (total ${money(option.total)})`;
+const footerPrice = computed(() => {
+  if (promoAmount.value) return money(promoAmount.value);
+  if (step.value === "card" && selectedInstallment.value && selectedInstallment.value.count > 1) {
+    return `${selectedInstallment.value.count}x ${money(selectedInstallment.value.value)}`;
+  }
+  return formattedAmount.value;
+});
+const footerSuffix = computed(() => {
+  if (promoAmount.value) return "no 1º mês";
+  if (step.value === "card" && selectedInstallment.value && selectedInstallment.value.count > 1) return "";
+  return billingCycle.value === "annual" ? "/ ano" : "/ mês";
+});
+const footerNote = computed(() => {
+  if (promoAmount.value) return `Depois, ${formattedAmount.value}/mês. Sem fidelidade.`;
+  if (step.value === "card" && selectedInstallment.value && selectedInstallment.value.count > 1) {
+    return `Total de ${money(selectedInstallment.value.total)} no cartão`;
+  }
+  if (topInstallment.value) return `ou até ${topInstallment.value.count}x de ${money(topInstallment.value.value)} no cartão`;
+  return "";
+});
+const paidAmountLabel = computed(() => {
+  const count = Number(card.installment_count || 1);
+  const option = installmentOptions.value.find(item => item.count === count);
+  if (session.value?.payment_method === "card" && option && option.count > 1) return `${option.count}x de ${money(option.value)}`;
+  if (promoAmount.value) return money(promoAmount.value);
+  return formattedAmount.value;
+});
 const appliedCouponLabel = computed(() => {
   if (!effectiveAppliedCouponCode.value) return "";
   return `Cupom ${effectiveAppliedCouponCode.value}`;
@@ -1001,7 +1071,7 @@ const submitCard = async () => {
       expiry_month: month,
       expiry_year: year,
       ccv: card.ccv,
-      installment_count: 1
+      installment_count: installmentOptions.value.some(option => option.count === card.installment_count) ? card.installment_count : 1
     });
     if (session.value.status === "paid") {
       step.value = "success";
@@ -1071,6 +1141,9 @@ const goToPasswordStep = async () => {
 };
 
 const chooseCard = () => {
+  if (topInstallment.value && !installmentOptions.value.some(option => option.count === card.installment_count && option.count > 1)) {
+    card.installment_count = topInstallment.value.count;
+  }
   stopPolling();
   cardAwaitingConfirmation.value = false;
   clearCardAwaitingTimeout();
@@ -2237,6 +2310,22 @@ onBeforeUnmount(() => {
   font-size: 12px;
   font-weight: 600;
   opacity: 0.72;
+}
+
+.checkout-footer-note {
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.75;
+}
+
+.checkout-select {
+  width: 100%;
+}
+
+/* A lista aberta do seletor usa o fundo do sistema: texto escuro para não sumir no tema escuro. */
+.checkout-select option {
+  color: #0f172a;
 }
 
 .checkout-footer-original-price {

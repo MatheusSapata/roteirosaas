@@ -38,6 +38,12 @@ export interface CheckoutOffer {
   checkout_key?: string | null;
   /** Plano único: esta oferta é a assinatura mensal ou a anual da página de vendas. */
   sales_slot?: "monthly" | "annual" | null;
+  /** Anual: parcelas no cartão (1 = só à vista) e valor fixo por número de parcelas ({"12": "97.00"}). */
+  max_installments?: number;
+  installment_fixed_values?: Record<string, string>;
+  /** Mensal: 1ª mensalidade promocional e quando a promoção termina (ISO). */
+  first_payment_amount?: string | null;
+  first_payment_ends_at?: string | null;
 }
 
 /** Plano único à venda (página de vendas e tela de planos): a oferta mensal e a anual. */
@@ -46,6 +52,12 @@ export interface SalesPlanOffer {
   title: string;
   billing_cycle: "monthly" | "annual";
   amount: string;
+  /** Maior parcelamento no cartão (ex.: 12) e o valor da parcela nele. */
+  max_installments?: number;
+  installment_value?: string | null;
+  /** Promoção da 1ª mensalidade em vigor. */
+  first_payment_amount?: string | null;
+  first_payment_ends_at?: string | null;
 }
 
 export interface SalesPlan {
@@ -124,6 +136,17 @@ export interface CheckoutSession {
   requires_password_setup: boolean;
   is_upgrade?: boolean;
   locked_profile_fields?: Record<string, boolean> | null;
+  /** 1ª cobrança promocional desta compra (mensal). */
+  first_payment_amount?: string | null;
+  /** Parcelas do cartão (1x à vista primeiro). */
+  installment_options?: CheckoutInstallmentOption[];
+}
+
+export interface CheckoutInstallmentOption {
+  count: number;
+  value: string;
+  total: string;
+  no_interest: boolean;
 }
 
 export interface CheckoutCouponPreviewPayload {
