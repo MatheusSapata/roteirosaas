@@ -12,7 +12,7 @@
       <div class="lp-wrap lp-hero-grid">
         <div class="lp-hero-copy">
           <img :src="logoWhite" alt="Roteiro Online" class="lp-logo" width="240" height="72" />
-          <span class="lp-pill"><Sparkles :size="14" aria-hidden="true" />Aumente a sua conversão!</span>
+          <span class="lp-pill">Aumente a sua conversão!</span>
           <h1 class="lp-h1">Seu cliente não compra o que <span class="is-brand">não consegue imaginar!</span></h1>
           <p class="lp-lead">
             Crie páginas profissionais em minutos e faça seu cliente
@@ -323,7 +323,7 @@
       <div class="lp-marquee">
         <div class="lp-marquee-track">
           <span v-for="(item, index) in marqueeItems" :key="index" :aria-hidden="index >= INCLUDED.length ? 'true' : undefined">
-            <Sparkles :size="16" aria-hidden="true" />{{ item.short }}
+            <i class="lp-marquee-dot" aria-hidden="true"></i>{{ item.short }}
           </span>
         </div>
       </div>
@@ -346,7 +346,7 @@
             <div class="lp-offer-trust">
               <span v-for="item in TRUST" :key="item.label"><component :is="item.icon" :size="18" aria-hidden="true" />{{ item.label }}</span>
             </div>
-            <p class="lp-offer-foot"><Sparkles :size="15" aria-hidden="true" />Mensal ou anual, é a mesma assinatura: muda só a forma de pagar.</p>
+            <p class="lp-offer-foot">Mensal ou anual, é a mesma assinatura: muda só a forma de pagar.</p>
           </div>
           <div class="lp-price-box" :class="{ 'is-loading': salesPlanLoading }">
             <span v-if="cycle === 'annual' && salesMath && salesMath.savings > 0 && currentOffer" class="lp-best">Melhor escolha</span>
@@ -502,7 +502,6 @@ import {
   Quote,
   ShieldCheck,
   Smartphone,
-  Sparkles,
   Timer,
   TrendingDown,
   UserRound,
@@ -733,16 +732,17 @@ const AUDIENCE = [
 // O que vem na assinatura: tudo o que a plataforma libera (plano interno Escala).
 // short: a versão curta, em etiquetas, no celular e na faixa.
 const INCLUDED = [
+  // Ordem pensada para as etiquetas do celular caberem duas por linha.
   { full: "Roteiros ilimitados no ar", short: "Roteiros ilimitados" },
+  { full: "Duplicar páginas em um clique", short: "Duplicar páginas" },
   { full: "Editor visual com seções prontas", short: "Editor visual" },
-  { full: "Assistente de IA para montar páginas", short: "Assistente de IA" },
-  { full: "Criativos para anúncios e stories", short: "Criativos" },
-  { full: "Módulo Leads e funil de vendas", short: "Módulo Leads" },
-  { full: "Caixa de entrada do WhatsApp", short: "WhatsApp" },
-  { full: "Domínio próprio da agência", short: "Domínio próprio" },
   { full: "Pixels Meta e Google", short: "Pixels Meta e Google" },
-  { full: "Equipe com até 5 usuários", short: "Equipe (5 usuários)" },
-  { full: "Duplicar páginas em um clique", short: "Duplicar páginas" }
+  { full: "Assistente de IA para montar páginas", short: "Assistente de IA" },
+  { full: "Módulo Leads e funil de vendas", short: "Módulo Leads" },
+  { full: "Notificações inteligentes", short: "Notificações inteligentes" },
+  { full: "Criativos para anúncios e stories", short: "Criativos" },
+  { full: "Domínio próprio da agência", short: "Domínio próprio" },
+  { full: "Equipe com até 5 usuários", short: "Equipe (5 usuários)" }
 ];
 // Selos no pé do cartão do que vem na assinatura (só no computador).
 const TRUST = [
@@ -2413,8 +2413,12 @@ onBeforeUnmount(() => {
   text-transform: uppercase;
   white-space: nowrap;
 }
-.lp-marquee-track svg {
-  color: var(--t-accent);
+.lp-marquee-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--t-accent);
 }
 @keyframes lp-marquee {
   to {
@@ -2509,10 +2513,6 @@ onBeforeUnmount(() => {
   border-top: 1px solid var(--t-line);
   color: var(--t-muted);
   font-size: 13.5px;
-}
-.lp-offer-foot svg {
-  flex: none;
-  color: var(--mint);
 }
 /* O cartão do preço é claro, com as cores do tema claro. */
 .lp-price-box {
