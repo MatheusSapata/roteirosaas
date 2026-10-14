@@ -1,33 +1,39 @@
 <template>
-  <div class="lp">
-    <!-- 01 Capa -->
+  <div class="lp public-tokens">
+    <!-- 01 Capa: texto à esquerda, vídeo quadrado à direita (no celular, o vídeo fica entre o texto e os botões). -->
     <section class="lp-sec lp-hero">
-      <img :src="logo" alt="Roteiro Online" class="lp-logo" width="240" height="72" />
-      <span class="lp-pill">Aumente a sua conversão!</span>
-      <h1 class="lp-h1">Seu cliente não compra o que não consegue imaginar!</h1>
-      <p class="lp-lead">
-        Crie páginas profissionais em minutos e faça seu cliente
-        <strong>sentir o valor antes mesmo de saber o preço.</strong>
-      </p>
-      <div class="lp-hero-video">
-        <iframe
-          :src="HERO_VIDEO"
-          title="Roteiro Online em funcionamento"
-          allow="accelerometer;gyroscope;autoplay;encrypted-media;picture-in-picture"
-          allowfullscreen
-          loading="lazy"
-        ></iframe>
+      <div class="lp-wrap lp-hero-grid">
+        <div class="lp-hero-copy">
+          <img :src="logo" alt="Roteiro Online" class="lp-logo" width="240" height="72" />
+          <span class="lp-pill"><Sparkles :size="14" aria-hidden="true" />Aumente a sua conversão!</span>
+          <h1 class="lp-h1">Seu cliente não compra o que <span class="is-brand">não consegue imaginar!</span></h1>
+          <p class="lp-lead">
+            Crie páginas profissionais em minutos e faça seu cliente
+            <strong>sentir o valor antes mesmo de saber o preço.</strong>
+          </p>
+        </div>
+        <div class="lp-hero-video">
+          <iframe
+            :src="HERO_VIDEO"
+            title="Roteiro Online em funcionamento"
+            allow="accelerometer;gyroscope;autoplay;encrypted-media;picture-in-picture"
+            allowfullscreen
+            loading="lazy"
+          ></iframe>
+        </div>
+        <div class="lp-hero-actions">
+          <div class="lp-ctas">
+            <a href="#planos" class="lp-btn" @click.prevent="goToPlans">Quero ver os planos <ArrowRight :size="18" aria-hidden="true" /></a>
+            <a :href="DEMO_URL" class="lp-btn-ghost" target="_blank" rel="noopener">Agendar demonstração</a>
+          </div>
+          <p class="lp-note"><ShieldCheck :size="15" aria-hidden="true" /><span>7 dias de garantia · Sem fidelidade<span class="lp-hide-sm"> · Cancele quando quiser</span></span></p>
+        </div>
       </div>
-      <div class="lp-ctas">
-        <a href="#planos" class="lp-btn" @click.prevent="goToPlans">Quero ver os planos →</a>
-        <a :href="DEMO_URL" class="lp-btn-ghost" target="_blank" rel="noopener">Agendar demonstração</a>
-      </div>
-      <p class="lp-note">⭐ 7 dias de garantia · Sem fidelidade · Cancele quando quiser</p>
     </section>
 
     <!-- 02 Números -->
     <section class="lp-sec lp-metrics-sec">
-      <div class="lp-metrics">
+      <div class="lp-wrap lp-metrics">
         <div v-for="metric in METRICS" :key="metric.label" class="lp-metric">
           <div class="lp-metric-num">{{ metric.value }}</div>
           <div class="lp-metric-lbl">{{ metric.label }}</div>
@@ -37,164 +43,212 @@
 
     <!-- 03 Dores -->
     <section class="lp-sec is-soft">
-      <h2 class="lp-h2">
-        É sério... mandando <span class="is-red">textão no WhatsApp,</span><br />
-        é bem provável que...
-      </h2>
-      <div class="lp-pains">
-        <div v-for="pain in PAINS" :key="pain.title" class="lp-pain">
-          <div class="lp-pain-ico" aria-hidden="true">{{ pain.icon }}</div>
-          <h3>{{ pain.title }}</h3>
-          <p>{{ pain.text }}</p>
+      <div class="lp-wrap">
+        <h2 class="lp-h2">
+          É sério... mandando <span class="is-red">textão no WhatsApp,</span><br />
+          é bem provável que...
+        </h2>
+        <div class="lp-pains">
+          <div v-for="pain in PAINS" :key="pain.title" class="lp-pain">
+            <span class="lp-pain-ico" aria-hidden="true"><component :is="pain.icon" :size="20" /></span>
+            <div>
+              <h3>{{ pain.title }}</h3>
+              <p>{{ pain.text }}</p>
+            </div>
+          </div>
         </div>
       </div>
     </section>
 
     <!-- 04 Funcionalidades -->
-    <section class="lp-sec is-soft lp-sec-feats">
-      <p class="lp-kicker">Funcionalidades</p>
-      <h2 class="lp-h2">
-        <span class="is-green">Crie páginas profissionais</span><br />
-        mesmo sem saber nada de design
-      </h2>
-      <div class="lp-feats">
-        <div v-for="feat in FEATURES" :key="feat.title" class="lp-feat">
-          <div class="lp-feat-ico" aria-hidden="true">{{ feat.icon }}</div>
-          <h3>{{ feat.title }}</h3>
-          <p>{{ feat.text }}</p>
-          <span v-if="feat.tag" class="lp-tag">{{ feat.tag }}</span>
+    <section class="lp-sec">
+      <div class="lp-wrap">
+        <p class="lp-kicker">Funcionalidades</p>
+        <h2 class="lp-h2"><span class="is-brand">Crie páginas profissionais</span> mesmo sem saber nada de design</h2>
+        <p class="lp-swipe" aria-hidden="true">Arraste para o lado para ver mais</p>
+        <div class="lp-feats lp-rail">
+          <div v-for="feat in FEATURES" :key="feat.title" class="lp-feat">
+            <div class="lp-feat-head">
+              <span class="lp-ico" aria-hidden="true"><component :is="feat.icon" :size="18" /></span>
+              <h3>{{ feat.title }}</h3>
+            </div>
+            <p>{{ feat.text }}</p>
+            <span v-if="feat.tag" class="lp-tag">{{ feat.tag }}</span>
+          </div>
         </div>
       </div>
     </section>
 
     <!-- 05 Exemplos reais -->
-    <section class="lp-sec">
-      <p class="lp-kicker">Exemplos reais</p>
-      <h2 class="lp-h2">Roteiros criados por <span class="is-green">pessoas como você!</span></h2>
-      <p class="lp-sub">Sem designer, sem programação. Clique e veja o roteiro completo do mesmo jeito que o passageiro recebe.</p>
-      <div class="lp-exs">
-        <article v-for="example in EXAMPLES" :key="example.title" class="lp-ex">
-          <img :src="example.image" :alt="`Roteiro ${example.title}`" loading="lazy" decoding="async" width="760" height="420" />
-          <div class="lp-ex-body">
-            <span class="lp-ex-badge">{{ example.badge }}</span>
-            <p class="lp-ex-agency">{{ example.agency }}</p>
-            <h3 class="lp-ex-title">{{ example.title }}</h3>
-            <p class="lp-ex-desc">{{ example.text }}</p>
-            <p class="lp-ex-quote">{{ example.quote }}</p>
-            <a :href="example.url" class="lp-ex-link" target="_blank" rel="noopener">Abrir roteiro</a>
-          </div>
-        </article>
+    <section class="lp-sec is-soft">
+      <div class="lp-wrap">
+        <p class="lp-kicker">Exemplos reais</p>
+        <h2 class="lp-h2">Roteiros criados por <span class="is-brand">pessoas como você!</span></h2>
+        <p class="lp-sub">Sem designer, sem programação. Clique e veja o roteiro completo do mesmo jeito que o passageiro recebe.</p>
+        <p class="lp-swipe" aria-hidden="true">Arraste para o lado para ver mais</p>
+        <div class="lp-exs lp-rail">
+          <article v-for="example in EXAMPLES" :key="example.title" class="lp-ex">
+            <img :src="example.image" :alt="`Roteiro ${example.title}`" loading="lazy" decoding="async" width="760" height="420" />
+            <div class="lp-ex-body">
+              <p class="lp-ex-meta"><span class="lp-ex-badge">{{ example.badge }}</span>{{ example.agency }}</p>
+              <h3 class="lp-ex-title">{{ example.title }}</h3>
+              <p class="lp-ex-desc">{{ example.text }}</p>
+              <p class="lp-ex-quote">“{{ example.quote }}”</p>
+              <a :href="example.url" class="lp-ex-link" target="_blank" rel="noopener">Abrir roteiro <ArrowUpRight :size="16" aria-hidden="true" /></a>
+            </div>
+          </article>
+        </div>
+        <p class="lp-closer">A sua apresentação pode ter o mesmo nível em poucos minutos.</p>
       </div>
-      <p class="lp-closer">A sua apresentação pode ter o mesmo nível em poucos minutos.</p>
     </section>
 
     <!-- 06 Como funciona -->
-    <section class="lp-sec lp-sec-steps">
-      <p class="lp-kicker">Como funciona</p>
-      <h2 class="lp-h2">Onboarding em <span class="is-green">menos de 3 minutos</span></h2>
-      <div class="lp-steps">
-        <div v-for="(step, index) in STEPS" :key="step.title" class="lp-step">
-          <div class="lp-step-num">{{ index + 1 }}</div>
-          <h3>{{ step.title }}</h3>
-          <p>{{ step.text }}</p>
+    <section class="lp-sec">
+      <div class="lp-wrap">
+        <p class="lp-kicker">Como funciona</p>
+        <h2 class="lp-h2">Onboarding em <span class="is-brand">menos de 3 minutos</span></h2>
+        <div class="lp-steps">
+          <div v-for="(step, index) in STEPS" :key="step.title" class="lp-step">
+            <span class="lp-step-num">{{ index + 1 }}</span>
+            <div>
+              <h3>{{ step.title }}</h3>
+              <p>{{ step.text }}</p>
+            </div>
+          </div>
         </div>
       </div>
     </section>
 
     <!-- 07 Mais fácil que o Canva -->
     <section class="lp-sec is-soft">
-      <h2 class="lp-h2">Mais fácil que <span class="is-green">editar no Canva!</span></h2>
-      <div class="lp-canva">
-        <div class="lp-canva-visual">
-          <video :poster="editorPoster" autoplay muted loop playsinline preload="metadata" aria-label="Editor do Roteiro Online">
-            <source :src="editorWebm" type="video/webm" />
-            <source :src="editorMp4" type="video/mp4" />
-          </video>
+      <div class="lp-wrap">
+        <h2 class="lp-h2">Mais fácil que <span class="is-brand">editar no Canva!</span></h2>
+        <div class="lp-canva">
+          <div class="lp-canva-visual">
+            <video :poster="editorPoster" autoplay muted loop playsinline preload="metadata" aria-label="Editor do Roteiro Online">
+              <source :src="editorWebm" type="video/webm" />
+              <source :src="editorMp4" type="video/mp4" />
+            </video>
+          </div>
+          <ul class="lp-checks">
+            <li v-for="item in EASIER" :key="item"><span class="lp-check" aria-hidden="true"><Check :size="14" /></span>{{ item }}</li>
+          </ul>
         </div>
-        <ul class="lp-checks">
-          <li v-for="item in EASIER" :key="item">{{ item }}</li>
-        </ul>
       </div>
     </section>
 
     <!-- 08 Planos -->
-    <section id="planos" class="lp-sec is-soft lp-sec-plans">
-      <p class="lp-kicker">Escolha seu plano</p>
-      <h2 class="lp-h2">Comece agora e publique seu <span class="is-green">primeiro roteiro hoje</span></h2>
-      <p class="lp-sub">
-        Todos os planos têm <strong>7 dias de garantia incondicional</strong>. Sem fidelidade, sem letras miúdas.
-      </p>
-      <div class="lp-plans">
-        <article v-for="plan in PLANS" :key="plan.name" class="lp-plan" :class="{ 'is-feat': plan.featured }">
-          <span class="lp-plan-tag">{{ plan.tag }}</span>
-          <h3 class="lp-plan-name">{{ plan.name }}</h3>
-          <p class="lp-plan-pitch">{{ plan.pitch }}</p>
-          <div class="lp-plan-price">
-            <span class="cur">R$</span><span class="val">{{ plan.price }}</span><span class="per">/mês</span>
-          </div>
-          <p class="lp-plan-per">{{ plan.perItinerary }}</p>
-          <ul class="lp-plan-feats">
-            <li v-for="item in plan.features" :key="item">{{ item }}</li>
-          </ul>
-          <div v-for="mod in plan.modules" :key="mod.title" class="lp-plan-mod">
-            <strong>{{ mod.title }}</strong>
-            <p>{{ mod.text }}</p>
-          </div>
-          <RouterLink :to="`/checkout/${plan.offer}`" class="lp-plan-cta">{{ plan.cta }}</RouterLink>
-          <p class="lp-plan-guarantee">⭐ 7 dias de garantia</p>
-        </article>
+    <section id="planos" class="lp-sec lp-sec-plans">
+      <div class="lp-wrap">
+        <p class="lp-kicker">Escolha seu plano</p>
+        <h2 class="lp-h2">Comece agora e publique seu <span class="is-brand">primeiro roteiro hoje</span></h2>
+        <p class="lp-sub">
+          Todos os planos têm <strong>7 dias de garantia incondicional</strong>. Sem fidelidade, sem letras miúdas.
+        </p>
+        <p class="lp-swipe" aria-hidden="true">Arraste para o lado para ver os outros planos</p>
+        <div class="lp-plans lp-rail">
+          <article v-for="plan in PLANS" :key="plan.name" class="lp-plan" :class="{ 'is-feat': plan.featured }">
+            <span class="lp-plan-tag">{{ plan.tag }}</span>
+            <h3 class="lp-plan-name">{{ plan.name }}</h3>
+            <p class="lp-plan-pitch">{{ plan.pitch }}</p>
+            <div class="lp-plan-price">
+              <span class="cur">R$</span><span class="val">{{ plan.price }}</span><span class="per">/mês</span>
+            </div>
+            <p class="lp-plan-per">{{ plan.perItinerary }}</p>
+            <ul class="lp-plan-feats">
+              <li v-for="item in plan.features" :key="item"><Check :size="14" aria-hidden="true" />{{ item }}</li>
+              <li v-for="mod in plan.modules" :key="mod.title" class="is-mod">
+                <Sparkles :size="14" aria-hidden="true" /><span><strong>{{ mod.title }}:</strong> {{ mod.text }}</span>
+              </li>
+            </ul>
+            <RouterLink :to="`/checkout/${plan.offer}`" class="lp-plan-cta">{{ plan.cta }}</RouterLink>
+          </article>
+        </div>
+        <p class="lp-note">Pague no cartão ou com Pix automático · Sem fidelidade · Cancele quando quiser · Reembolso em até 7 dias</p>
       </div>
-      <p class="lp-note">Pague no cartão ou com Pix automático · Sem fidelidade · Cancele quando quiser · Reembolso em até 7 dias</p>
     </section>
 
     <!-- 09 Garantia -->
-    <section class="lp-sec lp-sec-guarantee">
-      <div class="lp-guarantee">
-        <div class="lp-guarantee-pill">🛡️ Garantia de 7 dias</div>
-        <h3>Teste sem risco</h3>
-        <p>
-          Você entra, usa, cria seu primeiro roteiro e valida na prática. Se entender que não é para o seu momento, a gente
-          devolve 100% do valor. Sem burocracia, sem letras miúdas, sem justificativa obrigatória.
-        </p>
+    <section class="lp-sec is-soft lp-sec-guarantee">
+      <div class="lp-wrap lp-guarantee">
+        <span class="lp-guarantee-ico" aria-hidden="true"><ShieldCheck :size="30" /></span>
+        <div>
+          <p class="lp-kicker">Garantia de 7 dias</p>
+          <h3>Teste sem risco</h3>
+          <p>
+            Você entra, usa, cria seu primeiro roteiro e valida na prática. Se entender que não é para o seu momento, a gente
+            devolve 100% do valor. Sem burocracia, sem letras miúdas, sem justificativa obrigatória.
+          </p>
+        </div>
       </div>
     </section>
 
     <!-- 10 Perguntas -->
-    <section class="lp-sec is-soft lp-sec-faq">
-      <p class="lp-kicker">Ainda tem dúvida?</p>
-      <h2 class="lp-h2 lp-h2-sm">Perguntas que a gente <span class="is-green">mais escuta</span></h2>
-      <div class="lp-faq">
-        <details v-for="item in FAQ" :key="item.q">
-          <summary>{{ item.q }}</summary>
-          <p>
-            {{ item.a }}
-            <template v-if="item.strong"><strong>{{ item.strong }}</strong> {{ item.after }}</template>
-            <template v-if="item.demo">
-              <a :href="DEMO_URL" target="_blank" rel="noopener">Agende uma demonstração aqui</a> {{ item.after }}
-            </template>
-          </p>
-        </details>
+    <section class="lp-sec lp-sec-faq">
+      <div class="lp-wrap">
+        <p class="lp-kicker">Ainda tem dúvida?</p>
+        <h2 class="lp-h2">Perguntas que a gente <span class="is-brand">mais escuta</span></h2>
+        <div class="lp-faq" :class="{ 'is-all': faqAll }">
+          <details v-for="item in FAQ" :key="item.q">
+            <summary>{{ item.q }}<ChevronDown :size="18" aria-hidden="true" /></summary>
+            <p>
+              {{ item.a }}
+              <template v-if="item.strong"><strong>{{ item.strong }}</strong> {{ item.after }}</template>
+              <template v-if="item.demo">
+                <a :href="DEMO_URL" target="_blank" rel="noopener">Agende uma demonstração aqui</a> {{ item.after }}
+              </template>
+            </p>
+          </details>
+        </div>
+        <button v-if="!faqAll" type="button" class="lp-faq-more" @click="faqAll = true">
+          Ver todas as perguntas <ChevronDown :size="16" aria-hidden="true" />
+        </button>
       </div>
     </section>
 
     <!-- 11 Chamada final -->
     <section class="lp-sec lp-final">
-      <h2 class="lp-h2 lp-final-title">Publique hoje mesmo o seu <span class="is-neon">primeiro roteiro.</span></h2>
-      <p class="lp-final-sub">
-        Escolha seu plano, entre na plataforma e publique em menos de 30 minutos. Se não gostar, devolvemos 100% do valor em 7 dias.
-      </p>
-      <div class="lp-ctas">
-        <a href="#planos" class="lp-btn lp-btn-lg" @click.prevent="goToPlans">Quero ver os planos →</a>
-        <a :href="DEMO_URL" class="lp-btn-ghost lp-btn-ghost-dark" target="_blank" rel="noopener">Agendar demonstração</a>
+      <div class="lp-wrap lp-final-inner">
+        <h2 class="lp-h2 lp-final-title">Publique hoje mesmo o seu <span class="is-mint">primeiro roteiro.</span></h2>
+        <p class="lp-final-sub">
+          Escolha seu plano, entre na plataforma e publique em menos de 30 minutos. Se não gostar, devolvemos 100% do valor em 7 dias.
+        </p>
+        <div class="lp-ctas">
+          <a href="#planos" class="lp-btn lp-btn-mint" @click.prevent="goToPlans">Quero ver os planos <ArrowRight :size="18" aria-hidden="true" /></a>
+          <a :href="DEMO_URL" class="lp-btn-ghost lp-btn-ghost-dark" target="_blank" rel="noopener">Agendar demonstração</a>
+        </div>
+        <p class="lp-final-note">Sem fidelidade · 7 dias de garantia · Cancelamento simples</p>
+        <RouterLink to="/login" class="lp-login">Já é cliente? Entrar</RouterLink>
       </div>
-      <p class="lp-final-note">Sem fidelidade · 7 dias de garantia · Cancelamento simples</p>
-      <RouterLink to="/login" class="lp-login">Já é cliente? Entrar</RouterLink>
     </section>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted } from "vue";
+import { onBeforeUnmount, onMounted, ref } from "vue";
+import {
+  ArrowRight,
+  ArrowUpRight,
+  CalendarDays,
+  ChartColumn,
+  Check,
+  ChevronDown,
+  Copy,
+  CreditCard,
+  EyeOff,
+  Ghost,
+  Globe,
+  Images,
+  Link,
+  Magnet,
+  MessageCircle,
+  MousePointerClick,
+  ShieldCheck,
+  Smartphone,
+  Sparkles,
+  Timer,
+  TrendingDown
+} from "lucide-vue-next";
 import logo from "../../assets/lp/logo.webp";
 import editorMp4 from "../../assets/lp/editor.mp4";
 import editorWebm from "../../assets/lp/editor.webm";
@@ -223,17 +277,17 @@ const METRICS = [
 
 const PAINS = [
   {
-    icon: "🕳️",
+    icon: Ghost,
     title: "suas cotações estejam sumindo",
     text: "O lead pede, você manda, ele some. Sem página profissional, a cotação vira só mais uma mensagem perdida no WhatsApp."
   },
   {
-    icon: "💎",
+    icon: EyeOff,
     title: "seu cliente não vê o real valor",
     text: "Quando o passageiro vê só o preço, compara por preço. Quando enxerga a experiência completa, compra a experiência."
   },
   {
-    icon: "📉",
+    icon: TrendingDown,
     title: "você esteja concorrendo por preço",
     text: "Se a apresentação não sustenta o valor, o único argumento que sobra é desconto. Apresente melhor, venda pelo preço certo."
   }
@@ -241,66 +295,66 @@ const PAINS = [
 
 const FEATURES = [
   {
-    icon: "🎯",
+    icon: MousePointerClick,
     title: "Editor intuitivo, visual e prático",
     text: "Blocos prontos de hero, itinerário, inclusos, investimento e CTA. Não precisa de conhecimento técnico pra usar."
   },
   {
-    icon: "📆",
+    icon: CalendarDays,
     title: "Itinerário dia a dia interativo",
     text: "Cada dia vira uma aba clicável. O passageiro abre só o que quer ver, como um app de viagem."
   },
   {
-    icon: "💚",
+    icon: MessageCircle,
     title: "Botão WhatsApp onde você quiser",
     text: "Você pode adicionar em qualquer seção, com mensagem pronta e o nome do roteiro. O lead chega no seu WhatsApp já contextualizado."
   },
   {
-    icon: "📸",
+    icon: Images,
     title: "Galeria com carrossel",
     text: "Fotos do destino, da hospedagem e dos passeios com thumb navegável — sem peso de PDF."
   },
   {
-    icon: "💳",
+    icon: CreditCard,
     title: "Cards de investimento flexíveis",
     text: "Adulto, criança, apto individual, duplo, triplo, categoria especial. Tantas categorias de preço quanto você precisar."
   },
   {
-    icon: "⏳",
+    icon: Timer,
     title: "Contagem regressiva automática",
     text: "Cria urgência real até a data da viagem. Sem precisar editar nada manualmente."
   },
   {
-    icon: "📊",
+    icon: ChartColumn,
     title: "Pixel Meta e Google integrados",
     text: "Faça tráfego pago para a página e retargete quem não fechou.",
     tag: "a partir de 1 no plano profissional"
   },
   {
-    icon: "🧲",
+    icon: Magnet,
     title: "Módulo Leads",
     text: "Formulário de captação dentro do roteiro. Cada passageiro interessado vira oportunidade futura.",
     tag: "Nos planos Agência e Escala"
   },
   {
-    icon: "🧬",
+    icon: Copy,
     title: "Duplicação com um clique",
     text: "Copiou a estrutura do último roteiro? Troque o destino e publique em minutos.",
     tag: "nos planos Agência e Escala"
   },
   {
-    icon: "🌐",
+    icon: Globe,
     title: "Domínio próprio",
     text: "Publique seus roteiros no endereço da sua agência. Marca branca completa.",
     tag: "Exclusivo do plano Escala"
   },
   {
-    icon: "📱",
+    icon: Smartphone,
     title: "100% responsivo no celular",
     text: "A maior parte dos clientes abre pelo WhatsApp. A página é pensada para o mobile primeiro."
   },
   {
-    icon: "🔗",
+    icon: Link,
     title: "Compartilhe por link, não por arquivo",
     text: "Um link. Cola no WhatsApp, no Instagram, no anúncio, no e-mail. O passageiro sempre vê a versão atualizada."
   }
@@ -463,17 +517,11 @@ const FAQ: FaqItem[] = [
   }
 ];
 
+// No celular a lista começa com 6 perguntas, para a seção caber na tela.
+const faqAll = ref(false);
+
 const goToPlans = () => {
   document.getElementById("planos")?.scrollIntoView({ behavior: "smooth", block: "start" });
-};
-
-const FONT_HREF = "https://fonts.googleapis.com/css2?family=Roboto:wght@400;600;700;800&display=swap";
-const ensureFont = () => {
-  if (document.querySelector(`link[href="${FONT_HREF}"]`)) return;
-  const link = document.createElement("link");
-  link.rel = "stylesheet";
-  link.href = FONT_HREF;
-  document.head.appendChild(link);
 };
 
 // Mesmo pixel da Meta que a página no WordPress usava (PixelYourSite).
@@ -521,7 +569,6 @@ onMounted(() => {
   previousTitle = document.title;
   document.title = PAGE_TITLE;
   restoreDescription = setMeta("description", PAGE_DESCRIPTION);
-  ensureFont();
   trackPageView();
 });
 
@@ -532,19 +579,23 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+/* Página de vendas no design system do painel: Inter no texto, Sora nos títulos, verde primário
+   e tokens claros fixos (.public-tokens), mesmo com o painel no tema escuro.
+   Cada seção cabe numa tela (1366×768, 1440×900 e 390×844): tamanhos limitados pela altura da
+   tela e, no celular, listas longas viram trilhos de arrastar para o lado. */
 .lp {
-  --lp-neon: #29ff60;
-  --lp-green: #1a8a3c;
-  --lp-ink: #05140b;
-  --lp-text: #2b3d31;
-  --lp-soft: #f5fbf6;
-  --lp-neon-soft: rgba(41, 255, 96, 0.18);
-  --lp-red: #d43f3a;
+  --lp-pad-y: clamp(32px, 6svh, 64px);
+  --lp-pad-x: 24px;
+  --lp-ink: var(--foreground);
+  --lp-muted: var(--muted-foreground);
+  --lp-line: var(--border);
+  --lp-soft: var(--background);
+  --lp-mint: var(--primary-accent);
   min-height: 100vh;
-  overflow-x: hidden;
-  background: #fff;
-  color: var(--lp-text);
-  font-family: Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  overflow-x: clip;
+  background: var(--surface);
+  color: var(--lp-ink);
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
 .lp *,
@@ -561,120 +612,184 @@ onBeforeUnmount(() => {
 
 /* Seções */
 .lp-sec {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 40px 100px;
-  background: #fff;
+  padding: var(--lp-pad-y) var(--lp-pad-x);
+  background: var(--surface);
 }
 .lp-sec.is-soft {
   background: var(--lp-soft);
 }
-.lp-sec-feats {
-  padding-top: 20px;
-}
-.lp-sec-steps {
-  padding-top: 20px;
-  padding-bottom: 72px;
-}
-.lp-sec-guarantee,
-.lp-sec-faq {
-  padding-left: 20px;
-  padding-right: 20px;
+.lp-wrap {
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
 }
 .lp-kicker {
-  margin-bottom: 12px !important;
-  color: var(--lp-green);
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 2px;
+  margin-bottom: 8px !important;
+  color: var(--brand-dark);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
   text-align: center;
   text-transform: uppercase;
 }
 .lp-h1 {
-  max-width: 1036px;
-  padding: 0 50px;
   color: var(--lp-ink);
-  font-size: 48px;
-  font-weight: 800;
+  font-size: clamp(30px, min(3.4vw, 5.8svh), 48px);
+  font-weight: 700;
   line-height: 1.1;
-  letter-spacing: -0.8px;
-  text-align: center;
+  letter-spacing: -0.03em;
 }
 .lp-h2 {
+  max-width: 820px;
+  margin: 0 auto !important;
   color: var(--lp-ink);
-  font-size: 36px;
-  font-weight: 800;
-  line-height: 1.2;
+  font-size: clamp(24px, min(2.5vw, 4.4svh), 34px);
+  font-weight: 700;
+  line-height: 1.18;
   text-align: center;
 }
-.lp-h2-sm {
-  font-size: 34px;
-}
-.is-green {
-  color: var(--lp-green);
+.is-brand {
+  color: var(--brand-dark);
 }
 .is-red {
-  color: var(--lp-red);
+  color: var(--destructive);
 }
-.is-neon {
-  color: var(--lp-neon);
+.is-mint {
+  color: var(--lp-mint);
 }
 .lp-sub {
-  max-width: 680px;
-  margin-top: 16px !important;
-  font-size: 16px;
+  max-width: 700px;
+  margin: 10px auto 0 !important;
+  color: var(--lp-muted);
+  font-size: 15px;
   line-height: 1.55;
   text-align: center;
 }
+.lp-sub strong {
+  color: var(--lp-ink);
+}
 .lp-note {
-  margin-top: 16px !important;
+  margin-top: 14px !important;
+  color: var(--lp-muted);
   font-size: 13px;
   text-align: center;
+}
+.lp-note svg {
+  display: inline-block;
+  margin-right: 2px;
+  color: var(--brand-dark);
+  vertical-align: -3px;
+}
+.lp-swipe {
+  display: none;
+}
+
+/* Botões */
+.lp-ctas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.lp-btn,
+.lp-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 22px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+.lp-btn {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: 0 12px 24px -12px rgba(18, 185, 129, 0.75);
+}
+.lp-btn:hover {
+  background: var(--brand-dark);
+  transform: translateY(-1px);
+}
+.lp-btn-ghost {
+  border: 1px solid var(--lp-line);
+  background: var(--surface);
+  color: var(--lp-ink);
+}
+.lp-btn-ghost:hover {
+  border-color: var(--primary);
+  color: var(--brand-dark);
 }
 
 /* 01 Capa */
 .lp-hero {
-  gap: 20px;
-  padding-top: 20px;
-  padding-bottom: 0;
+  padding-top: clamp(20px, 4svh, 40px);
+  padding-bottom: clamp(24px, 5svh, 48px);
+  background:
+    radial-gradient(ellipse 60% 70% at 88% 12%, rgba(29, 233, 160, 0.16), transparent 70%),
+    var(--surface);
+}
+.lp-hero-grid {
+  display: grid;
+  grid-template-areas:
+    ". video"
+    "copy video"
+    "actions video"
+    ". video";
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: 1fr auto auto 1fr;
+  column-gap: clamp(32px, 4vw, 56px);
+  row-gap: 24px;
+}
+.lp-hero-copy {
+  display: flex;
+  grid-area: copy;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
 }
 .lp-logo {
-  width: 240px;
+  width: 168px;
   height: auto;
-  margin: 20px 0 0;
 }
 .lp-pill {
   display: inline-flex;
   align-items: center;
-  padding: 8px 18px;
+  gap: 6px;
+  padding: 6px 12px;
   border-radius: 999px;
-  background: var(--lp-neon-soft);
-  color: var(--lp-green);
+  background: var(--accent);
+  color: var(--accent-foreground);
   font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 1.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 .lp-lead {
-  max-width: 780px;
-  color: var(--lp-text);
-  font-size: 20px;
+  max-width: 520px;
+  color: var(--lp-muted);
+  font-size: clamp(16px, 1.35vw, 19px);
   line-height: 1.55;
-  text-align: center;
 }
 .lp-lead strong {
   color: var(--lp-ink);
 }
+/* Vídeo quadrado, do tamanho que cabe na altura da tela. */
 .lp-hero-video {
   position: relative;
-  width: 100%;
-  max-width: 996px;
+  grid-area: video;
+  align-self: center;
+  width: min(42vw, calc(100vh - 96px), 560px);
+  width: min(42vw, calc(100svh - 96px), 560px);
   aspect-ratio: 1;
-  max-height: 596px;
   overflow: hidden;
-  border-radius: 24px;
-  background: var(--lp-ink);
+  border-radius: 20px;
+  background: #0c100e;
+  box-shadow: var(--shadow-elegant), 0 0 0 1px var(--lp-line);
 }
 .lp-hero-video iframe {
   position: absolute;
@@ -683,86 +798,65 @@ onBeforeUnmount(() => {
   height: 100%;
   border: 0;
 }
-.lp-ctas {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 14px;
-  margin-top: 8px;
+.lp-hero-actions {
+  grid-area: actions;
 }
-.lp-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 16px 28px;
-  border-radius: 999px;
-  background: var(--lp-neon);
-  color: var(--lp-ink);
-  font-size: 16px;
-  font-weight: 800;
-  text-decoration: none;
-  box-shadow: 0 10px 30px rgba(41, 255, 96, 0.35);
-  transition: transform 0.2s ease, background-color 0.2s ease;
-}
-.lp-btn:hover {
-  transform: translateY(-2px);
-}
-.lp-btn-lg {
-  padding: 18px 32px;
-  font-size: 17px;
-  box-shadow: 0 20px 40px rgba(41, 255, 96, 0.35);
-}
-.lp-btn-ghost {
-  padding: 14px 26px;
-  border: 2px solid rgba(41, 255, 96, 0.5);
-  border-radius: 999px;
-  color: var(--lp-green);
-  font-size: 16px;
-  font-weight: 700;
-  text-decoration: none;
-  transition: background-color 0.2s ease;
-}
-.lp-btn-ghost:hover {
-  background: var(--lp-neon-soft);
-}
-.lp-btn-ghost-dark {
-  padding: 16px 30px;
-  border-color: rgba(41, 255, 96, 0.6);
-  color: #fff;
-  font-size: 17px;
+.lp-hero .lp-note {
+  text-align: left;
 }
 
 /* 02 Números */
 .lp-metrics-sec {
-  padding: 40px 20px;
+  padding-top: 20px;
+  padding-bottom: 20px;
+  border-block: 1px solid var(--lp-line);
 }
 .lp-metrics {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
-  width: 100%;
-  max-width: 1040px;
 }
 .lp-metric {
-  padding: 20px 12px;
-  border: 1px solid rgba(41, 255, 96, 0.25);
-  border-radius: 20px;
-  background: var(--lp-soft);
+  padding: 4px 12px;
   text-align: center;
 }
+.lp-metric + .lp-metric {
+  border-left: 1px solid var(--lp-line);
+}
 .lp-metric-num {
-  color: var(--lp-green);
-  font-size: 34px;
-  font-weight: 800;
-  line-height: 1;
+  color: var(--brand-dark);
+  font-family: var(--font-display);
+  font-size: clamp(24px, 2.4vw, 32px);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
 }
 .lp-metric-lbl {
-  margin-top: 8px;
-  font-size: 13px;
+  margin-top: 4px;
+  color: var(--lp-muted);
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 1px;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+/* Cartões (base comum) */
+.lp-pain,
+.lp-feat,
+.lp-ex,
+.lp-step,
+.lp-plan {
+  border: 1px solid var(--lp-line);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+.lp-ico,
+.lp-pain-ico {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
 }
 
 /* 03 Dores */
@@ -770,183 +864,185 @@ onBeforeUnmount(() => {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 16px;
-  width: 100%;
-  max-width: 1040px;
   margin-top: 28px;
 }
 .lp-pain {
-  padding: 22px;
-  border: 1px solid rgba(212, 63, 58, 0.18);
-  border-radius: 20px;
-  background: #fff;
-  box-shadow: 0 6px 20px rgba(25, 61, 32, 0.05);
+  display: flex;
+  gap: 14px;
+  padding: 20px;
 }
 .lp-pain-ico {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  margin-bottom: 12px;
-  border-radius: 50%;
-  background: rgba(212, 63, 58, 0.1);
-  font-size: 22px;
+  width: 40px;
+  height: 40px;
+  background: var(--status-danger);
+  color: var(--status-danger-foreground);
 }
-.lp-pain h3,
-.lp-feat h3 {
-  margin-bottom: 6px !important;
+.lp-pain h3 {
   color: var(--lp-ink);
-  font-size: 17px;
-  font-weight: 800;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.3;
 }
-.lp-pain p,
-.lp-feat p {
+.lp-pain h3::first-letter {
+  text-transform: uppercase;
+}
+.lp-pain p {
+  margin-top: 6px !important;
+  color: var(--lp-muted);
   font-size: 14px;
   line-height: 1.5;
 }
 
 /* 04 Funcionalidades */
-.lp-feats {
+.lp-sec .lp-feats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 18px;
-  width: 100%;
-  max-width: 1140px;
-  margin-top: 32px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-top: 24px;
 }
 .lp-feat {
-  padding: 24px;
-  border: 1px solid rgba(25, 61, 32, 0.1);
-  border-radius: 24px;
-  background: #fff;
-  box-shadow: 0 10px 30px rgba(25, 61, 32, 0.06);
-  transition: transform 0.25s ease, border-color 0.25s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 16px;
+  transition: border-color 0.2s ease;
 }
-.lp-feat:hover,
-.lp-ex:hover {
-  transform: translateY(-4px);
-  border-color: rgba(41, 255, 96, 0.45);
+.lp-feat:hover {
+  border-color: rgba(18, 185, 129, 0.5);
+}
+.lp-feat-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.lp-ico {
+  width: 32px;
+  height: 32px;
+  background: var(--accent);
+  color: var(--brand-dark);
 }
 .lp-feat h3 {
-  font-size: 18px;
+  color: var(--lp-ink);
+  font-size: 14.5px;
+  font-weight: 700;
+  line-height: 1.3;
 }
 .lp-feat p {
-  line-height: 1.55;
-}
-.lp-feat-ico {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  margin-bottom: 14px;
-  border-radius: 14px;
-  background: var(--lp-neon-soft);
-  font-size: 24px;
+  margin-top: 8px !important;
+  color: var(--lp-muted);
+  font-size: 13px;
+  line-height: 1.45;
 }
 .lp-tag {
   display: inline-block;
-  margin-top: 10px;
-  padding: 4px 10px;
+  margin-top: auto;
+  padding: 3px 9px;
   border-radius: 999px;
-  background: var(--lp-neon-soft);
-  color: var(--lp-green);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
+  background: var(--accent);
+  color: var(--accent-foreground);
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.lp-tag::first-letter {
   text-transform: uppercase;
+}
+.lp-feat p + .lp-tag {
+  margin-top: 10px;
 }
 
 /* 05 Exemplos */
-.lp-exs {
+.lp-sec .lp-exs {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-  width: 100%;
-  max-width: 1140px;
-  margin-top: 32px;
+  gap: 16px;
+  margin-top: 24px;
 }
 .lp-ex {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid rgba(25, 61, 32, 0.1);
-  border-radius: 24px;
-  background: #fff;
-  box-shadow: 0 10px 30px rgba(25, 61, 32, 0.08);
-  transition: transform 0.25s ease, border-color 0.25s ease;
+  transition: border-color 0.2s ease;
+}
+.lp-ex:hover {
+  border-color: rgba(18, 185, 129, 0.5);
 }
 .lp-ex img {
   display: block;
   width: 100%;
-  height: 220px;
+  height: clamp(120px, 19svh, 190px);
   object-fit: cover;
 }
 .lp-ex-body {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 10px;
-  padding: 20px;
+  gap: 8px;
+  padding: 16px;
+}
+.lp-ex-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--lp-muted);
+  font-size: 12px;
+  font-weight: 600;
 }
 .lp-ex-badge {
-  align-self: flex-start;
-  padding: 6px 12px;
+  padding: 3px 8px;
   border-radius: 999px;
-  background: var(--lp-neon-soft);
-  color: var(--lp-green);
-  font-size: 11px;
+  background: var(--accent);
+  color: var(--accent-foreground);
+  font-size: 10.5px;
   font-weight: 700;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-}
-.lp-ex-agency {
-  color: var(--lp-green);
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 1px;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 .lp-ex-title {
   color: var(--lp-ink);
-  font-size: 19px;
-  font-weight: 800;
+  font-size: 18px;
+  font-weight: 700;
 }
 .lp-ex-desc {
-  font-size: 14px;
-  line-height: 1.5;
+  color: var(--lp-muted);
+  font-size: 13.5px;
+  line-height: 1.45;
 }
 .lp-ex-quote {
-  padding: 12px 14px;
-  border-left: 3px solid var(--lp-neon);
-  border-radius: 12px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--primary);
+  border-radius: 8px;
   background: var(--lp-soft);
+  color: var(--lp-ink);
   font-size: 13px;
   font-style: italic;
-  line-height: 1.5;
+  line-height: 1.45;
 }
 .lp-ex-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 40px;
   margin-top: auto;
-  padding: 12px 16px;
-  border-radius: 999px;
-  background: var(--lp-neon);
-  color: var(--lp-ink);
+  border: 1px solid var(--primary);
+  border-radius: 10px;
+  color: var(--brand-dark);
   font-size: 14px;
-  font-weight: 800;
-  text-align: center;
+  font-weight: 700;
   text-decoration: none;
   transition: background-color 0.2s ease, color 0.2s ease;
 }
-.lp-ex-link:hover,
-.lp-plan-cta:hover {
-  background: var(--lp-green);
-  color: #fff;
+.lp-ex-link:hover {
+  background: var(--primary);
+  color: var(--primary-foreground);
 }
 .lp-closer {
-  margin-top: 36px !important;
+  margin-top: 20px !important;
   color: var(--lp-ink);
-  font-size: 17px;
-  font-weight: 700;
+  font-size: 15px;
+  font-weight: 600;
   text-align: center;
 }
 
@@ -954,69 +1050,69 @@ onBeforeUnmount(() => {
 .lp-steps {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-  width: 100%;
-  max-width: 1040px;
-  margin-top: 32px;
+  gap: 16px;
+  margin-top: 24px;
 }
 .lp-step {
-  padding: 28px;
-  border: 1px solid rgba(41, 255, 96, 0.3);
-  border-radius: 24px;
-  background: var(--lp-soft);
+  display: flex;
+  gap: 14px;
+  padding: 20px;
 }
 .lp-step-num {
   display: inline-flex;
+  flex: none;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
-  margin-bottom: 16px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background: var(--lp-neon);
-  color: var(--lp-ink);
-  font-size: 20px;
-  font-weight: 800;
-  box-shadow: 0 0 0 6px var(--lp-neon-soft);
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  box-shadow: 0 0 0 5px var(--accent);
 }
 .lp-step h3 {
-  margin-bottom: 8px !important;
   color: var(--lp-ink);
-  font-size: 20px;
-  font-weight: 800;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.3;
 }
 .lp-step p {
-  font-size: 15px;
-  line-height: 1.55;
+  margin-top: 6px !important;
+  color: var(--lp-muted);
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 /* 07 Mais fácil que o Canva */
 .lp-canva {
   display: grid;
-  grid-template-columns: 1.1fr 0.9fr;
+  grid-template-columns: 1.15fr 0.85fr;
   align-items: center;
-  gap: 28px;
-  width: 100%;
-  max-width: 1080px;
+  gap: 32px;
   margin-top: 24px;
 }
 .lp-canva-visual {
   overflow: hidden;
-  border: 1px solid rgba(41, 255, 96, 0.35);
-  border-radius: 28px;
-  background: #fff;
-  box-shadow: 0 20px 50px rgba(25, 61, 32, 0.12);
+  border: 1px solid var(--lp-line);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--shadow-elegant);
 }
 .lp-canva-visual video {
   display: block;
   width: 100%;
   height: auto;
+  max-height: calc(100svh - 220px);
   aspect-ratio: 1166 / 640;
+  object-fit: cover;
 }
 .lp-checks {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -1025,381 +1121,605 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 16px;
-  border: 1px solid rgba(41, 255, 96, 0.25);
-  border-radius: 18px;
-  background: #fff;
+  padding: 12px 14px;
+  border: 1px solid var(--lp-line);
+  border-radius: 12px;
+  background: var(--surface);
   color: var(--lp-ink);
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
 }
-.lp-checks li::before,
-.lp-plan-feats li::before {
-  content: "";
-  flex: 0 0 auto;
-  width: 26px;
-  height: 26px;
+.lp-check {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
-  background: var(--lp-neon)
-    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2305140b' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg>")
-    center / 14px 14px no-repeat;
-  box-shadow: 0 0 0 4px var(--lp-neon-soft);
+  background: var(--primary);
+  color: var(--primary-foreground);
 }
 
 /* 08 Planos */
-.lp-plans {
+.lp-sec .lp-plans {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   align-items: stretch;
-  gap: 20px;
-  width: 100%;
-  max-width: 1160px;
-  margin-top: 32px;
+  gap: 16px;
+  margin-top: 24px;
 }
 .lp-plan {
-  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 32px 28px;
-  border: 1px solid rgba(25, 61, 32, 0.12);
-  border-radius: 28px;
-  background: #fff;
-  box-shadow: 0 10px 30px rgba(25, 61, 32, 0.08);
-  transition: transform 0.25s ease, border-color 0.25s ease;
-}
-.lp-plan:hover {
-  transform: translateY(-6px);
-  border-color: rgba(41, 255, 96, 0.5);
+  align-items: flex-start;
+  gap: 10px;
+  padding: 22px;
 }
 .lp-plan.is-feat {
-  border-color: rgba(41, 255, 96, 0.55);
-  background: linear-gradient(180deg, rgba(41, 255, 96, 0.15) 0%, #fff 100%);
-  box-shadow: 0 20px 50px rgba(25, 61, 32, 0.14);
-  transform: translateY(-10px);
+  border: 2px solid var(--primary);
+  background: linear-gradient(180deg, var(--accent) 0%, var(--surface) 38%);
+  box-shadow: var(--shadow-elegant);
 }
 .lp-plan-tag {
-  align-self: flex-start;
-  padding: 6px 14px;
+  padding: 4px 10px;
   border-radius: 999px;
-  background: var(--lp-neon-soft);
-  color: var(--lp-green);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 1.5px;
+  background: var(--accent);
+  color: var(--accent-foreground);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 .lp-plan.is-feat .lp-plan-tag {
-  background: var(--lp-neon);
-  color: var(--lp-ink);
+  background: var(--primary);
+  color: var(--primary-foreground);
 }
 .lp-plan-name {
   color: var(--lp-ink);
-  font-size: 24px;
-  font-weight: 800;
+  font-size: 21px;
+  font-weight: 700;
 }
 .lp-plan-pitch {
-  min-height: 40px;
-  font-size: 14px;
-  line-height: 1.5;
+  min-height: 39px;
+  color: var(--lp-muted);
+  font-size: 13.5px;
+  line-height: 1.45;
 }
 .lp-plan-price {
   display: flex;
   align-items: baseline;
-  gap: 6px;
-  margin-top: 4px;
+  gap: 4px;
   color: var(--lp-ink);
 }
 .lp-plan-price .cur {
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 700;
 }
 .lp-plan-price .val {
-  font-size: 48px;
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-size: clamp(32px, 5svh, 40px);
+  font-weight: 700;
   line-height: 1;
+  letter-spacing: -0.03em;
 }
 .lp-plan-price .per {
-  font-size: 14px;
+  color: var(--lp-muted);
+  font-size: 13px;
   font-weight: 600;
-  color: var(--lp-text);
 }
 .lp-plan-per {
-  color: var(--lp-green);
-  font-size: 13px;
+  margin-top: -4px !important;
+  color: var(--brand-dark);
+  font-size: 12.5px;
   font-weight: 700;
 }
 .lp-plan-feats {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 7px;
+  width: 100%;
   margin: 4px 0 0;
-  padding: 0;
+  padding: 12px 0 0;
+  border-top: 1px solid var(--lp-line);
   list-style: none;
 }
 .lp-plan-feats li {
-  position: relative;
-  padding-left: 26px;
-  font-size: 14px;
-  font-weight: 600;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--lp-ink);
+  font-size: 13.5px;
+  font-weight: 500;
   line-height: 1.4;
 }
-.lp-plan-feats li::before {
-  position: absolute;
-  top: 1px;
-  left: 0;
-  width: 16px;
-  height: 16px;
-  background-size: 10px 10px;
-  box-shadow: 0 0 0 3px var(--lp-neon-soft);
+.lp-plan-feats li svg {
+  margin-top: 2px;
+  color: var(--brand-dark);
 }
-.lp-plan-mod {
-  padding: 12px 14px;
-  border: 1px dashed rgba(41, 255, 96, 0.4);
-  border-radius: 14px;
-  background: var(--lp-soft);
+.lp-plan-feats li.is-mod {
+  color: var(--lp-muted);
+  font-size: 12.5px;
 }
-.lp-plan-mod strong {
-  display: block;
-  margin-bottom: 4px;
-  color: var(--lp-green);
-  font-size: 13px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-}
-.lp-plan-mod p {
-  font-size: 13px;
-  line-height: 1.5;
+.lp-plan-feats li.is-mod strong {
+  color: var(--accent-foreground);
 }
 .lp-plan-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 46px;
   margin-top: auto;
-  padding: 16px 20px;
-  border-radius: 999px;
-  background: var(--lp-neon);
-  color: var(--lp-ink);
-  font-size: 15px;
-  font-weight: 800;
-  text-align: center;
+  border: 1px solid var(--primary);
+  border-radius: 12px;
+  color: var(--brand-dark);
+  font-size: 14.5px;
+  font-weight: 700;
   text-decoration: none;
-  box-shadow: 0 10px 24px rgba(41, 255, 96, 0.3);
-  transition: background-color 0.25s ease, color 0.25s ease;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
-.lp-plan-guarantee {
-  font-size: 12px;
-  text-align: center;
+.lp-plan.is-feat .lp-plan-cta,
+.lp-plan-cta:hover {
+  background: var(--primary);
+  color: var(--primary-foreground);
 }
-.lp-sec-plans > .lp-note {
-  margin-top: 28px !important;
+.lp-plan.is-feat .lp-plan-cta:hover {
+  background: var(--brand-dark);
 }
 
 /* 09 Garantia */
 .lp-guarantee {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 14px;
-  width: 100%;
-  max-width: 780px;
-  padding: 36px 28px;
-  border: 1px solid rgba(41, 255, 96, 0.5);
-  border-radius: 28px;
-  background: linear-gradient(180deg, rgba(41, 255, 96, 0.14) 0%, #fff 100%);
-  box-shadow: 0 20px 50px rgba(25, 61, 32, 0.12);
-  text-align: center;
+  gap: 24px;
+  max-width: 860px;
+  padding: 24px 28px;
+  border: 1px solid rgba(18, 185, 129, 0.45);
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: var(--shadow-elegant);
 }
-.lp-guarantee-pill {
+.lp-guarantee-ico {
   display: inline-flex;
+  flex: none;
   align-items: center;
-  gap: 10px;
-  padding: 10px 18px;
-  border-radius: 999px;
-  background: var(--lp-neon);
-  color: var(--lp-ink);
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--brand-dark);
+}
+.lp-guarantee .lp-kicker {
+  margin-bottom: 4px !important;
+  text-align: left;
 }
 .lp-guarantee h3 {
   color: var(--lp-ink);
-  font-size: 28px;
-  font-weight: 800;
+  font-size: 22px;
+  font-weight: 700;
 }
-.lp-guarantee p {
-  max-width: 620px;
-  font-size: 16px;
-  line-height: 1.6;
+.lp-guarantee p:not(.lp-kicker) {
+  margin-top: 6px !important;
+  color: var(--lp-muted);
+  font-size: 15px;
+  line-height: 1.55;
 }
 
-/* 10 Perguntas */
+/* 10 Perguntas: duas colunas no computador; abrir uma não estica a vizinha. */
 .lp-faq {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  width: 100%;
-  max-width: 860px;
-  margin-top: 32px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  align-items: start;
+  gap: 10px 14px;
+  margin-top: 24px;
 }
 .lp-faq details {
-  padding: 2px 20px;
-  border: 1px solid rgba(25, 61, 32, 0.1);
-  border-radius: 18px;
-  background: #fff;
-  transition: border-color 0.25s ease;
+  padding: 0 16px;
+  border: 1px solid var(--lp-line);
+  border-radius: 12px;
+  background: var(--surface);
+  transition: border-color 0.2s ease;
 }
 .lp-faq details[open] {
-  border-color: rgba(41, 255, 96, 0.45);
-  box-shadow: 0 10px 24px rgba(25, 61, 32, 0.06);
+  border-color: rgba(18, 185, 129, 0.5);
+  box-shadow: var(--shadow-card);
 }
 .lp-faq summary {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 18px 0;
+  padding: 13px 0;
   color: var(--lp-ink);
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 1.35;
   list-style: none;
   cursor: pointer;
 }
 .lp-faq summary::-webkit-details-marker {
   display: none;
 }
-.lp-faq summary::after {
-  content: "+";
-  flex: 0 0 auto;
-  color: var(--lp-green);
-  font-size: 24px;
-  font-weight: 800;
+.lp-faq summary svg {
+  color: var(--brand-dark);
+  transition: transform 0.2s ease;
 }
-.lp-faq details[open] summary::after {
-  content: "−";
+.lp-faq details[open] summary svg {
+  transform: rotate(180deg);
 }
 .lp-faq p {
-  margin-bottom: 18px !important;
-  font-size: 15px;
-  line-height: 1.6;
+  padding-bottom: 14px;
+  color: var(--lp-muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+.lp-faq p strong {
+  color: var(--lp-ink);
 }
 .lp-faq a {
-  color: var(--lp-green);
+  color: var(--brand-dark);
   font-weight: 700;
-  text-decoration: none;
 }
 
-/* 11 Chamada final */
+/* 11 Chamada final (tons do tema escuro do design system) */
 .lp-final {
-  padding: 56px 20px 40px;
-  background: linear-gradient(180deg, var(--lp-green) 0%, var(--lp-ink) 100%);
+  background:
+    radial-gradient(ellipse 70% 90% at 50% 0%, rgba(18, 185, 129, 0.32), transparent 70%),
+    #0c100e;
+}
+.lp-final-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
 }
 .lp-final-title {
   color: #fff;
-  font-size: 42px;
-  line-height: 1.15;
 }
 .lp-final-sub {
-  max-width: 680px;
-  margin-top: 16px !important;
-  color: #d7efdd;
-  font-size: 18px;
+  max-width: 640px;
+  margin-top: 14px !important;
+  color: #c4ccc8;
+  font-size: 17px;
   line-height: 1.55;
-  text-align: center;
 }
 .lp-final .lp-ctas {
-  margin-top: 28px;
+  justify-content: center;
+  margin-top: 24px;
+}
+.lp-btn-mint {
+  background: var(--lp-mint);
+  color: #071613;
+  box-shadow: 0 12px 28px -12px rgba(29, 233, 160, 0.6);
+}
+.lp-btn-mint:hover {
+  background: #34d399;
+}
+.lp-btn-ghost-dark {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: transparent;
+  color: #fff;
+}
+.lp-btn-ghost-dark:hover {
+  border-color: var(--lp-mint);
+  color: var(--lp-mint);
 }
 .lp-final-note {
-  margin-top: 24px !important;
-  color: #98b3a2;
+  margin-top: 18px !important;
+  color: #9aa39e;
   font-size: 13px;
-  text-align: center;
 }
 .lp-login {
-  margin-top: 18px;
-  color: #d7efdd;
+  margin-top: 12px;
+  color: #c4ccc8;
   font-size: 13px;
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+.lp-final .lp-btn:focus-visible,
+.lp-final a:focus-visible {
+  outline-color: var(--lp-mint);
+}
+
+.lp-faq-more {
+  display: none;
+}
+
+/* Telas baixas (notebook com a barra do navegador, celular com a barra aberta): sai o que é
+   secundário, para cada seção continuar cabendo numa tela. */
+@media (max-height: 760px) {
+  .lp-plan-pitch,
+  .lp-sec-plans .lp-note,
+  .lp-ex-desc,
+  .lp-closer {
+    display: none;
+  }
+}
+@media (min-width: 861px) and (max-height: 760px) {
+  .lp-sec .lp-feats {
+    gap: 10px;
+    margin-top: 20px;
+  }
+  .lp-feat {
+    padding: 14px;
+  }
+  .lp-feat p {
+    margin-top: 6px !important;
+    font-size: 12.5px;
+  }
+  .lp-plan {
+    gap: 8px;
+    padding: 18px 20px;
+  }
+  .lp-plan-feats {
+    gap: 5px;
+  }
+}
 
 /* Tablet */
-@media (max-width: 1024px) {
-  .lp-h1 {
-    font-size: 36px;
-  }
-  .lp-h2 {
-    font-size: 28px;
-  }
-  .lp-h2-sm {
-    font-size: 26px;
-  }
-  .lp-final-title {
-    font-size: 32px;
-  }
-}
-@media (max-width: 900px) {
-  .lp-plans {
-    grid-template-columns: 1fr;
-    max-width: 440px;
-  }
-  .lp-plan.is-feat {
-    transform: none;
+@media (max-width: 960px) {
+  .lp-sec .lp-feats {
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 
-/* Celular */
-@media (max-width: 767px) {
-  .lp-sec {
-    padding: 40px 20px;
+/* Celular e tablet estreito: capa empilhada e listas longas em trilhos de arrastar. */
+@media (max-width: 860px) {
+  .lp {
+    --lp-pad-y: clamp(28px, 4.5svh, 44px);
+    --lp-pad-x: 20px;
   }
-  .lp-sec-guarantee,
-  .lp-sec-faq {
-    padding: 30px 16px;
+  .lp-hero-grid {
+    grid-template-areas:
+      "copy"
+      "video"
+      "actions";
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto;
+    row-gap: 14px;
   }
-  .lp-hero {
-    padding-top: 24px;
-    padding-bottom: 8px;
+  .lp-hero-copy {
+    align-items: center;
+    gap: 10px;
+    text-align: center;
   }
   .lp-logo {
-    width: 180px;
-    margin-top: 0;
-  }
-  .lp-h1 {
-    padding: 0;
-    font-size: 28px;
-  }
-  .lp-h2,
-  .lp-h2-sm {
-    font-size: 22px;
+    width: 136px;
   }
   .lp-lead {
-    font-size: 17px;
+    font-size: 16px;
   }
-  .lp-metrics-sec {
-    padding-top: 24px;
+  .lp-hero-video {
+    justify-self: center;
+    width: min(100%, 35vh);
+    width: min(100%, 35svh);
+    border-radius: 16px;
   }
-  .lp-metrics {
-    grid-template-columns: 1fr 1fr;
+  .lp-h1 {
+    font-size: clamp(23px, 3.6svh, 30px);
   }
-  .lp-metric-num {
-    font-size: 26px;
+  .lp-hero-actions .lp-ctas {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
   }
-  .lp-pains,
-  .lp-feats,
-  .lp-exs,
-  .lp-steps,
+  /* Na capa do celular, "Agendar demonstração" vira link, para a capa caber na tela. */
+  .lp-hero-actions .lp-btn-ghost {
+    height: 32px;
+    border: 0;
+    background: none;
+    color: var(--brand-dark);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .lp-hide-sm {
+    display: none;
+  }
+  .lp-hero .lp-note {
+    margin-top: 10px !important;
+    font-size: 12px;
+    text-align: center;
+  }
+  .lp-swipe {
+    display: block;
+    margin-top: 8px !important;
+    color: var(--lp-muted);
+    font-size: 12.5px;
+    text-align: center;
+  }
+  .lp-swipe::after {
+    content: " →";
+  }
+  .lp-sec .lp-rail {
+    position: relative;
+    grid-auto-columns: 84%;
+    grid-auto-flow: column;
+    grid-template-columns: none;
+    margin-top: 16px;
+    margin-inline: calc(-1 * var(--lp-pad-x));
+    padding: 2px var(--lp-pad-x) 6px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-padding-inline: var(--lp-pad-x);
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+  .lp-sec .lp-rail::-webkit-scrollbar {
+    display: none;
+  }
+  .lp-rail > * {
+    scroll-snap-align: start;
+  }
+  .lp-sec .lp-feats.lp-rail {
+    grid-template-rows: repeat(3, auto);
+  }
   .lp-canva {
     grid-template-columns: 1fr;
+    gap: 16px;
+    margin-top: 18px;
   }
-  .lp-final {
-    padding: 48px 20px 40px;
+  .lp-canva-visual video {
+    max-height: none;
   }
-  .lp-final-title {
-    font-size: 26px;
+  .lp-faq {
+    grid-template-columns: 1fr;
+    gap: 6px;
+    margin-top: 18px;
+  }
+  .lp-faq:not(.is-all) details:nth-child(n + 7) {
+    display: none;
+  }
+  .lp-faq-more {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    height: 42px;
+    margin-top: 8px;
+    border: 1px dashed var(--lp-line);
+    border-radius: 12px;
+    background: transparent;
+    color: var(--brand-dark);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+}
+/* Celular com pouca altura (barra do navegador aberta, aparelhos menores). */
+@media (max-width: 860px) and (max-height: 700px) {
+  .lp-swipe {
+    display: none !important;
+  }
+  .lp-sec .lp-feats.lp-rail {
+    grid-template-rows: repeat(2, auto);
+  }
+  .lp-ex img {
+    height: max(96px, 15svh);
+  }
+  .lp-checks {
+    gap: 8px;
+  }
+  .lp-checks li {
+    padding: 8px 12px;
+  }
+  .lp-plan {
+    gap: 8px;
+    padding: 14px 16px;
+  }
+  .lp-plan-feats {
+    gap: 4px;
+  }
+  .lp-plan-feats li {
+    font-size: 13px;
+  }
+  .lp-pains {
+    gap: 8px;
+  }
+  .lp-pain p,
+  .lp-step p {
+    font-size: 13px;
+  }
+  .lp-sub {
+    font-size: 14px;
+  }
+  .lp-hero {
+    padding-bottom: 22px;
+  }
+  .lp-hero-video {
+    width: min(100%, 32svh);
+  }
+  .lp-lead {
+    font-size: 15px;
+  }
+  .lp-canva {
+    gap: 12px;
+  }
+  .lp-checks li {
+    font-size: 13.5px;
+  }
+  .lp-pain {
+    padding: 14px;
+  }
+}
+/* Celulares estreitos e baixos (360 px). */
+@media (max-width: 380px) and (max-height: 700px) {
+  .lp-h2 {
+    font-size: 21px;
+  }
+  .lp-checks {
+    gap: 6px;
+  }
+  .lp-checks li {
+    padding: 7px 10px;
+    font-size: 13px;
+  }
+  .lp-pain h3 {
+    font-size: 15px;
+  }
+  .lp-pain p {
+    margin-top: 4px !important;
+  }
+}
+/* Aparelhos bem baixos: a garantia dos planos fica para a seção seguinte, que é sobre ela. */
+@media (max-width: 860px) and (max-height: 660px) {
+  .lp-sec-plans .lp-sub {
+    display: none;
+  }
+}
+@media (max-width: 767px) {
+  .lp-metrics {
+    grid-template-columns: repeat(2, 1fr);
+    row-gap: 14px;
+  }
+  .lp-metric:nth-child(3) {
+    border-left: 0;
+  }
+  .lp-pains,
+  .lp-steps {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin-top: 18px;
+  }
+  .lp-pain,
+  .lp-step {
+    padding: 16px;
+  }
+  .lp-pain p,
+  .lp-step p {
+    font-size: 13.5px;
+  }
+  .lp-plan {
+    padding: 18px;
+  }
+  .lp-checks li {
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+  .lp-guarantee {
+    flex-direction: column;
+    gap: 12px;
+    padding: 22px 20px;
+    text-align: center;
+  }
+  .lp-guarantee .lp-kicker {
+    text-align: center;
+  }
+  .lp-faq summary {
+    padding: 11px 0;
+    font-size: 14px;
   }
   .lp-final-sub {
-    font-size: 16px;
+    font-size: 15.5px;
+  }
+  .lp-final .lp-ctas {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
   }
 }
 
@@ -1407,13 +1727,10 @@ onBeforeUnmount(() => {
   .lp-btn,
   .lp-feat,
   .lp-ex,
-  .lp-plan {
+  .lp-faq summary svg {
     transition: none;
   }
-  .lp-btn:hover,
-  .lp-feat:hover,
-  .lp-ex:hover,
-  .lp-plan:hover {
+  .lp-btn:hover {
     transform: none;
   }
 }

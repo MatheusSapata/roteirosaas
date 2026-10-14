@@ -31,11 +31,11 @@ Uma mesma `View` pode representar várias telas quando seu conteúdo muda confor
 | Grupo | Total | Em QA | Concluídas |
 |---|---:|---:|---:|
 | Fundação e shell | 2 | 2 | 0 |
-| Acesso, convite e compra | 7 | 7 | 0 |
+| Acesso, convite e compra | 8 | 8 | 0 |
 | Operação da agência | 19 | 18 | 1 |
 | Admin Master | 15 | 15 | 0 |
 | Página pública | 1 | 1 | 0 |
-| **Total de telas/experiências** | **42** | **41** | **1** |
+| **Total de telas/experiências** | **43** | **42** | **1** |
 
 > Fundação e shell são acompanhados à parte e não entram no total de 41 telas.
 
@@ -84,6 +84,7 @@ Uma mesma `View` pode representar várias telas quando seu conteúdo muda confor
 | A05 | Aceitar convite | `/accept-invite` | `views/public/AcceptInviteView.vue` | EM QA | Convite válido, inválido e utilizado alinhados ao design system. |
 | A06 | Processamento do pedido | `/pedido` | `views/public/CheckoutProcessingView.vue` | EM QA | Processamento, sucesso e erro alinhados aos tokens semânticos. |
 | A07 | Checkout personalizado | `/checkout/:offerKey` | `views/public/CustomCheckoutView.vue` | EM QA | Temas, foco, pagamento, aprovação e responsividade preservados e refinados. |
+| A08 | Página de vendas | `/lp` | `views/public/SalesLandingView.vue` | EM QA | Tokens claros (`.public-tokens`), Inter + Sora, verde primário e ícones Lucide; cada seção cabe numa tela (1366×640 a 1920×940 e 360×640 a 390×740), vídeo da capa quadrado e listas longas em trilhos no celular. |
 
 ### Estados que precisam ser conferidos
 
@@ -423,3 +424,4 @@ Esta ordem minimiza retrabalho porque cada etapa fornece componentes para a segu
 | 10/10/2026 | Carregamento das páginas públicas (relatório de 10/10): o arquivo principal deixou de levar o painel. As telas do painel e do login são carregadas sob demanda, assim como as seções do visual antigo e o modal de captura; o Menu do topo e o Banner Inicial novos vão junto. JS de 1.227 → 266 KB (370 → 98 KB com gzip) e CSS de 496 → 125 KB (78 → 21 KB). Compressão: `GZipMiddleware` no FastAPI, `.gz`/`.br` gerados no build (`scripts/compress-dist.mjs`) e gzip/`gzip_static` no nginx dos domínios próprios. O HTML público leva os dados da página (`#ro-page-data`, a mesma resposta da API, com as regras do plano: página fora do ar sem assinatura ativa e marca do plano gratuito), a fonte do visual novo e o logo pré-carregados; as fontes do Google não travam mais a pintura; os scripts do Pixel/GA baixam depois do `load`, com a fila de eventos ativa desde o início. |
 | 10/10/2026 | Dashboard nova (aprovada no canvas "Dashboard — proposta"). Cards no padrão do Viaje On (ícone em quadrado suave, rótulo em maiúsculas, número grande, selo de variação com seta contra o período anterior). Dados do período: leads e taxa de conversão do mesmo intervalo das visitas (antes contava todos os leads desde sempre), "Mais visitadas" do período com leads e conversão por página, funil em três degraus (WhatsApp e botão juntos em Cliques). Novos: leads em aberto sem interação há mais de 24 h e páginas no ar sem visita no período. Gráfico com curva monotônica (sem bicos), linhas de referência, linha guia e pontos no dia sob o mouse/dedo, "Melhor dia" e aviso sem dados; dia sem lead não mostra mais cliques como leads. Entrada animada (cards em sequência, números contando, linhas se desenhando, barras crescendo) e esboço da tela no carregamento; tudo desligado com "reduzir movimento". |
 | 10/10/2026 | Visual novo (v2): animação de entrada em todas as seções. Antes só animavam as que estavam fora da tela ao abrir, então o Banner (e o que aparecia na primeira tela) nunca animava, e uma seção muito alta podia não chegar aos 15% visíveis que disparavam a entrada. Agora a regra fica em `useEntrance` (dispara quando o topo entra na tela, primeira tela incluída). Ganharam entrada: Vídeo de Vendas, Rodapé e, com `V2Reveal`, Formulário, Detalhes do voo e Compra Online. No Banner Inicial a foto se aproxima devagar (presa pela base, sem mostrar a borda). Tudo desligado com "reduzir movimento". |
+| 14/10/2026 | A08 incluída: página de vendas (`/lp`) no design system, com seções que cabem numa tela e vídeo da capa quadrado. |
