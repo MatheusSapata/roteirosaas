@@ -132,7 +132,7 @@
               <div v-if="!hasWhatsAppPlanAccess" class="fmn-plan-gate">
                 <h3 class="fmn-plan-gate-title">Recurso indisponível no seu plano</h3>
                 <p class="fmn-plan-gate-text">
-                  A Notificação inteligente via WhatsApp está disponível apenas para o plano Escala.
+                  A Notificação inteligente via WhatsApp não está incluída no seu plano atual. Assine o Roteiro Online para liberar.
                 </p>
                 <button type="button" class="btn btn-p" @click="goToPlans">Fazer upgrade</button>
               </div>

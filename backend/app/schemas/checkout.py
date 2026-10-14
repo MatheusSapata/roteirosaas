@@ -66,11 +66,20 @@ class CheckoutOfferIn(BaseModel):
     active: bool = True
     subtitle: str | None = None
     checkout_key: str | None = Field(default=None, max_length=120)
+    # Plano único da página de vendas e da tela de planos: a oferta que aparece como a
+    # assinatura mensal ou a anual. Uma oferta por ciclo, com o mesmo ciclo de cobrança.
+    sales_slot: Literal["monthly", "annual"] | None = None
 
     @field_validator("key")
     @classmethod
     def normalize_key(cls, value: str) -> str:
         return value.strip().lower()
+
+    @field_validator("sales_slot", mode="before")
+    @classmethod
+    def normalize_sales_slot(cls, value: Any) -> Any:
+        normalized = str(value or "").strip().lower()
+        return normalized or None
 
     @field_validator("checkout_key")
     @classmethod
@@ -125,6 +134,20 @@ class CheckoutSettingsOut(BaseModel):
     created_at: datetime
     updated_at: datetime
     model_config = ConfigDict(from_attributes=True)
+
+
+class CheckoutSalesPlanOfferOut(BaseModel):
+    key: str
+    title: str
+    billing_cycle: Literal["monthly", "annual"]
+    amount: Decimal
+
+
+class CheckoutSalesPlanOut(BaseModel):
+    """Plano único à venda: a oferta mensal e a anual (None quando não há)."""
+
+    monthly: CheckoutSalesPlanOfferOut | None = None
+    annual: CheckoutSalesPlanOfferOut | None = None
 
 
 class CheckoutPublicConfigOut(BaseModel):

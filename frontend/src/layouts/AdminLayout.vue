@@ -797,7 +797,7 @@ import { useAgencyStore } from "../store/useAgencyStore";
 import { useAuthStore } from "../store/useAuthStore";
 import { useLeadCaptureStore } from "../store/useLeadCaptureStore";
 import { useThemeStore } from "../store/useThemeStore";
-import { getPlanLabel } from "../utils/planLabels";
+import { getCustomerPlanLabel } from "../utils/planLabels";
 import { addTagsToContactByEmail, syncPlanTagForEmail, viajeChatTagIds } from "../services/viajeChat";
 import { normalizeAgencySlugInput, slugify } from "../utils/slugify";
 import { createAdminLocalizer } from "../utils/adminI18n";
@@ -880,7 +880,7 @@ const navCopy = {
   agency: { pt: "Minha Ag\u00EAncia", es: "Mi Agencia" },
   profile: { pt: "Perfil", es: "Perfil" },
   lessons: { pt: "Aulas", es: "Cursos" },
-  plans: { pt: "Planos", es: "Planes" }
+  plans: { pt: "Assinatura", es: "Suscripción" }
 } as const;
 
 const navLabel = (key: keyof typeof navCopy) => t(navCopy[key]);
@@ -934,7 +934,7 @@ const viewCopy = {
         es: "En 3 días se bloqueará el acceso al editor. Elige un plan para seguir creando itinerarios ilimitados."
       }),
       dismiss: t({ pt: "Depois", es: "Después" }),
-      goPlans: t({ pt: "Ver planos", es: "Ver planes" })
+      goPlans: t({ pt: "Ver assinatura", es: "Ver suscripción" })
     },
     warn1: {
       eyebrow: t({ pt: "Últimas horas", es: "Últimas horas" }),
@@ -1952,7 +1952,7 @@ onBeforeUnmount(() => {
   window.removeEventListener("resize", closeSidebarFlyout);
   document.body.classList.remove("admin-master-active");
 });
-const trialPlanName = computed(() => getPlanLabel(auth.user?.trial_plan));
+const trialPlanName = computed(() => getCustomerPlanLabel(auth.user?.trial_plan));
 const planTagMap: Record<string, string> = {
   essencial: viajeChatTagIds.PLANO_PROFISSIONAL,
   growth: viajeChatTagIds.PLANO_AGENCIA,

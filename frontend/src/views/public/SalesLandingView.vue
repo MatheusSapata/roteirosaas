@@ -23,10 +23,10 @@
         </div>
         <div class="lp-hero-actions">
           <div class="lp-ctas">
-            <a href="#planos" class="lp-btn" @click.prevent="goToPlans">Quero ver os planos <ArrowRight :size="18" aria-hidden="true" /></a>
+            <a href="#planos" class="lp-btn" @click.prevent="goToPlans">Quero assinar <ArrowRight :size="18" aria-hidden="true" /></a>
             <a :href="DEMO_URL" class="lp-btn-ghost" target="_blank" rel="noopener">Agendar demonstração</a>
           </div>
-          <p class="lp-note"><ShieldCheck :size="15" aria-hidden="true" /><span>7 dias de garantia · Sem fidelidade<span class="lp-hide-sm"> · Cancele quando quiser</span></span></p>
+          <p class="lp-note"><ShieldCheck :size="15" aria-hidden="true" /><span>Plano único com tudo incluso · 7 dias de garantia<span class="lp-hide-sm"> · Sem fidelidade</span></span></p>
         </div>
       </div>
     </section>
@@ -73,7 +73,6 @@
               <h3>{{ feat.title }}</h3>
             </div>
             <p>{{ feat.text }}</p>
-            <span v-if="feat.tag" class="lp-tag">{{ feat.tag }}</span>
           </div>
         </div>
       </div>
@@ -148,39 +147,76 @@
       </div>
     </section>
 
-    <!-- 08 Planos -->
-    <section id="planos" class="lp-sec lp-sec-plans">
+    <!-- 08 Para quem é -->
+    <section class="lp-sec">
       <div class="lp-wrap">
-        <p class="lp-kicker">Escolha seu plano</p>
-        <h2 class="lp-h2">Comece agora e publique seu <span class="is-brand">primeiro roteiro hoje</span></h2>
-        <p class="lp-sub">
-          Todos os planos têm <strong>7 dias de garantia incondicional</strong>. Sem fidelidade, sem letras miúdas.
-        </p>
-        <p class="lp-swipe" aria-hidden="true">Arraste para o lado para ver os outros planos</p>
-        <div class="lp-plans lp-rail">
-          <article v-for="plan in PLANS" :key="plan.name" class="lp-plan" :class="{ 'is-feat': plan.featured }">
-            <span class="lp-plan-tag">{{ plan.tag }}</span>
-            <h3 class="lp-plan-name">{{ plan.name }}</h3>
-            <p class="lp-plan-pitch">{{ plan.pitch }}</p>
-            <div class="lp-plan-price">
-              <span class="cur">R$</span><span class="val">{{ plan.price }}</span><span class="per">/mês</span>
+        <p class="lp-kicker">Para quem é</p>
+        <h2 class="lp-h2">Feito para quem <span class="is-brand">vende viagem e experiência</span></h2>
+        <div class="lp-audience">
+          <div v-for="item in AUDIENCE" :key="item.title" class="lp-aud">
+            <span class="lp-ico" aria-hidden="true"><component :is="item.icon" :size="18" /></span>
+            <div>
+              <h3>{{ item.title }}</h3>
+              <p>{{ item.text }}</p>
             </div>
-            <p class="lp-plan-per">{{ plan.perItinerary }}</p>
-            <ul class="lp-plan-feats">
-              <li v-for="item in plan.features" :key="item"><Check :size="14" aria-hidden="true" />{{ item }}</li>
-              <li v-for="mod in plan.modules" :key="mod.title" class="is-mod">
-                <Sparkles :size="14" aria-hidden="true" /><span><strong>{{ mod.title }}:</strong> {{ mod.text }}</span>
-              </li>
-            </ul>
-            <RouterLink :to="`/checkout/${plan.offer}`" class="lp-plan-cta">{{ plan.cta }}</RouterLink>
-          </article>
+          </div>
         </div>
-        <p class="lp-note">Pague no cartão ou com Pix automático · Sem fidelidade · Cancele quando quiser · Reembolso em até 7 dias</p>
       </div>
     </section>
 
-    <!-- 09 Garantia -->
-    <section class="lp-sec is-soft lp-sec-guarantee">
+    <!-- 09 Assinatura: plano único, mensal ou anual (ofertas do Admin Master) -->
+    <section id="planos" class="lp-sec is-soft lp-sec-plans">
+      <div class="lp-wrap">
+        <p class="lp-kicker">Assinatura</p>
+        <h2 class="lp-h2">Uma assinatura. <span class="is-brand">Tudo incluso.</span></h2>
+        <p class="lp-sub lp-offer-sub">Sem plano básico e sem recurso bloqueado: você usa tudo desde o primeiro dia.</p>
+        <div class="lp-offer">
+          <div class="lp-offer-incl">
+            <p class="lp-offer-title">O que vem na assinatura</p>
+            <ul class="lp-incl">
+              <li v-for="item in INCLUDED" :key="item.full">
+                <Check :size="15" aria-hidden="true" /><span class="lp-incl-full">{{ item.full }}</span><span class="lp-incl-short">{{ item.short }}</span>
+              </li>
+            </ul>
+            <p class="lp-offer-foot"><Sparkles :size="15" aria-hidden="true" />Mensal ou anual, é a mesma assinatura: muda só a forma de pagar.</p>
+          </div>
+          <div class="lp-price-box" :class="{ 'is-loading': salesPlanLoading }">
+            <div v-if="salesPlan.monthly && salesPlan.annual" class="lp-cycle" role="tablist" aria-label="Forma de pagamento">
+              <button type="button" role="tab" :aria-selected="cycle === 'monthly'" :class="{ on: cycle === 'monthly' }" @click="cycle = 'monthly'">Mensal</button>
+              <button type="button" role="tab" :aria-selected="cycle === 'annual'" :class="{ on: cycle === 'annual' }" @click="cycle = 'annual'">
+                Anual<span v-if="salesMath && salesMath.savingsPercent > 0" class="lp-cycle-off">-{{ salesMath.savingsPercent }}%</span>
+              </button>
+            </div>
+            <template v-if="currentOffer">
+              <span v-if="cycle === 'annual' && salesMath && salesMath.savings > 0" class="lp-best">Melhor escolha</span>
+              <p v-if="cycle === 'annual' && salesMath && salesMath.savings > 0" class="lp-anchor">
+                de <s>{{ formatBRL(salesMath.twelveMonths) }}</s> por
+              </p>
+              <div class="lp-price">
+                <span class="cur">R$</span><span class="val">{{ priceNumber(currentOffer.amount) }}</span><span class="per">{{ cycle === "annual" ? "/ano" : "/mês" }}</span>
+              </div>
+              <p v-if="cycle === 'annual' && salesMath" class="lp-price-eq">
+                equivale a <b>{{ formatBRL(salesMath.perMonth, { cents: "always" }) }} por mês</b>
+              </p>
+              <p v-else class="lp-price-eq">Renova todo mês. <b>Sem fidelidade.</b></p>
+              <p v-if="cycle === 'annual' && salesMath && salesMath.savings > 0" class="lp-price-save">
+                Economize {{ formatBRL(salesMath.savings) }}<span class="lp-hide-sm">: 1 ano por menos de {{ salesMath.lessThanMonths }} meses do mensal</span>
+              </p>
+              <RouterLink :to="`/checkout/${currentOffer.key}`" class="lp-btn lp-btn-block">Quero assinar agora <ArrowRight :size="18" aria-hidden="true" /></RouterLink>
+            </template>
+            <template v-else-if="!salesPlanLoading">
+              <p class="lp-price-eq">Fale com a gente para assinar.</p>
+              <a :href="DEMO_URL" class="lp-btn lp-btn-block" target="_blank" rel="noopener">Falar com a equipe <ArrowRight :size="18" aria-hidden="true" /></a>
+            </template>
+            <p class="lp-price-guarantee"><ShieldCheck :size="15" aria-hidden="true" /><span>7 dias de garantia<span class="lp-hide-sm">: não gostou, devolvemos 100%</span>.</span></p>
+            <p class="lp-price-pay">Cartão de crédito ou Pix automático</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10 Garantia -->
+    <section class="lp-sec lp-sec-guarantee">
       <div class="lp-wrap lp-guarantee">
         <span class="lp-guarantee-ico" aria-hidden="true"><ShieldCheck :size="30" /></span>
         <div>
@@ -194,13 +230,13 @@
       </div>
     </section>
 
-    <!-- 10 Perguntas -->
-    <section class="lp-sec lp-sec-faq">
+    <!-- 11 Perguntas -->
+    <section class="lp-sec is-soft lp-sec-faq">
       <div class="lp-wrap">
         <p class="lp-kicker">Ainda tem dúvida?</p>
         <h2 class="lp-h2">Perguntas que a gente <span class="is-brand">mais escuta</span></h2>
         <div class="lp-faq" :class="{ 'is-all': faqAll }">
-          <details v-for="item in FAQ" :key="item.q">
+          <details v-for="item in faqItems" :key="item.q">
             <summary>{{ item.q }}<ChevronDown :size="18" aria-hidden="true" /></summary>
             <p>
               {{ item.a }}
@@ -217,15 +253,15 @@
       </div>
     </section>
 
-    <!-- 11 Chamada final -->
+    <!-- 12 Chamada final -->
     <section class="lp-sec lp-final">
       <div class="lp-wrap lp-final-inner">
         <h2 class="lp-h2 lp-final-title">Publique hoje mesmo o seu <span class="is-mint">primeiro roteiro.</span></h2>
         <p class="lp-final-sub">
-          Escolha seu plano, entre na plataforma e publique em menos de 30 minutos. Se não gostar, devolvemos 100% do valor em 7 dias.
+          Assine, entre na plataforma e publique em menos de 30 minutos. Se não gostar, devolvemos 100% do valor em 7 dias.
         </p>
         <div class="lp-ctas">
-          <a href="#planos" class="lp-btn lp-btn-mint" @click.prevent="goToPlans">Quero ver os planos <ArrowRight :size="18" aria-hidden="true" /></a>
+          <a href="#planos" class="lp-btn lp-btn-mint" @click.prevent="goToPlans">Quero assinar <ArrowRight :size="18" aria-hidden="true" /></a>
           <a :href="DEMO_URL" class="lp-btn-ghost lp-btn-ghost-dark" target="_blank" rel="noopener">Agendar demonstração</a>
         </div>
         <p class="lp-final-note">Sem fidelidade · 7 dias de garantia · Cancelamento simples</p>
@@ -236,7 +272,7 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -249,17 +285,25 @@ import {
   EyeOff,
   Ghost,
   Globe,
+  Hotel,
   Images,
   Link,
   Magnet,
+  MapPinned,
   MessageCircle,
   MousePointerClick,
   ShieldCheck,
   Smartphone,
   Sparkles,
   Timer,
-  TrendingDown
+  TrendingDown,
+  UsersRound,
+  Wine,
+  Bus,
+  Briefcase
 } from "lucide-vue-next";
+import { getPublicSalesPlan, type SalesPlan } from "../../services/checkout";
+import { formatBRL, salesPlanMath } from "../../utils/salesPlan";
 import logo from "../../assets/lp/logo.webp";
 import editorMp4 from "../../assets/lp/editor.mp4";
 import editorWebm from "../../assets/lp/editor.webm";
@@ -338,26 +382,22 @@ const FEATURES = [
   {
     icon: ChartColumn,
     title: "Pixel Meta e Google integrados",
-    text: "Faça tráfego pago para a página e retargete quem não fechou.",
-    tag: "a partir de 1 no plano profissional"
+    text: "Faça tráfego pago para a página e retargete quem não fechou."
   },
   {
     icon: Magnet,
     title: "Módulo Leads",
-    text: "Formulário de captação dentro do roteiro. Cada passageiro interessado vira oportunidade futura.",
-    tag: "Nos planos Agência e Escala"
+    text: "Formulário de captação dentro do roteiro. Cada passageiro interessado vira oportunidade futura."
   },
   {
     icon: Copy,
     title: "Duplicação com um clique",
-    text: "Copiou a estrutura do último roteiro? Troque o destino e publique em minutos.",
-    tag: "nos planos Agência e Escala"
+    text: "Copiou a estrutura do último roteiro? Troque o destino e publique em minutos."
   },
   {
     icon: Globe,
     title: "Domínio próprio",
-    text: "Publique seus roteiros no endereço da sua agência. Marca branca completa.",
-    tag: "Exclusivo do plano Escala"
+    text: "Publique seus roteiros no endereço da sua agência. Marca branca completa."
   },
   {
     icon: Smartphone,
@@ -424,61 +464,49 @@ const EASIER = [
   "Funciona no navegador, sem instalar nada"
 ];
 
-const PLANS = [
-  {
-    tag: "Para começar",
-    name: "Profissional",
-    pitch: "Para quem quer parar de mandar textão no WhatsApp para o cliente.",
-    price: "49,99",
-    perItinerary: "≈ R$16,66 por roteiro",
-    features: [
-      "Até 3 roteiros online ativos",
-      "Seções ilimitadas por roteiro",
-      "Modelo padrão para reutilizar",
-      "1 pixel conectado (Meta ou Google)",
-      "Botão de WhatsApp em cada seção",
-      "Galeria de fotos com carrossel"
-    ],
-    modules: [],
-    offer: "profissional_lp",
-    cta: "Começar com o Profissional",
-    featured: false
-  },
-  {
-    tag: "Mais escolhido",
-    name: "Agência",
-    pitch: "Para agências que usam o roteiro online como ferramenta recorrente de vendas.",
-    price: "89,99",
-    perItinerary: "≈ R$8,99 por roteiro",
-    features: [
-      "Até 10 roteiros online ativos",
-      "Duplicação rápida de páginas",
-      "Até 3 pixels conectados",
-      "Todos os recursos do Profissional"
-    ],
-    modules: [
-      { title: "Módulo Leads", text: "Formulário de captação dentro do roteiro. Cada passageiro pode virar oportunidade futura." }
-    ],
-    offer: "agencia_lp",
-    cta: "Assinar o plano Agência",
-    featured: true
-  },
-  {
-    tag: "Operação avançada",
-    name: "Escala",
-    pitch: "Para agências com vários grupos, campanhas e múltiplos destinos em andamento.",
-    price: "129,99",
-    perItinerary: "Roteiros ilimitados",
-    features: ["Roteiros ilimitados", "Múltiplos destinos simultâneos", "Todos os recursos anteriores"],
-    modules: [
-      { title: "Módulo Leads", text: "Formulário de captação com gestão de oportunidades integrada." },
-      { title: "Domínio personalizado", text: "Publique no endereço da sua própria agência. Exclusivo deste plano." }
-    ],
-    offer: "escala_lp",
-    cta: "Começar com o Escala",
-    featured: false
-  }
+// Para quem é (perfis atendidos pela plataforma).
+const AUDIENCE = [
+  { icon: Bus, title: "Agências de excursão", text: "Grupos, bate-volta e excursões com saídas confirmadas." },
+  { icon: Briefcase, title: "Agentes e operadoras", text: "Pacotes nacionais e internacionais com roteiro completo." },
+  { icon: MapPinned, title: "Receptivos e guias", text: "Passeios, transfers e roteiros no destino." },
+  { icon: Hotel, title: "Hotéis e pousadas", text: "Day use e roteiros para apresentar aos hóspedes." },
+  { icon: Wine, title: "Experiências", text: "Gastronomia, enoturismo, aventura, cultura e corporativo." },
+  { icon: UsersRound, title: "Times de vendas", text: "Equipe vendendo com o mesmo padrão de apresentação." }
 ];
+
+// O que vem na assinatura: tudo o que a plataforma libera (plano interno Escala).
+// short: a versão curta, em etiquetas, no celular.
+const INCLUDED = [
+  { full: "Roteiros ilimitados no ar", short: "Roteiros ilimitados" },
+  { full: "Editor visual com seções prontas", short: "Editor visual" },
+  { full: "Assistente de IA para montar páginas", short: "Assistente de IA" },
+  { full: "Criativos para anúncios e stories", short: "Criativos" },
+  { full: "Módulo Leads e funil de vendas", short: "Módulo Leads" },
+  { full: "Caixa de entrada do WhatsApp", short: "WhatsApp" },
+  { full: "Domínio próprio da agência", short: "Domínio próprio" },
+  { full: "Pixels Meta e Google", short: "Pixels Meta e Google" },
+  { full: "Equipe com até 5 usuários", short: "Equipe (5 usuários)" },
+  { full: "Duplicar páginas em um clique", short: "Duplicar páginas" }
+];
+
+// Plano único: oferta mensal e anual configuradas em Admin Master › Ofertas e checkout.
+const salesPlan = ref<SalesPlan>({ monthly: null, annual: null });
+const salesPlanLoading = ref(true);
+const cycle = ref<"monthly" | "annual">("annual");
+const salesMath = computed(() => salesPlanMath(salesPlan.value.monthly?.amount, salesPlan.value.annual?.amount));
+const currentOffer = computed(() => salesPlan.value[cycle.value] || salesPlan.value.monthly || salesPlan.value.annual);
+const priceNumber = (amount: string) => formatBRL(amount).replace(/^R\$\s*/, "");
+const loadSalesPlan = async () => {
+  try {
+    salesPlan.value = await getPublicSalesPlan();
+    // Abre no anual (melhor valor); sem anual, no mensal.
+    if (!salesPlan.value.annual) cycle.value = "monthly";
+  } catch {
+    salesPlan.value = { monthly: null, annual: null };
+  } finally {
+    salesPlanLoading.value = false;
+  }
+};
 
 type FaqItem = { q: string; a: string; strong?: string; after?: string; demo?: boolean };
 const FAQ: FaqItem[] = [
@@ -492,7 +520,7 @@ const FAQ: FaqItem[] = [
   },
   {
     q: "Posso cancelar quando quiser?",
-    a: "Pode. Não existe fidelidade. Você assina mensal, cancela mensal. E tem 7 dias de garantia: se não gostar, devolvemos 100% do valor sem justificativa obrigatória."
+    a: "Pode. No mensal não existe fidelidade: cancelou, não renova. No anual, cancelar impede a renovação do ano seguinte. E nos dois você tem 7 dias de garantia: se não gostar, devolvemos 100% do valor sem justificativa obrigatória."
   },
   {
     q: "E se eu for agência de receptivo, guia ou operadora, funciona pra mim?",
@@ -500,7 +528,7 @@ const FAQ: FaqItem[] = [
   },
   {
     q: "Posso usar nos anúncios do Facebook/Instagram/Google?",
-    a: "Sim. Cada roteiro tem pixel Meta e Google integrados. No plano Profissional você conecta 1 pixel. No Agência e Escala, até 3 pixels. Ideal para retargetear quem abriu o roteiro e não fechou."
+    a: "Sim. Você conecta os pixels da Meta e do Google e acompanha quem abriu cada roteiro. Ideal para fazer remarketing com quem viu e não fechou."
   },
   {
     q: "Como o passageiro recebe o roteiro?",
@@ -512,13 +540,13 @@ const FAQ: FaqItem[] = [
   },
   {
     q: "Posso publicar no domínio da minha agência?",
-    a: "Sim, no plano Escala. Você conecta seu domínio próprio e os roteiros ficam em",
+    a: "Sim, já vem na assinatura. Você conecta seu domínio próprio e os roteiros ficam em",
     strong: "seusite.com.br/roteiros",
     after: "ou no formato que preferir."
   },
   {
-    q: "O que acontece se eu ultrapassar o limite de roteiros do meu plano?",
-    a: "Você é avisado e pode fazer upgrade a qualquer momento. A diferença é cobrada proporcional ao tempo restante do mês. Sem multa, sem bloqueio surpresa."
+    q: "Tem limite de roteiros?",
+    a: "Não. A assinatura inclui roteiros ilimitados no ar, com todos os recursos liberados, do primeiro ao último."
   },
   {
     q: "Consigo falar com alguém antes de assinar?",
@@ -532,6 +560,20 @@ const FAQ: FaqItem[] = [
 const faqAll = ref(false);
 // Quem pede menos movimento no sistema vê a animação parada, com os controles para tocar.
 const editorVideo = ref<HTMLVideoElement | null>(null);
+
+// "Mensal ou anual?" com os valores do admin; sem eles, a resposta sem números.
+const faqItems = computed<FaqItem[]>(() => {
+  const m = salesPlan.value.monthly;
+  const a = salesPlan.value.annual;
+  const math = salesMath.value;
+  const cycleAnswer =
+    m && a && math && math.savings > 0
+      ? `Nenhuma nos recursos: é a mesma assinatura, com tudo incluso. No mensal você paga ${formatBRL(m.amount)} por mês, sem fidelidade. No anual paga ${formatBRL(a.amount)} por 12 meses (equivale a ${formatBRL(math.perMonth, { cents: "always" })} por mês) e economiza ${formatBRL(math.savings)}.`
+      : "Nenhuma nos recursos: é a mesma assinatura, com tudo incluso. Muda só a forma de pagar: mês a mês, sem fidelidade, ou o ano inteiro com desconto.";
+  const items = [...FAQ];
+  items.splice(2, 0, { q: "Qual a diferença entre o mensal e o anual?", a: cycleAnswer });
+  return items;
+});
 
 const goToPlans = () => {
   document.getElementById("planos")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -582,6 +624,7 @@ onMounted(() => {
   previousTitle = document.title;
   document.title = PAGE_TITLE;
   restoreDescription = setMeta("description", PAGE_DESCRIPTION);
+  void loadSalesPlan();
   if (editorVideo.value && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
     editorVideo.value.autoplay = false;
     editorVideo.value.pause();
@@ -861,8 +904,7 @@ onBeforeUnmount(() => {
 .lp-pain,
 .lp-feat,
 .lp-ex,
-.lp-step,
-.lp-plan {
+.lp-step {
   border: 1px solid var(--lp-line);
   border-radius: 16px;
   background: var(--surface);
@@ -950,23 +992,6 @@ onBeforeUnmount(() => {
   color: var(--lp-muted);
   font-size: 13px;
   line-height: 1.45;
-}
-.lp-tag {
-  display: inline-block;
-  margin-top: auto;
-  padding: 3px 9px;
-  border-radius: 999px;
-  background: var(--accent);
-  color: var(--accent-foreground);
-  font-size: 11.5px;
-  font-weight: 600;
-  line-height: 1.35;
-}
-.lp-tag::first-letter {
-  text-transform: uppercase;
-}
-.lp-feat p + .lp-tag {
-  margin-top: 10px;
 }
 
 /* 05 Exemplos */
@@ -1157,131 +1182,216 @@ onBeforeUnmount(() => {
   color: var(--primary-foreground);
 }
 
-/* 08 Planos */
-.lp-sec .lp-plans {
+/* 08 Para quem é */
+.lp-audience {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  align-items: stretch;
-  gap: 16px;
+  gap: 14px;
   margin-top: 24px;
 }
-.lp-plan {
+.lp-aud {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 22px;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid var(--lp-line);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
 }
-.lp-plan.is-feat {
-  border: 2px solid var(--primary);
-  background: linear-gradient(180deg, var(--accent) 0%, var(--surface) 38%);
-  box-shadow: var(--shadow-elegant);
-}
-.lp-plan-tag {
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: var(--accent);
-  color: var(--accent-foreground);
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-.lp-plan.is-feat .lp-plan-tag {
-  background: var(--primary);
-  color: var(--primary-foreground);
-}
-.lp-plan-name {
+.lp-aud h3 {
   color: var(--lp-ink);
-  font-size: 21px;
+  font-size: 15.5px;
   font-weight: 700;
+  line-height: 1.3;
 }
-.lp-plan-pitch {
-  min-height: 39px;
+.lp-aud p {
+  margin-top: 4px !important;
   color: var(--lp-muted);
   font-size: 13.5px;
   line-height: 1.45;
 }
-.lp-plan-price {
+
+/* 09 Assinatura: o que vem nela à esquerda, o preço (mensal ou anual) à direita. */
+.lp-offer {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  align-items: stretch;
+  gap: 16px;
+  max-width: 980px;
+  margin: 24px auto 0;
+}
+.lp-offer-incl {
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  border: 1px solid var(--lp-line);
+  border-radius: 20px;
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+.lp-offer-title {
+  margin-bottom: 14px !important;
+  color: var(--lp-ink);
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+}
+.lp-incl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.lp-incl li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--lp-ink);
+  font-size: 14.5px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+.lp-incl li svg {
+  display: block;
+  margin-top: 2px;
+  padding: 2px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+.lp-incl-short {
+  display: none;
+}
+.lp-offer-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto !important;
+  padding-top: 16px;
+  border-top: 1px solid var(--lp-line);
+  color: var(--lp-muted);
+  font-size: 13.5px;
+}
+.lp-offer-foot svg {
+  color: var(--brand-dark);
+}
+.lp-price-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-height: 360px;
+  padding: 22px 24px;
+  border: 2px solid var(--primary);
+  border-radius: 20px;
+  background: linear-gradient(180deg, var(--accent) 0%, var(--surface) 46%);
+  box-shadow: var(--shadow-elegant);
+  text-align: center;
+}
+.lp-price-box.is-loading {
+  opacity: 0.6;
+}
+.lp-cycle {
+  display: inline-flex;
+  gap: 4px;
+  margin-bottom: 6px;
+  padding: 4px;
+  border: 1px solid var(--lp-line);
+  border-radius: 999px;
+  background: var(--surface);
+}
+.lp-cycle button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border-radius: 999px;
+  color: var(--lp-muted);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+.lp-cycle button.on {
+  background: var(--lp-ink);
+  color: #fff;
+}
+.lp-cycle-off {
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-size: 11px;
+}
+.lp-best {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.lp-anchor {
+  color: var(--lp-muted);
+  font-size: 14px;
+}
+.lp-price {
   display: flex;
   align-items: baseline;
   gap: 4px;
   color: var(--lp-ink);
 }
-.lp-plan-price .cur {
-  font-size: 15px;
+.lp-price .cur {
+  font-size: 18px;
   font-weight: 700;
 }
-.lp-plan-price .val {
+.lp-price .val {
   font-family: var(--font-display);
-  font-size: clamp(32px, 5svh, 40px);
+  font-size: clamp(40px, 7svh, 54px);
   font-weight: 700;
   line-height: 1;
   letter-spacing: -0.03em;
 }
-.lp-plan-price .per {
+.lp-price .per {
   color: var(--lp-muted);
+  font-size: 15px;
+  font-weight: 600;
+}
+.lp-price-eq {
+  color: var(--lp-muted);
+  font-size: 14.5px;
+}
+.lp-price-eq b {
+  color: var(--lp-ink);
+}
+.lp-price-save {
+  color: var(--brand-dark);
+  font-size: 13px;
+  font-weight: 700;
+}
+.lp-btn-block {
+  width: 100%;
+  margin-top: 6px;
+}
+.lp-price-guarantee {
+  margin-top: 4px !important;
+  color: var(--lp-ink);
   font-size: 13px;
   font-weight: 600;
 }
-.lp-plan-per {
-  margin-top: -4px !important;
+.lp-price-guarantee svg {
+  display: inline-block;
+  margin-right: 4px;
   color: var(--brand-dark);
-  font-size: 12.5px;
-  font-weight: 700;
+  vertical-align: -3px;
 }
-.lp-plan-feats {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  width: 100%;
-  margin: 4px 0 0;
-  padding: 12px 0 0;
-  border-top: 1px solid var(--lp-line);
-  list-style: none;
-}
-.lp-plan-feats li {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  color: var(--lp-ink);
-  font-size: 13.5px;
-  font-weight: 500;
-  line-height: 1.4;
-}
-.lp-plan-feats li svg {
-  margin-top: 2px;
-  color: var(--brand-dark);
-}
-.lp-plan-feats li.is-mod {
+.lp-price-pay {
   color: var(--lp-muted);
   font-size: 12.5px;
-}
-.lp-plan-feats li.is-mod strong {
-  color: var(--accent-foreground);
-}
-.lp-plan-cta {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 46px;
-  margin-top: auto;
-  border: 1px solid var(--primary);
-  border-radius: 12px;
-  color: var(--brand-dark);
-  font-size: 14.5px;
-  font-weight: 700;
-  text-decoration: none;
-  transition: background-color 0.2s ease, color 0.2s ease;
-}
-.lp-plan.is-feat .lp-plan-cta,
-.lp-plan-cta:hover {
-  background: var(--primary);
-  color: var(--primary-foreground);
-}
-.lp-plan.is-feat .lp-plan-cta:hover {
-  background: var(--brand-dark);
 }
 
 /* 09 Garantia */
@@ -1447,8 +1557,6 @@ onBeforeUnmount(() => {
 /* Telas baixas (notebook com a barra do navegador, celular com a barra aberta): sai o que é
    secundário, para cada seção continuar cabendo numa tela. */
 @media (max-height: 760px) {
-  .lp-plan-pitch,
-  .lp-sec-plans .lp-note,
   .lp-ex-desc,
   .lp-closer {
     display: none;
@@ -1466,12 +1574,15 @@ onBeforeUnmount(() => {
     margin-top: 6px !important;
     font-size: 12.5px;
   }
-  .lp-plan {
-    gap: 8px;
-    padding: 18px 20px;
+  .lp-offer-incl {
+    padding: 20px;
   }
-  .lp-plan-feats {
-    gap: 5px;
+  .lp-incl {
+    gap: 8px 14px;
+  }
+  .lp-price-box {
+    min-height: 330px;
+    padding: 18px 22px;
   }
 }
 
@@ -1484,6 +1595,63 @@ onBeforeUnmount(() => {
 
 /* Celular e tablet estreito: capa empilhada e listas longas em trilhos de arrastar. */
 @media (max-width: 860px) {
+  /* Assinatura: o preço primeiro, a lista do que vem nela embaixo. */
+  .lp-offer {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-top: 18px;
+  }
+  .lp-price-box {
+    order: -1;
+    min-height: 0;
+    padding: 18px;
+  }
+  .lp-offer-incl {
+    padding: 16px;
+  }
+  .lp-offer-title {
+    margin-bottom: 10px !important;
+    font-size: 16px;
+  }
+  /* No celular, o que vem na assinatura vira etiquetas curtas. */
+  .lp-incl {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .lp-incl li {
+    align-items: center;
+    gap: 4px;
+    padding: 4px 9px 4px 5px;
+    border-radius: 999px;
+    background: var(--lp-soft);
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .lp-incl li svg {
+    width: 14px;
+    height: 14px;
+    margin-top: 0;
+  }
+  .lp-price-pay {
+    display: none;
+  }
+  .lp-incl-full {
+    display: none;
+  }
+  .lp-incl-short {
+    display: inline;
+  }
+  /* A aba Anual já mostra o desconto: o selo e o rótulo da seção saem no celular. */
+  .lp-offer-sub,
+  .lp-offer-foot,
+  .lp-best,
+  .lp-sec-plans .lp-kicker {
+    display: none;
+  }
+  .lp-audience {
+    grid-template-columns: repeat(2, 1fr);
+  }
   .lp {
     --lp-pad-y: clamp(28px, 4.5svh, 44px);
     --lp-pad-x: 20px;
@@ -1628,15 +1796,17 @@ onBeforeUnmount(() => {
   .lp-checks li:nth-child(n + 5) {
     display: none;
   }
-  .lp-plan {
-    gap: 8px;
+  .lp-price-pay,
+  .lp-anchor,
+  .lp-offer-title {
+    display: none;
+  }
+  .lp-price-box {
+    gap: 6px;
     padding: 14px 16px;
   }
-  .lp-plan-feats {
-    gap: 4px;
-  }
-  .lp-plan-feats li {
-    font-size: 13px;
+  .lp-price .val {
+    font-size: 40px;
   }
   .lp-pains {
     gap: 8px;
@@ -1714,8 +1884,21 @@ onBeforeUnmount(() => {
   .lp-step p {
     font-size: 13.5px;
   }
-  .lp-plan {
-    padding: 18px;
+  .lp-audience {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 18px;
+  }
+  .lp-aud {
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+  }
+  .lp-aud h3 {
+    font-size: 14px;
+  }
+  .lp-aud p {
+    font-size: 12.5px;
   }
   .lp-checks li {
     padding: 10px 12px;

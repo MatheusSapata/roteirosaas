@@ -36,7 +36,27 @@ export interface CheckoutOffer {
   active: boolean;
   subtitle?: string | null;
   checkout_key?: string | null;
+  /** Plano único: esta oferta é a assinatura mensal ou a anual da página de vendas. */
+  sales_slot?: "monthly" | "annual" | null;
 }
+
+/** Plano único à venda (página de vendas e tela de planos): a oferta mensal e a anual. */
+export interface SalesPlanOffer {
+  key: string;
+  title: string;
+  billing_cycle: "monthly" | "annual";
+  amount: string;
+}
+
+export interface SalesPlan {
+  monthly: SalesPlanOffer | null;
+  annual: SalesPlanOffer | null;
+}
+
+export const getPublicSalesPlan = async () => {
+  const response = await api.get<SalesPlan>("/checkout/public/sales-plan");
+  return response.data;
+};
 
 export interface CheckoutCoupon {
   code: string;

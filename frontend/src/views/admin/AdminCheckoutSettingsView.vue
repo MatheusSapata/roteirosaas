@@ -42,6 +42,51 @@
           </button>
         </div>
 
+        <!-- Plano único: as duas ofertas que a página de vendas e a tela de planos mostram. -->
+        <div class="am-card sp-card">
+          <div class="am-card-head">
+            <div>
+              <div class="am-card-title">Plano à venda</div>
+              <div class="am-card-sub">
+                Plano único, sem nome. A página de vendas (/lp) e a tela de planos do painel mostram estas duas ofertas.
+                Para trocar, edite a oferta e escolha "Na página de vendas".
+              </div>
+            </div>
+          </div>
+          <div class="sp-grid">
+            <div v-for="slot in salesSlots" :key="slot.id" class="sp-slot" :class="{ 'is-empty': !slot.offer }">
+              <div class="sp-slot-head">
+                <span class="sp-slot-name">Assinatura {{ slot.label.toLowerCase() }}</span>
+                <span v-if="slot.offer" class="am-badge am-dot" :class="slot.offer.active ? 'am-tone-success' : 'am-tone-warning'">
+                  {{ slot.offer.active ? "No ar" : "Inativa" }}
+                </span>
+              </div>
+              <template v-if="slot.offer">
+                <div class="sp-price am-num">{{ formatCurrency(slot.offer.amount) }}<small>{{ slot.id === "annual" ? "/ano" : "/mês" }}</small></div>
+                <div class="sp-meta"><b>{{ slot.offer.title }}</b> · <span class="am-mono">/checkout/{{ slot.offer.key }}</span></div>
+                <p v-for="warning in slot.warnings" :key="warning" class="sp-warn">{{ warning }}</p>
+              </template>
+              <p v-else class="sp-empty">
+                {{
+                  slot.fallback
+                    ? `Nenhuma oferta marcada. Enquanto isso, a página usa "${slot.fallback.title}" (${formatCurrency(slot.fallback.amount)}).`
+                    : "Nenhuma oferta marcada: a página de vendas fica sem este preço."
+                }}
+              </p>
+              <button type="button" class="sp-btn" @click="slot.offer ? openOfferModal(slot.offer) : openOfferModal(undefined, slot.id)">
+                {{ slot.offer ? "Editar oferta" : `Criar a oferta ${slot.label.toLowerCase()}` }}
+              </button>
+            </div>
+          </div>
+          <p v-if="salesMath && salesMath.savings <= 0" class="sp-warn mt-3">
+            O anual custa o mesmo ou mais que 12 mensalidades: a página não mostra economia no anual.
+          </p>
+          <p v-else-if="salesMath" class="sp-math">
+            No anual: {{ formatBRL(salesMath.perMonth, { cents: "always" }) }} por mês · economia de {{ formatBRL(salesMath.savings) }}
+            ({{ salesMath.savingsPercent }}%) frente a 12 mensalidades · 1 ano por menos de {{ salesMath.lessThanMonths }} meses do mensal.
+          </p>
+        </div>
+
         <div class="am-card am-card-flush">
           <div class="am-table-wrap">
             <table class="am-table">
@@ -61,7 +106,10 @@
                 </tr>
                 <tr v-for="offer in form.offers" :key="offer.local_id">
                   <td>
-                    <b class="block font-semibold">{{ offer.title }}</b>
+                    <b class="block font-semibold">
+                      {{ offer.title }}
+                      <span v-if="offer.sales_slot" class="am-badge am-tone-success ml-1 align-middle">Página de vendas · {{ cycleLabel(offer.sales_slot) }}</span>
+                    </b>
                     <button
                       type="button"
                       class="am-mono am-muted flex max-w-[320px] items-center gap-1.5 truncate text-left hover:text-foreground"
@@ -659,7 +707,7 @@
           </label>
           <label class="space-y-2 text-sm font-semibold text-slate-700">
             <span>Ciclo</span>
-            <select v-model="offerModal.form.billing_cycle" class="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm">
+            <select v-model="offerModal.form.billing_cycle" class="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm" @change="syncSlotWithCycle">
               <option value="monthly">Mensal</option>
               <option value="annual">Anual</option>
             </select>
@@ -674,6 +722,18 @@
               <option value="">Selecione</option>
               <option v-for="checkout in form.checkouts" :key="checkout.local_id" :value="checkout.key">{{ checkout.name }}</option>
             </select>
+          </label>
+          <label class="space-y-2 text-sm font-semibold text-slate-700 md:col-span-2">
+            <span>Na página de vendas</span>
+            <select v-model="offerModal.form.sales_slot" class="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm" @change="syncCycleWithSlot">
+              <option :value="null">Não aparece</option>
+              <option value="monthly">Assinatura mensal</option>
+              <option value="annual">Assinatura anual</option>
+            </select>
+            <span class="block text-xs font-normal text-slate-500">
+              A página de vendas e a tela de planos mostram esta oferta. Se outra oferta estava nesse lugar, ela sai dele.
+              O plano interno deve ser o Escala (roteiros ilimitados, Leads e domínio).
+            </span>
           </label>
           <label class="inline-flex items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 md:col-span-2">
             <input v-model="offerModal.form.active" type="checkbox" />
@@ -879,6 +939,7 @@ import {
   type CheckoutTrackingItem,
   type CheckoutTrackingDocumentDetail,
 } from "../../services/checkout";
+import { formatBRL, salesPlanMath } from "../../utils/salesPlan";
 
 type TabId = "offers" | "pixels" | "coupons" | "checkouts" | "reports" | "tracking";
 
@@ -916,17 +977,19 @@ let localSeed = 0;
 
 const nextLocalId = (prefix: string) => `${prefix}-${localSeed++}`;
 
-const blankOffer = (): OfferRow => ({
+// Venda nova é o plano único (interno: Escala), sem nome para o cliente.
+const blankOffer = (slot: SalesSlot | null = null): OfferRow => ({
   local_id: nextLocalId("offer"),
-  key: "",
-  title: "",
+  key: slot ? `roteiro-online-${slot === "annual" ? "anual" : "mensal"}` : "",
+  title: slot ? `Roteiro Online ${slot === "annual" ? "anual" : "mensal"}` : "",
   footer_product_label: "",
-  plan_key: "professional",
-  billing_cycle: "monthly",
-  amount: "49.99",
+  plan_key: "scale",
+  billing_cycle: slot || "monthly",
+  amount: slot === "annual" ? "997.00" : "137.00",
   active: true,
   subtitle: "",
   checkout_key: "",
+  sales_slot: slot,
 });
 
 const blankPixel = (): PixelRow => ({
@@ -1380,11 +1443,41 @@ const save = async () => {
   await persistSettings("Ofertas salvas com sucesso.");
 };
 
-const openOfferModal = (row?: OfferRow) => {
+const openOfferModal = (row?: OfferRow, slot: SalesSlot | null = null) => {
   offerModal.open = true;
   offerModal.editingId = row?.local_id || null;
-  offerModal.form = row ? { ...row } : blankOffer();
+  offerModal.form = row ? { ...row, sales_slot: row.sales_slot ?? null } : blankOffer(slot);
 };
+
+// A oferta da página de vendas cobra no ciclo que representa: um acompanha o outro.
+const syncCycleWithSlot = () => {
+  if (offerModal.form.sales_slot) offerModal.form.billing_cycle = offerModal.form.sales_slot;
+};
+const syncSlotWithCycle = () => {
+  if (offerModal.form.sales_slot && offerModal.form.sales_slot !== offerModal.form.billing_cycle) offerModal.form.sales_slot = null;
+};
+
+// Plano à venda: a oferta marcada em cada ciclo e, sem marcação, a mesma alternativa do
+// servidor (primeira oferta ativa do plano Escala naquele ciclo).
+type SalesSlot = "monthly" | "annual";
+const isScalePlan = (plan?: string | null) => ["scale", "escala", "infinity"].includes(String(plan || "").toLowerCase());
+const salesSlots = computed(() =>
+  (["monthly", "annual"] as SalesSlot[]).map(id => {
+    const offer = form.offers.find(item => item.sales_slot === id) || null;
+    const fallback = offer?.active ? null : form.offers.find(item => item.active && item.billing_cycle === id && isScalePlan(item.plan_key)) || null;
+    const warnings: string[] = [];
+    if (offer && !offer.active) warnings.push("Inativa: a página não mostra esta oferta.");
+    if (offer && !isScalePlan(offer.plan_key)) warnings.push("O plano interno não é o Escala: quem comprar não terá roteiros ilimitados, Leads e domínio.");
+    return { id, label: id === "annual" ? "Anual" : "Mensal", offer, fallback, warnings };
+  })
+);
+const salesMath = computed(() => {
+  const pick = (id: SalesSlot) => {
+    const slot = salesSlots.value.find(item => item.id === id);
+    return slot?.offer?.active ? slot.offer : slot?.fallback;
+  };
+  return salesPlanMath(pick("monthly")?.amount, pick("annual")?.amount);
+});
 
 const closeOfferModal = () => {
   offerModal.open = false;
@@ -1398,6 +1491,11 @@ const submitOfferModal = async () => {
     return;
   }
   offerModal.form.footer_product_label = offerModal.form.footer_product_label?.trim() || offerModal.form.title.trim();
+  // Um lugar por ciclo na página de vendas: a oferta que entra tira a que estava.
+  const slot = offerModal.form.sales_slot;
+  if (slot) {
+    form.offers = form.offers.map(item => (item.local_id !== offerModal.editingId && item.sales_slot === slot ? { ...item, sales_slot: null } : item));
+  }
   if (offerModal.editingId) {
     const index = form.offers.findIndex(item => item.local_id === offerModal.editingId);
     if (index >= 0) form.offers[index] = { ...offerModal.form };
@@ -1587,5 +1685,91 @@ watch(reportPeriodPreset, value => {
 
 .report-card-animate {
   animation: report-card-in 560ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* Plano à venda */
+.sp-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.sp-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+}
+.sp-slot.is-empty {
+  border-style: dashed;
+}
+.sp-slot-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.sp-slot-name {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.sp-price {
+  color: var(--foreground);
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.sp-price small {
+  margin-left: 2px;
+  color: var(--muted-foreground);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+}
+.sp-meta,
+.sp-empty {
+  color: var(--muted-foreground);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.sp-meta b {
+  color: var(--foreground);
+}
+.sp-warn {
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--status-warning);
+  color: var(--status-warning-foreground);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.sp-btn {
+  align-self: flex-start;
+  margin-top: auto;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 600;
+}
+.sp-btn:hover {
+  border-color: var(--primary);
+}
+.sp-math {
+  margin-top: 12px;
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+@media (max-width: 720px) {
+  .sp-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
