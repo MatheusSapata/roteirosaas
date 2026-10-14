@@ -572,6 +572,11 @@ router.beforeEach(async (to, _from, next) => {
         return;
       }
     }
+    // Logado, o checkout vira a assinatura/upgrade da própria conta (antes caía no painel).
+    if (to.name === "custom-checkout") {
+      next({ name: "custom-checkout", params: to.params, query: { ...to.query, upgrade: "1" }, replace: true });
+      return;
+    }
     if (auth.user?.trial_blocked) {
       next({ name: "plans" });
       return;

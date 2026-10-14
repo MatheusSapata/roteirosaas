@@ -8,6 +8,9 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 
 CheckoutThemeMode = Literal["light", "dark"]
+# Modelo do checkout: "classic" (imagem na coluna lateral) ou "banner" (banner no topo, mobile first,
+# inspirado no checkout do Viaje On).
+CheckoutLayout = Literal["classic", "banner"]
 CheckoutPaymentMethod = Literal["pix", "card"]
 CheckoutDiscountType = Literal["fixed", "percent"]
 
@@ -16,6 +19,7 @@ class CheckoutAppearanceIn(BaseModel):
     key: str = Field(..., min_length=1, max_length=120)
     name: str = Field(..., min_length=1, max_length=255)
     theme_mode: CheckoutThemeMode = "dark"
+    layout: CheckoutLayout = "classic"
     desktop_image_url: str | None = None
     mobile_banner_url: str | None = None
     active: bool = True
@@ -212,6 +216,7 @@ class CheckoutSalesPlanOut(BaseModel):
 
 class CheckoutPublicConfigOut(BaseModel):
     theme_mode: CheckoutThemeMode
+    layout: CheckoutLayout = "classic"
     desktop_image_url: str | None = None
     mobile_banner_url: str | None = None
     offer: CheckoutOfferOut
