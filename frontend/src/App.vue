@@ -66,7 +66,8 @@ const cookieLine2 = localize(cookieCopy.line2);
 const cookieAcceptLabel = localize(cookieCopy.accept);
 const cookieRejectLabel = localize(cookieCopy.reject);
 const publicRouteNames = new Set(["public-page", "custom-domain-default", "custom-domain-page"]);
-const cookieBannerHiddenRouteNames = new Set(["custom-checkout"]);
+// Checkout e página de vendas ficam sem o aviso de cookies (ele cobria a capa da página de vendas).
+const cookieBannerHiddenRouteNames = new Set(["custom-checkout", "sales-landing"]);
 const publicShellClass = "public-shell";
 const adminShellClass = "admin-shell";
 const plansShellClass = "plans-shell";

@@ -46,15 +46,16 @@ export const abrirNavegador = () => chromium.launch({ executablePath: chromiumPa
 
 /**
  * @param {import('playwright').Browser} browser
- * @param {{ tema?: 'light' | 'dark', video?: string }} opts  video: pasta para gravar
+ * @param {{ tema?: 'light' | 'dark', video?: string, tela?: { largura: number, altura: number } }} opts
+ *   video: pasta para gravar; tela: tamanho da janela (padrão TELA)
  */
-export async function abrirPainel(browser, { tema = 'light', video } = {}) {
+export async function abrirPainel(browser, { tema = 'light', video, tela = TELA } = {}) {
   const ctx = await browser.newContext({
-    viewport: { width: TELA.largura, height: TELA.altura },
+    viewport: { width: tela.largura, height: tela.altura },
     deviceScaleFactor: 1,
     locale: 'pt-BR',
     timezoneId: 'America/Sao_Paulo',
-    ...(video ? { recordVideo: { dir: video, size: { width: TELA.largura, height: TELA.altura } } } : {}),
+    ...(video ? { recordVideo: { dir: video, size: { width: tela.largura, height: tela.altura } } } : {}),
   });
   await prepararContexto(ctx);
   await ctx.addInitScript(([t, css]) => {
