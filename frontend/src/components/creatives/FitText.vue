@@ -85,10 +85,12 @@ const fits = (element: HTMLElement, px: number) => {
 const fit = () => {
   const element = el.value;
   if (!element || !element.isConnected) return;
+  const current = size.value;
   let low = props.min;
   let high = props.max;
   if (fits(element, high)) {
     size.value = high;
+    element.style.fontSize = `${high}px`;
     return;
   }
   // Busca binária: ~10 medições até 0,5 px de precisão.
@@ -97,14 +99,34 @@ const fit = () => {
     if (fits(element, middle)) low = middle;
     else high = middle;
   }
-  size.value = Math.floor(low * 2) / 2;
-  element.style.fontSize = `${size.value}px`;
+  let best = Math.floor(low * 2) / 2;
+  // Histerese: se o tamanho atual ainda cabe e está a até 1 px do melhor, mantém. Evita que
+  // medidas que mudam de um pixel para outro (zoom do navegador, subpixel) fiquem alternando.
+  if (Math.abs(best - current) <= 1 && current >= props.min && current <= props.max && fits(element, current)) best = current;
+  size.value = best;
+  element.style.fontSize = `${best}px`;
 };
 
-const schedule = () => {
+const refit = () => {
   cancelAnimationFrame(frame);
   frame = requestAnimationFrame(fit);
 };
+
+// Freio: o ajuste mexe no layout, e o layout dispara o ajuste. Se o tamanho continuar sendo
+// pedido sem parar (mais de 8 vezes em 1 s), para de observar o tamanho em vez de ficar piscando.
+// Mudança no texto (mutationObserver) continua reajustando.
+let recent: number[] = [];
+const scheduleOnResize = () => {
+  const now = performance.now();
+  recent = recent.filter(time => now - time < 1000);
+  recent.push(now);
+  if (recent.length > 8) {
+    resizeObserver?.disconnect();
+    return;
+  }
+  refit();
+};
+const schedule = refit;
 
 onMounted(async () => {
   await nextTick();
@@ -112,7 +134,7 @@ onMounted(async () => {
   const element = el.value;
   if (!element) return;
   if ("ResizeObserver" in window) {
-    resizeObserver = new ResizeObserver(schedule);
+    resizeObserver = new ResizeObserver(scheduleOnResize);
     resizeObserver.observe(element);
     if (element.parentElement) resizeObserver.observe(element.parentElement);
   }
