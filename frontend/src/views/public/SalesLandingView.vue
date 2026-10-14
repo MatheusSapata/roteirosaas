@@ -4,14 +4,18 @@
     <a v-if="monthlyPromo" href="#planos" class="lp-promo-bar" @click.prevent="goToPlans('monthly')">
       <span class="lp-promo-tag">Oferta por tempo limitado</span>
       <span>1ª mensalidade por <b>{{ formatBRL(monthlyPromo.amount, { cents: "auto" }) }}</b><span class="lp-hide-sm"> no plano mensal</span></span>
-      <span v-if="promoCountdown" class="lp-promo-time">termina em {{ promoCountdown }}</span>
+      <span v-if="promoCountdown" class="lp-promo-time"><Timer :size="13" aria-hidden="true" /><span class="lp-hide-sm">termina em </span>{{ promoCountdown }}</span>
     </a>
 
     <!-- 01 Capa (escura): texto à esquerda, vídeo quadrado à direita (no celular, o vídeo fica entre o texto e os botões). -->
     <section class="lp-sec is-night lp-hero">
       <div class="lp-wrap lp-hero-grid">
         <div class="lp-hero-copy">
-          <img :src="logoWhite" alt="Roteiro Online" class="lp-logo" width="240" height="72" />
+          <!-- No celular vira o cabeçalho: logo à esquerda e a demonstração à direita (sai de baixo do botão principal). -->
+          <div class="lp-hero-top">
+            <img :src="logoWhite" alt="Roteiro Online" class="lp-logo" width="240" height="72" />
+            <a :href="DEMO_URL" class="lp-top-demo" target="_blank" rel="noopener"><CalendarDays :size="14" aria-hidden="true" />Agendar demonstração</a>
+          </div>
           <span class="lp-pill">Aumente a sua conversão!</span>
           <h1 class="lp-h1">Seu cliente não compra o que <span class="is-brand">não consegue imaginar!</span></h1>
           <p class="lp-lead">
@@ -63,7 +67,7 @@
       <div class="lp-wrap lp-ai">
         <div class="lp-ai-copy">
           <p class="lp-kicker">Assistente de IA</p>
-          <h2 class="lp-h2">Descreva a viagem. <span class="is-brand">A IA monta a página.</span></h2>
+          <h2 class="lp-h2">Descreva a viagem. <span class="is-brand lp-nowrap">A IA monta a página.</span></h2>
           <p class="lp-sub">
             Mande o roteiro do jeito que você tem. O assistente escreve os textos e organiza o dia a dia, o que está incluso,
             os preços e as dúvidas. Você só revisa e publica.
@@ -81,22 +85,25 @@
             <span v-for="chip in AI_INPUTS" :key="chip.label"><component :is="chip.icon" :size="14" aria-hidden="true" />{{ chip.label }}</span>
           </div>
         </div>
-        <div class="lp-ai-visual">
-          <div class="lp-canva-bar" aria-hidden="true"><i></i><i></i><i></i><span>Assistente IA do Roteiro Online</span></div>
-          <!-- Gravado do editor de verdade por tools/help-media/lp-assistente.mjs. -->
-          <video
-            ref="aiVideo"
-            :poster="assistantPoster"
-            autoplay
-            muted
-            loop
-            playsinline
-            preload="metadata"
-            aria-label="Animação do Assistente IA: a agência descreve a viagem, a IA monta a página com banner, roteiro dia a dia, inclusos, preços e dúvidas, e a página é aplicada com um clique"
-          >
-            <source :src="assistantWebm" type="video/webm" />
-            <source :src="assistantMp4" type="video/mp4" />
-          </video>
+        <div class="lp-shot lp-ai-shot">
+          <span class="lp-shot-tag"><i aria-hidden="true"></i>Editor atualizado</span>
+          <div class="lp-ai-visual">
+            <div class="lp-canva-bar" aria-hidden="true"><i></i><i></i><i></i><span>Assistente IA do Roteiro Online</span></div>
+            <!-- Gravado do editor de verdade por tools/help-media/lp-assistente.mjs. -->
+            <video
+              ref="aiVideo"
+              :poster="assistantPoster"
+              autoplay
+              muted
+              loop
+              playsinline
+              preload="metadata"
+              aria-label="Animação do Assistente IA: a agência descreve a viagem, a IA monta a página com banner, roteiro dia a dia, inclusos, preços e dúvidas, e a página é aplicada com um clique"
+            >
+              <source :src="assistantWebm" type="video/webm" />
+              <source :src="assistantMp4" type="video/mp4" />
+            </video>
+          </div>
         </div>
       </div>
     </section>
@@ -255,7 +262,7 @@
     <section class="lp-sec is-green">
       <div class="lp-wrap">
         <p class="lp-kicker">Como funciona</p>
-        <h2 class="lp-h2">Tudo pronto em <span class="is-brand">menos de 3 minutos</span></h2>
+        <h2 class="lp-h2">Tudo pronto em <span class="is-brand lp-nowrap">menos de 3 minutos</span></h2>
         <div class="lp-steps">
           <div v-for="(step, index) in STEPS" :key="step.title" class="lp-step">
             <span class="lp-step-num">0{{ index + 1 }}</span>
@@ -274,25 +281,28 @@
     <!-- 08 Mais fácil que o Canva -->
     <section class="lp-sec is-mist">
       <div class="lp-wrap">
-        <h2 class="lp-h2">Mais fácil que <span class="is-brand">editar no Canva!</span></h2>
+        <h2 class="lp-h2">Mais fácil que <span class="is-brand lp-nowrap">editar no Canva!</span></h2>
         <p class="lp-sub lp-canva-sub">Veja o editor em 40 segundos: escolher uma seção, editar, conferir no celular e publicar.</p>
         <div class="lp-canva">
-          <div class="lp-canva-visual">
-            <div class="lp-canva-bar" aria-hidden="true"><i></i><i></i><i></i><span>Editor do Roteiro Online</span></div>
-            <!-- Gravado do editor de verdade por tools/help-media/lp-editor.mjs. -->
-            <video
-              ref="editorVideo"
-              :poster="editorPoster"
-              autoplay
-              muted
-              loop
-              playsinline
-              preload="metadata"
-              aria-label="Animação do editor: escolher uma seção pronta, editar o texto, trocar o visual, ver no celular, pedir ao Assistente IA e publicar"
-            >
-              <source :src="editorWebm" type="video/webm" />
-              <source :src="editorMp4" type="video/mp4" />
-            </video>
+          <div class="lp-shot">
+            <span class="lp-shot-tag"><i aria-hidden="true"></i>Editor atualizado</span>
+            <div class="lp-canva-visual">
+              <div class="lp-canva-bar" aria-hidden="true"><i></i><i></i><i></i><span>Editor do Roteiro Online</span></div>
+              <!-- Gravado do editor de verdade por tools/help-media/lp-editor.mjs. -->
+              <video
+                ref="editorVideo"
+                :poster="editorPoster"
+                autoplay
+                muted
+                loop
+                playsinline
+                preload="metadata"
+                aria-label="Animação do editor: escolher uma seção pronta, editar o texto, trocar o visual, ver no celular, pedir ao Assistente IA e publicar"
+              >
+                <source :src="editorWebm" type="video/webm" />
+                <source :src="editorMp4" type="video/mp4" />
+              </video>
+            </div>
           </div>
           <ul class="lp-checks">
             <li v-for="item in EASIER" :key="item"><span class="lp-check" aria-hidden="true"><Check :size="14" /></span>{{ item }}</li>
@@ -756,7 +766,7 @@ const marqueeItems = [...INCLUDED, ...INCLUDED];
 // Plano único: oferta mensal e anual configuradas em Admin Master › Ofertas e checkout.
 const salesPlan = ref<SalesPlan>({ monthly: null, annual: null });
 const salesPlanLoading = ref(true);
-const cycle = ref<"monthly" | "annual">("annual");
+const cycle = ref<"monthly" | "annual">("monthly");
 const salesMath = computed(() => salesPlanMath(salesPlan.value.monthly?.amount, salesPlan.value.annual?.amount));
 const currentOffer = computed(() => salesPlan.value[cycle.value] || salesPlan.value.monthly || salesPlan.value.annual);
 const priceNumber = (amount: string) => formatBRL(amount, { cents: "auto" }).replace(/^R\$\s*/, "");
@@ -795,8 +805,8 @@ const perDay = computed(() => {
 const loadSalesPlan = async () => {
   try {
     salesPlan.value = await getPublicSalesPlan();
-    // Abre no anual (melhor valor); sem anual, no mensal.
-    if (!salesPlan.value.annual) cycle.value = "monthly";
+    // Abre no mensal; sem mensal, no anual.
+    if (!salesPlan.value.monthly && salesPlan.value.annual) cycle.value = "annual";
   } catch {
     salesPlan.value = { monthly: null, annual: null };
   } finally {
@@ -1083,6 +1093,10 @@ onBeforeUnmount(() => {
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
 }
+/* Trecho de título que não pode quebrar no meio (ex.: "menos de 3 minutos"). */
+.lp-nowrap {
+  white-space: nowrap;
+}
 .is-red {
   color: var(--red);
 }
@@ -1218,6 +1232,14 @@ onBeforeUnmount(() => {
 .lp-logo {
   width: 168px;
   height: auto;
+}
+.lp-hero-top {
+  display: flex;
+  align-items: center;
+}
+/* Só no cabeçalho do celular; no computador a demonstração fica ao lado do botão principal. */
+.lp-top-demo {
+  display: none;
 }
 .lp-pill {
   display: inline-flex;
@@ -1359,8 +1381,66 @@ onBeforeUnmount(() => {
   text-transform: uppercase;
 }
 .lp-promo-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px 3px 8px;
+  border-radius: 999px;
+  background: rgba(42, 18, 3, 0.9);
+  color: #fff;
+  font-size: 12.5px;
   font-variant-numeric: tabular-nums;
   font-weight: 700;
+  white-space: nowrap;
+}
+
+/* Tag "Editor atualizado" presa na borda de cima das animações: fica fora do vídeo e não cobre nada. */
+.lp-shot {
+  position: relative;
+  min-width: 0;
+}
+.lp-shot-tag {
+  position: absolute;
+  z-index: 2;
+  top: -12px;
+  right: 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px 5px 10px;
+  border-radius: 999px;
+  background: var(--mint);
+  color: var(--night);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  white-space: nowrap;
+  box-shadow: 0 8px 20px -8px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+}
+.lp-shot-tag i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: lp-live 1.8s ease-in-out infinite;
+}
+/* Na seção clara, a tag escura com contorno verde (para não sumir na barra escura da janela). */
+.is-mist .lp-shot-tag {
+  background: var(--night);
+  color: var(--mint);
+  box-shadow: 0 0 0 1px rgba(29, 233, 160, 0.5), 0 8px 20px -8px rgba(0, 0, 0, 0.55);
+}
+@keyframes lp-live {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
 }
 
 /* 02 Números */
@@ -2924,21 +3004,54 @@ onBeforeUnmount(() => {
     grid-template-rows: auto;
     row-gap: 14px;
   }
+  .lp-hero {
+    padding-top: 10px;
+  }
   .lp-hero-copy {
     align-items: center;
     gap: 10px;
     text-align: center;
   }
+  /* Cabeçalho: logo à esquerda, demonstração à direita, com uma linha fina embaixo. */
+  .lp-hero-top {
+    align-self: stretch;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 6px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
   .lp-logo {
-    width: 136px;
+    width: min(112px, 30vw);
+  }
+  .lp-top-demo {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 12px;
+    border: 1px solid rgba(29, 233, 160, 0.4);
+    border-radius: 999px;
+    background: rgba(29, 233, 160, 0.08);
+    color: var(--mint);
+    font-size: 12.5px;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .lp-pill {
+    padding: 5px 10px;
+    font-size: 10.5px;
+    letter-spacing: 0.05em;
   }
   .lp-lead {
     font-size: 16px;
   }
   .lp-hero-media {
     justify-self: center;
-    width: min(100%, 35vh);
-    width: min(100%, 35svh);
+    width: min(100%, 39vh);
+    width: min(100%, 39svh);
   }
   .lp-hero-video {
     border-radius: 16px;
@@ -2946,22 +3059,21 @@ onBeforeUnmount(() => {
   .lp-float {
     display: none;
   }
+  /* Duas linhas: "Seu cliente não compra o que" / "não consegue imaginar!" (o tamanho acompanha a largura). */
   .lp-h1 {
-    font-size: clamp(23px, 3.6svh, 30px);
+    font-size: clamp(20px, min(3.6svh, 5.9vw), 28px);
+  }
+  .lp-h1 .is-brand {
+    white-space: nowrap;
   }
   .lp-hero-actions .lp-ctas {
     flex-direction: column;
     align-items: stretch;
     gap: 8px;
   }
-  /* Na capa do celular, "Agendar demonstração" vira link, para a capa caber na tela. */
+  /* Na capa do celular, "Agendar demonstração" sobe para o cabeçalho. */
   .lp-hero-actions .lp-btn-ghost {
-    height: 32px;
-    border: 0;
-    background: none;
-    color: var(--mint);
-    text-decoration: underline;
-    text-underline-offset: 3px;
+    display: none;
   }
   .lp-hide-sm {
     display: none;
@@ -3148,10 +3260,18 @@ onBeforeUnmount(() => {
   .lp-ai-chips {
     display: none;
   }
-  .lp-ai-visual {
+  .lp-ai-shot {
     order: 1;
-    margin-top: 16px;
+    margin-top: 18px;
+  }
+  .lp-ai-visual {
     border-radius: 12px;
+  }
+  .lp-shot-tag {
+    top: -14px;
+    right: 12px;
+    padding: 4px 10px 4px 8px;
+    font-size: 10px;
   }
   .lp-ai-steps {
     order: 2;
@@ -3170,6 +3290,10 @@ onBeforeUnmount(() => {
   .lp-promo-tag {
     display: none;
   }
+  .lp-promo-time {
+    padding: 2px 8px 2px 7px;
+    font-size: 12px;
+  }
 }
 @media (max-width: 860px) and (max-height: 700px) {
   .lp-ai-steps p {
@@ -3180,6 +3304,13 @@ onBeforeUnmount(() => {
   .lp-promo-bar {
     font-size: 12px;
     letter-spacing: -0.01em;
+  }
+  .lp-top-demo {
+    padding: 0 10px;
+    font-size: 12px;
+  }
+  .lp-top-demo svg {
+    display: none;
   }
 }
 
@@ -3231,7 +3362,7 @@ onBeforeUnmount(() => {
     padding-bottom: 22px;
   }
   .lp-hero-media {
-    width: min(100%, 32svh);
+    width: min(100%, 35svh);
   }
   .lp-lead {
     font-size: 15px;
@@ -3269,6 +3400,15 @@ onBeforeUnmount(() => {
   }
   .lp-pain p {
     margin-top: 4px !important;
+  }
+  /* Mais específico que a regra de 767 px, que vem depois (com a fonte Sora, as dores passavam da tela). */
+  .lp-pains .lp-pain {
+    gap: 12px;
+    padding: 12px 14px;
+  }
+  .lp-pains .lp-pain-ico {
+    width: 36px;
+    height: 36px;
   }
   .lp-steps-cta {
     display: none;
@@ -3404,7 +3544,8 @@ onBeforeUnmount(() => {
   .lp-ex:hover {
     transform: none;
   }
-  .lp-float {
+  .lp-float,
+  .lp-shot-tag i {
     animation: none;
   }
   /* Sem movimento, a faixa vira uma linha parada, quebrando em mais de uma se precisar. */
