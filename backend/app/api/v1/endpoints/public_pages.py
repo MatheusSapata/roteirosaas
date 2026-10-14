@@ -8,6 +8,7 @@ from app.services.page_design import design_v2_enabled_for_agency
 from app.api.deps import get_db
 from app.api.v1.endpoints.pages import apply_free_footer, normalize_config, resolve_agency_plan
 from app.services.company_status import subscription_allows_public
+from app.services.trial import trial_is_active
 from app.models.agency import Agency
 from app.models.agency_user import AgencyUser
 from app.models.page import Page
@@ -136,6 +137,10 @@ def _is_owner_subscription_active(agency: Agency) -> bool:
     if owner_membership is None:
         owner_membership = next((rel for rel in agency.users or [] if rel.user), None)
     owner: User | None = owner_membership.user if owner_membership else None
+    # Teste liberado (cadastro ou Admin Master) deixa as páginas no ar até o fim do prazo,
+    # mesmo com a assinatura encerrada ou sem assinatura.
+    if trial_is_active(owner):
+        return True
     if owner is None or owner.subscription is None:
         return False
     # Encerrada (cancelada, inativa...) só fica no ar até o fim do período pago.

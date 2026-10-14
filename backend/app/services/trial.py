@@ -13,6 +13,18 @@ from app.services.plans import plan_limits
 logger = logging.getLogger(__name__)
 
 
+def trial_is_active(user: User | None, now: datetime | None = None) -> bool:
+    """Teste em andamento (o do cadastro ou o liberado no Admin Master): a conta fica no ar e
+    sem bloqueio até o fim do prazo, mesmo sem assinatura paga ativa."""
+    if user is None or not user.trial_plan or user.trial_blocked or not user.trial_ends_at:
+        return False
+    ends = user.trial_ends_at
+    # Banco que não guarda fuso (SQLite dos testes) devolve a data sem ele; o valor é UTC.
+    if ends.tzinfo is None:
+        ends = ends.replace(tzinfo=timezone.utc)
+    return ends > (now or datetime.now(timezone.utc))
+
+
 def start_trial(user: User, plan: str, duration_days: int = 7) -> None:
     now = datetime.now(timezone.utc)
     user.trial_original_plan = user.plan
