@@ -88,7 +88,7 @@
         <p class="lp-swipe" aria-hidden="true">Arraste para o lado para ver mais</p>
         <div class="lp-exs lp-rail">
           <article v-for="example in EXAMPLES" :key="example.title" class="lp-ex">
-            <img :src="example.image" :alt="`Roteiro ${example.title}`" loading="lazy" decoding="async" width="760" height="420" />
+            <img :src="example.image" :alt="`Roteiro ${example.title}`" loading="lazy" decoding="async" width="760" height="384" />
             <div class="lp-ex-body">
               <p class="lp-ex-meta"><span class="lp-ex-badge">{{ example.badge }}</span>{{ example.agency }}</p>
               <h3 class="lp-ex-title">{{ example.title }}</h3>
