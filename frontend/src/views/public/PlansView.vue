@@ -235,9 +235,11 @@ const ctaLabel = computed(() => {
 });
 const ctaHint = computed(() => (ctaDisabled.value ? t(copy.alreadyAnnualHint) : ""));
 
+// O checkout de upgrade/renovação exige login (Bearer token no localStorage).
+// O localStorage é por domínio, então precisa abrir no mesmo domínio do app,
+// e não em roteiroonline.com (onde o usuário não está logado e a API devolve 401).
 const checkoutBaseOrigin = computed(() => {
   if (typeof window === "undefined") return "";
-  if (import.meta.env.PROD) return "https://roteiroonline.com";
   return window.location.origin;
 });
 
