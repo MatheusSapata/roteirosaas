@@ -58,12 +58,17 @@ A mesma ferramenta gera a mídia da página de vendas (`frontend/src/assets/lp/`
 
 ```bash
 node lp-editor.mjs     # animação do editor ("Mais fácil que editar no Canva"): editor.mp4/.webm e capa
+node lp-assistente.mjs # animação do Assistente IA ("Descreva a viagem"): assistente.mp4/.webm e capa
 node lp-exemplos.mjs   # miniaturas dos "Exemplos reais", do topo das páginas publicadas
 ```
 
 - `lp-editor.mjs` grava o editor de verdade na página "Bonito em família" da demonstração
   (1280×800, legendas grandes para ler no tamanho da LP) e devolve a página ao estado do
   `seed.mjs` antes e depois.
+- `lp-assistente.mjs` usa uma IA de mentira, para a gravação sair igual e sem gastar crédito: rode
+  `python3 ia-falsa.py` e suba a API com `GPT_KEY=falsa OPENAI_BASE_URL=http://127.0.0.1:8765/v1`.
+  Na gravação, o chat começa vazio e os espaços de foto recebem as fotos da demonstração. A camada
+  com cursor e legendas das duas animações fica em `lib/gravacao.mjs`.
 - `lp-exemplos.mjs` precisa de acesso a `roteiroonline.com`; os links são os mesmos dos
   cartões em `SalesLandingView.vue`.
 
