@@ -46,10 +46,10 @@ export const abrirNavegador = () => chromium.launch({ executablePath: chromiumPa
 
 /**
  * @param {import('playwright').Browser} browser
- * @param {{ tema?: 'light' | 'dark', video?: string, tela?: { largura: number, altura: number } }} opts
- *   video: pasta para gravar; tela: tamanho da janela (padrão TELA)
+ * @param {{ tema?: 'light' | 'dark', video?: string, tela?: { largura: number, altura: number }, menuRecolhido?: boolean }} opts
+ *   video: pasta para gravar; tela: tamanho da janela (padrão TELA); menuRecolhido: menu lateral só com ícones
  */
-export async function abrirPainel(browser, { tema = 'light', video, tela = TELA } = {}) {
+export async function abrirPainel(browser, { tema = 'light', video, tela = TELA, menuRecolhido = false } = {}) {
   const ctx = await browser.newContext({
     viewport: { width: tela.largura, height: tela.altura },
     deviceScaleFactor: 1,
@@ -58,16 +58,16 @@ export async function abrirPainel(browser, { tema = 'light', video, tela = TELA 
     ...(video ? { recordVideo: { dir: video, size: { width: tela.largura, height: tela.altura } } } : {}),
   });
   await prepararContexto(ctx);
-  await ctx.addInitScript(([t, css]) => {
+  await ctx.addInitScript(([t, css, recolhido]) => {
     localStorage.setItem('global_cookie_consent', 'accepted');
     localStorage.setItem('admin-theme', t);
-    localStorage.setItem('admin_sidebar_collapsed', '0');
+    localStorage.setItem('admin_sidebar_collapsed', recolhido ? '1' : '0');
     document.addEventListener('DOMContentLoaded', () => {
       const s = document.createElement('style');
       s.textContent = css;
       document.head.appendChild(s);
     });
-  }, [tema, LIMPEZA]);
+  }, [tema, LIMPEZA, menuRecolhido]);
   const page = await ctx.newPage();
   await page.goto(`${APP}/login`, { waitUntil: 'networkidle' });
   await page.fill('input[type=email]', DEMO.email);

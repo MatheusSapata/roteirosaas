@@ -545,7 +545,7 @@ const PAINS = [
   },
   {
     icon: EyeOff,
-    title: "seu cliente não vê o real valor",
+    title: "seus clientes não vejam valor",
     text: "Quando o passageiro vê só o preço, compara por preço. Quando enxerga a experiência completa, compra a experiência."
   },
   {

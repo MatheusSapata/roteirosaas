@@ -91,7 +91,8 @@ async function gravar(browser) {
   fs.rmSync(TMP, { recursive: true, force: true });
   fs.mkdirSync(TMP, { recursive: true });
   const t0 = Date.now();
-  const { ctx, page } = await abrirPainel(browser, { tema: 'light', video: TMP, tela: TELA });
+  // Menu lateral recolhido: sobra mais espaço para a prévia e o chat do assistente.
+  const { ctx, page } = await abrirPainel(browser, { tema: 'light', video: TMP, tela: TELA, menuRecolhido: true });
   let inicio = 0;
   let poster = 0;
   try {
