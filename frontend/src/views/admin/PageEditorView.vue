@@ -1338,6 +1338,16 @@
                             <button type="button" @click="toggleAiExpanded(index)">+{{ aiStructureNames(message.content).length - 5 }} seções</button>
                           </li>
                         </ol>
+                        <div v-if="aiPhotoStrip(message.content)" class="ai-v2-photos" role="status">
+                          <template v-if="aiPhotoStrip(message.content)!.pending">
+                            <span class="ai-v2-photos-spin" aria-hidden="true"></span>
+                            <span>Escolhendo as fotos...</span>
+                          </template>
+                          <template v-else>
+                            <img v-for="url in aiPhotoStrip(message.content)!.photos.slice(0, 5)" :key="url" :src="resolveMediaUrl(url)" alt="" loading="lazy" />
+                            <span>{{ aiPhotoStrip(message.content)!.photos.length === 1 ? "1 foto pronta" : `${aiPhotoStrip(message.content)!.photos.length} fotos prontas` }}</span>
+                          </template>
+                        </div>
                         <div class="ai-v2-actions">
                           <button v-if="aiSwapped.has(message.content)" type="button" class="is-primary" disabled>Trocada ✓</button>
                           <button v-else-if="aiSwapTarget(message.content)" type="button" class="is-primary" :disabled="aiStructureApplying || aiAssistantLoading || isSectionEditorOpen" :title="`Coloca a sugestão no lugar de ${aiSwapTarget(message.content)!.label}`" @click="applyAiStructure(message.content, 'swap')">Trocar {{ aiSwapTarget(message.content)!.label }}</button>
@@ -1762,6 +1772,7 @@ import type {
 import LeadFormPreview from "../../components/admin/leads/LeadFormPreview.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import { withoutNeverShownPlaceholders } from "../../utils/legacyPlaceholders";
+import { resolveMediaUrl } from "../../utils/media";
 import { sectionsInjectionKey } from "../../components/admin/sectionsContext";
 import { sectionUploadGuardKey } from "../../components/admin/sectionUploadGuard";
 import { describeSection, sectionLabels as defaultSectionLabels } from "../../utils/sectionLabels";
@@ -3069,24 +3080,69 @@ const aiExpanded = reactive(new Set<number>());
 const aiDetails = reactive(new Set<number>());
 const toggleAiExpanded = (index: number) => (aiExpanded.has(index) ? aiExpanded.delete(index) : aiExpanded.add(index));
 const toggleAiDetails = (index: number) => (aiDetails.has(index) ? aiDetails.delete(index) : aiDetails.add(index));
+// Dias de cada roteiro, pelo identificador que a IA usa em "Substitui" (ou "secao-N").
+const aiItineraryDays = () => {
+  const itineraryDays: Record<string, number> = {};
+  sections.value.forEach((section, index) => {
+    if (section.type !== "itinerary") return;
+    const days = ((section as ItinerarySection).days || []).length;
+    if (section.anchorId) itineraryDays[section.anchorId] = days;
+    itineraryDays[`secao-${index + 1}`] = days;
+  });
+  return itineraryDays;
+};
+// Fotos do plano: assim que a IA entrega a estrutura, as seções (com as fotos dos bancos) já são
+// montadas em segundo plano. Inserir/Substituir/Trocar usam o que estiver pronto, sem buscar de novo.
+type AiPreparedStructure = { key: string; promise: Promise<PageSection[]>; photos: string[] | null; failed: boolean };
+// Uma por resposta e por "Inserir imagens" (ligar e desligar não busca as fotos de novo).
+const aiPrepared = reactive(new Map<string, AiPreparedStructure>());
+const AI_PREPARED_MAX = 6;
+const aiPreparedId = (reply: string, includeImages: boolean) => `${includeImages ? "1" : "0"}:${reply}`;
+const aiStockPhotos = (generated: PageSection[]) => aiPagePhotos(generated.filter(section => (section as any).aiStockPhoto));
+const prepareAiStructure = (reply: string, force = false) => {
+  const includeImages = aiIncludeImages.value;
+  const itineraryDays = aiItineraryDays();
+  // Os dias dos roteiros da página só contam quando a sugestão troca uma seção ("Substitui").
+  const key = /substitui/i.test(reply) ? JSON.stringify(itineraryDays) : "";
+  const id = aiPreparedId(reply, includeImages);
+  const current = aiPrepared.get(id);
+  if (current && !force && current.key === key && !current.failed) return current;
+  const promise = previewAiAssistantPageBase(pageId, reply, { includeImages, currentPhotos: aiPagePhotos(sections.value), itineraryDays });
+  const entry = reactive({ key, promise, photos: null, failed: false }) as AiPreparedStructure;
+  promise.then(
+    generated => { entry.photos = aiStockPhotos(generated); },
+    () => { entry.failed = true; }
+  );
+  aiPrepared.delete(id);
+  aiPrepared.set(id, entry);
+  while (aiPrepared.size > AI_PREPARED_MAX) aiPrepared.delete(aiPrepared.keys().next().value as string);
+  return entry;
+};
+// Faixa do cartão da estrutura: "Escolhendo as fotos..." e depois as miniaturas das que vieram.
+const aiPhotoStrip = (reply: string) => {
+  const entry = aiIncludeImages.value ? aiPrepared.get(aiPreparedId(reply, true)) : undefined;
+  if (!entry || entry.failed) return null;
+  if (!entry.photos) return { pending: true, photos: [] as string[] };
+  return entry.photos.length ? { pending: false, photos: entry.photos } : null;
+};
+watch(aiIncludeImages, () => {
+  const last = aiLastAssistant.value;
+  if (last && !last.live && [true, false].some(images => aiPrepared.has(aiPreparedId(last.content, images)))) prepareAiStructure(last.content);
+});
 const applyAiStructure = async (reply: string, mode: "insert" | "replace" | "swap") => {
   if (aiStructureApplying.value || aiAssistantLoading.value || isSectionEditorOpen.value) return;
   aiStructureApplying.value = true;
   aiStructureError.value = "";
   try {
-    // Dias de cada roteiro, pelo identificador que a IA usa em "Substitui" (ou "secao-N").
-    const itineraryDays: Record<string, number> = {};
-    sections.value.forEach((section, index) => {
-      if (section.type !== "itinerary") return;
-      const days = ((section as ItinerarySection).days || []).length;
-      if (section.anchorId) itineraryDays[section.anchorId] = days;
-      itineraryDays[`secao-${index + 1}`] = days;
-    });
-    const generated = await previewAiAssistantPageBase(pageId, reply, {
-      includeImages: aiIncludeImages.value,
-      currentPhotos: aiPagePhotos(sections.value),
-      itineraryDays
-    });
+    let prepared = await prepareAiStructure(reply).promise;
+    // A página ganhou alguma dessas fotos depois do preparo (ex.: aplicou esta mesma sugestão):
+    // busca de novo para não repetir foto. Ao substituir tudo, as atuais saem, então não importa.
+    const onPage = new Set(aiPagePhotos(sections.value));
+    if (mode !== "replace" && aiStockPhotos(prepared).some(url => onPage.has(url))) {
+      prepared = await prepareAiStructure(reply, true).promise;
+    }
+    // Cópia: a aplicação mexe nas seções (identificadores) e a sugestão pode ser aplicada de novo.
+    const generated = JSON.parse(JSON.stringify(prepared)) as PageSection[];
     if (generated.some(section => section.type === "links" && (section as LinksSection).items?.some(item => (item as any).pageSlug))) {
       if (!aiAgencyPages.pages.value.length) await aiAgencyPages.load();
     }
@@ -3628,6 +3684,8 @@ const sendAiAssistantMessage = async () => {
     }
     setContent(result.reply);
     succeeded = true;
+    // Estrutura pronta: as fotos já começam a ser escolhidas enquanto a pessoa lê o plano.
+    if (hasAiStructure(result.reply)) prepareAiStructure(result.reply);
   } catch (error) {
     console.error("Erro ao consultar a ajuda IA", error);
     setContent(aiAssistantErrorText(error));
@@ -8358,6 +8416,10 @@ onMounted(async () => {
 .ai-v2-structure li { display: flex; align-items: center; gap: 10px; padding: 6px 8px; font-size: 13px; }
 .ai-v2-structure li b { width: 16px; flex-shrink: 0; text-align: right; color: var(--muted-foreground); font-size: 12px; }
 .ai-v2-structure li.is-more button { padding-left: 26px; font-size: 13px; font-weight: 700; color: var(--primary); }
+.ai-v2-photos { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 36px; font-size: 12px; font-weight: 600; color: var(--muted-foreground); }
+.ai-v2-photos img { width: 34px; height: 34px; flex-shrink: 0; border-radius: 8px; object-fit: cover; background: var(--card); box-shadow: inset 0 0 0 1px var(--border); }
+.ai-v2-photos span:last-child { margin-left: 2px; }
+.ai-v2-photos-spin { width: 14px; height: 14px; flex-shrink: 0; border-radius: 999px; border: 2px solid var(--border); border-top-color: #12b981; animation: ai-live-spin 0.8s linear infinite; }
 .ai-v2-actions { display: flex; gap: 8px; }
 .ai-v2-actions button { flex: 1; padding: 0 12px; white-space: nowrap; height: 38px; border-radius: 999px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border); font-size: 13px; font-weight: 700; color: var(--foreground); }
 .ai-v2-actions button.is-primary { background: #12b981; box-shadow: none; color: #fff; }
