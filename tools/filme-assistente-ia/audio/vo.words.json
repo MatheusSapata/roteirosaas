@@ -1,0 +1,338 @@
+[
+ {
+  "word": "Conte",
+  "start": 0.077,
+  "end": 0.313,
+  "raw_start": 0.0,
+  "raw_end": 0.313
+ },
+ {
+  "word": "a",
+  "start": 0.348,
+  "end": 0.372,
+  "raw_start": 0.348,
+  "raw_end": 0.372
+ },
+ {
+  "word": "viagem",
+  "start": 0.418,
+  "end": 0.778,
+  "raw_start": 0.418,
+  "raw_end": 0.778
+ },
+ {
+  "word": "do",
+  "start": 0.824,
+  "end": 0.894,
+  "raw_start": 0.824,
+  "raw_end": 0.894
+ },
+ {
+  "word": "seu",
+  "start": 0.952,
+  "end": 1.091,
+  "raw_start": 0.952,
+  "raw_end": 1.091
+ },
+ {
+  "word": "jeito.",
+  "start": 1.149,
+  "end": 1.497,
+  "raw_start": 1.149,
+  "raw_end": 1.579
+ },
+ {
+  "word": "O",
+  "start": 1.793,
+  "end": 1.823,
+  "raw_start": 1.753,
+  "raw_end": 1.823
+ },
+ {
+  "word": "Roteiro",
+  "start": 1.904,
+  "end": 2.276,
+  "raw_start": 1.904,
+  "raw_end": 2.276
+ },
+ {
+  "word": "Online",
+  "start": 2.31,
+  "end": 2.694,
+  "raw_start": 2.31,
+  "raw_end": 2.694
+ },
+ {
+  "word": "monta",
+  "start": 2.752,
+  "end": 3.042,
+  "raw_start": 2.752,
+  "raw_end": 3.042
+ },
+ {
+  "word": "a",
+  "start": 3.065,
+  "end": 3.088,
+  "raw_start": 3.065,
+  "raw_end": 3.088
+ },
+ {
+  "word": "página",
+  "start": 3.198,
+  "end": 3.518,
+  "raw_start": 3.146,
+  "raw_end": 3.518
+ },
+ {
+  "word": "inteira",
+  "start": 3.564,
+  "end": 3.924,
+  "raw_start": 3.564,
+  "raw_end": 3.924
+ },
+ {
+  "word": "pra",
+  "start": 3.959,
+  "end": 4.075,
+  "raw_start": 3.959,
+  "raw_end": 4.075
+ },
+ {
+  "word": "você.",
+  "start": 4.11,
+  "end": 4.453,
+  "raw_start": 4.11,
+  "raw_end": 4.586
+ },
+ {
+  "word": "Mudou",
+  "start": 4.791,
+  "end": 5.05,
+  "raw_start": 4.76,
+  "raw_end": 5.05
+ },
+ {
+  "word": "o",
+  "start": 5.074,
+  "end": 5.097,
+  "raw_start": 5.074,
+  "raw_end": 5.097
+ },
+ {
+  "word": "preço?",
+  "start": 5.132,
+  "end": 5.519,
+  "raw_start": 5.132,
+  "raw_end": 5.619
+ },
+ {
+  "word": "Clica",
+  "start": 5.818,
+  "end": 6.206,
+  "raw_start": 5.77,
+  "raw_end": 6.211
+ },
+ {
+  "word": "e",
+  "start": 6.281,
+  "end": 6.374,
+  "raw_start": 6.281,
+  "raw_end": 6.374
+ },
+ {
+  "word": "digita.",
+  "start": 6.42,
+  "end": 6.898,
+  "raw_start": 6.42,
+  "raw_end": 7.001
+ },
+ {
+  "word": "Quer",
+  "start": 7.198,
+  "end": 7.326,
+  "raw_start": 7.152,
+  "raw_end": 7.326
+ },
+ {
+  "word": "outro",
+  "start": 7.384,
+  "end": 7.57,
+  "raw_start": 7.384,
+  "raw_end": 7.57
+ },
+ {
+  "word": "visual?",
+  "start": 7.605,
+  "end": 8.013,
+  "raw_start": 7.605,
+  "raw_end": 8.139
+ },
+ {
+  "word": "Um",
+  "start": 8.345,
+  "end": 8.417,
+  "raw_start": 8.313,
+  "raw_end": 8.417
+ },
+ {
+  "word": "clique.",
+  "start": 8.464,
+  "end": 8.809,
+  "raw_start": 8.464,
+  "raw_end": 8.905
+ },
+ {
+  "word": "Sem",
+  "start": 9.067,
+  "end": 9.265,
+  "raw_start": 9.056,
+  "raw_end": 9.265
+ },
+ {
+  "word": "refazer",
+  "start": 9.311,
+  "end": 9.694,
+  "raw_start": 9.311,
+  "raw_end": 9.694
+ },
+ {
+  "word": "nenhuma",
+  "start": 9.741,
+  "end": 10.136,
+  "raw_start": 9.741,
+  "raw_end": 10.136
+ },
+ {
+  "word": "arte.",
+  "start": 10.17,
+  "end": 10.433,
+  "raw_start": 10.17,
+  "raw_end": 10.542
+ },
+ {
+  "word": "Serve",
+  "start": 10.716,
+  "end": 11.029,
+  "raw_start": 10.716,
+  "raw_end": 11.029
+ },
+ {
+  "word": "pra",
+  "start": 11.076,
+  "end": 11.192,
+  "raw_start": 11.076,
+  "raw_end": 11.192
+ },
+ {
+  "word": "qualquer",
+  "start": 11.238,
+  "end": 11.54,
+  "raw_start": 11.238,
+  "raw_end": 11.54
+ },
+ {
+  "word": "viagem,",
+  "start": 11.61,
+  "end": 12.078,
+  "raw_start": 11.61,
+  "raw_end": 12.167
+ },
+ {
+  "word": "e",
+  "start": 12.329,
+  "end": 12.376,
+  "raw_start": 12.26,
+  "raw_end": 12.376
+ },
+ {
+  "word": "abre",
+  "start": 12.434,
+  "end": 12.655,
+  "raw_start": 12.434,
+  "raw_end": 12.655
+ },
+ {
+  "word": "lindo",
+  "start": 12.701,
+  "end": 12.922,
+  "raw_start": 12.701,
+  "raw_end": 12.922
+ },
+ {
+  "word": "no",
+  "start": 12.968,
+  "end": 13.05,
+  "raw_start": 12.968,
+  "raw_end": 13.05
+ },
+ {
+  "word": "celular.",
+  "start": 13.084,
+  "end": 13.508,
+  "raw_start": 13.084,
+  "raw_end": 13.63
+ },
+ {
+  "word": "Seu",
+  "start": 13.798,
+  "end": 13.955,
+  "raw_start": 13.781,
+  "raw_end": 13.955
+ },
+ {
+  "word": "cliente",
+  "start": 13.99,
+  "end": 14.303,
+  "raw_start": 13.99,
+  "raw_end": 14.303
+ },
+ {
+  "word": "não",
+  "start": 14.35,
+  "end": 14.466,
+  "raw_start": 14.35,
+  "raw_end": 14.466
+ },
+ {
+  "word": "compra",
+  "start": 14.512,
+  "end": 14.791,
+  "raw_start": 14.512,
+  "raw_end": 14.791
+ },
+ {
+  "word": "o",
+  "start": 14.814,
+  "end": 14.838,
+  "raw_start": 14.814,
+  "raw_end": 14.838
+ },
+ {
+  "word": "que",
+  "start": 14.872,
+  "end": 14.954,
+  "raw_start": 14.872,
+  "raw_end": 14.954
+ },
+ {
+  "word": "não",
+  "start": 14.988,
+  "end": 15.093,
+  "raw_start": 14.988,
+  "raw_end": 15.093
+ },
+ {
+  "word": "consegue",
+  "start": 15.128,
+  "end": 15.534,
+  "raw_start": 15.128,
+  "raw_end": 15.534
+ },
+ {
+  "word": "imaginar.",
+  "start": 15.569,
+  "end": 16.004,
+  "raw_start": 15.569,
+  "raw_end": 16.254
+ }
+]

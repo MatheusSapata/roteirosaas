@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Conte a viagem · Roteiro Online</title>
+<meta name="viewport" content="width=1920, height=1080">
+<link rel="stylesheet" href="./runtime/fonts.css">
+<style>
+/* Roteiro Online. Sora (display) + Inter (UI, inside the captures). ONE accent with one meaning:
+   ACCENT = mint #1de9a0, "da marca / pronto" (the claim's brand half, as on the LP). Violet stays only where the real UI uses it (Assistente IA). */
+:root {
+  --night: #07130e;      /* LP is-night ground */
+  --edbg: #edf1ee;       /* editor outer ground (sampled) */
+  --mint: #1de9a0;
+  --ink: #0b1712;
+  --font: "Sora", "Inter", sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: #000; }
+#main { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: hidden; background: var(--edbg); font-family: var(--font); }
+img { display: block; }
+
+/* ---------- ACT 1: the real editor, filmed by one camera ---------- */
+#act1 { position: absolute; inset: 0; background: var(--edbg); filter: blur(var(--b, 0px)); }
+#cam1 { position: absolute; left: 0; top: 0; width: 1440px; height: 900px; transform-origin: 0 0; }
+#cam1 .st { position: absolute; left: 0; top: 0; width: 1440px; height: 900px; }
+.layer { position: absolute; overflow: hidden; }
+.layer img { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+#typeL { left: 1004px; top: 600px; width: 428px; height: 300px; }
+#streamL { left: 1004px; top: 0; width: 428px; height: 900px; }
+#prevClip { left: 182px; top: 170px; width: 808px; height: 700px; border-radius: 0 0 14px 14px; }
+#prevClip img { height: auto; width: 808px; }
+#caret { position: absolute; left: 0; top: 0; width: 1.6px; height: 17px; background: #0f172a; border-radius: 1px; }
+.hole { position: absolute; }
+.btnov { position: absolute; background-repeat: no-repeat; background-size: 1440px 900px; }
+#sendHole { left: 1366px; top: 798px; width: 46px; height: 46px; background: #fff; border-radius: 50%; }
+#sendBtn { left: 1368px; top: 800px; width: 42px; height: 42px; border-radius: 50%; background-image: url(assets/type/t097.webp); background-size: 428px 300px; background-position: -364px -200px; }
+#insHole { left: 1039px; top: 644px; width: 154px; height: 42px; background: #f4f7f5; border-radius: 22px; }
+#insBtn { left: 1041px; top: 646.5px; width: 150px; height: 38px; border-radius: 19px; background-image: url(assets/ed/a04-structure-hover.webp); background-position: -1041px -646.5px; }
+/* the cursor is the navigation arrow cut out of the official logo; tip at the element origin */
+#cursor { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+#cursorPress { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+#cursorPress img { position: absolute; width: 27px; height: 27px; left: -25.4px; top: -1.1px;
+  filter: drop-shadow(0 0 0.7px #04301c) drop-shadow(0 0 0.7px #04301c) drop-shadow(1px 2px 2.5px rgba(4, 30, 18, .38)); }
+/* one key light from the upper left, falloff to the lower right (light, not a glow) */
+#light1 { position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(120% 90% at 18% -10%, rgba(255,255,255,.16), rgba(255,255,255,0) 55%),
+              radial-gradient(90% 80% at 105% 110%, rgba(8,40,26,.13), rgba(8,40,26,0) 60%); }
+#dim1 { position: absolute; inset: 0; background: var(--night); opacity: 0; pointer-events: none; }
+
+/* claim (LP line, verbatim) */
+#claim { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; pointer-events: none; }
+#claim .ln { position: absolute; left: 0; width: 1920px; text-align: center; white-space: pre; font: 600 108px/124px var(--font); letter-spacing: -0.035em; color: #f4faf7; }
+#claim .l1 { top: 400px; }
+#claim .l2 { top: 532px; }
+#claim .l2 { color: var(--mint); }
+
+/* ---------- ACT 2: the client's side ---------- */
+#act2 { position: absolute; inset: 0; background: var(--night); }
+.plate { position: absolute; left: -6%; top: -6%; width: 112%; height: 112%; object-fit: cover; opacity: .92; }
+#vign { position: absolute; inset: 0; background: radial-gradient(75% 80% at 50% 48%, rgba(7,19,14,.05) 25%, rgba(7,19,14,.78) 100%); }
+#phoneCam { position: absolute; left: 0; top: 0; width: 414px; height: 868px; transform-origin: 0 0; }
+/* the editor's own phone frame (.ed-phone in PageEditorView.vue), same rules */
+.ed-phone { position: absolute; left: 0; top: 0; display: flex; width: 414px; height: 868px; flex-direction: column; border-radius: 60px; background: #0b100e; padding: 12px;
+  box-shadow: inset 0 0 0 2px #2c3430, 0 60px 120px -40px rgba(0, 0, 0, 0.7), 0 30px 60px -28px rgba(6, 12, 9, 0.55); }
+.ed-phone::before, .ed-phone::after { content: ""; position: absolute; width: 4px; border-radius: 3px; background: #1d2421; }
+.ed-phone::before { left: -4px; top: 170px; height: 64px; box-shadow: 0 84px 0 #1d2421; }
+.ed-phone::after { right: -4px; top: 210px; height: 96px; }
+.ed-phone-status { position: relative; display: flex; flex: none; height: 50px; align-items: center; justify-content: space-between; border-radius: 48px 48px 0 0; background: #fff; padding: 4px 30px 0 40px; color: #0b100e; font: 600 16px/1 -apple-system, "SF Pro Text", "Inter", sans-serif; }
+.ed-phone-island { position: absolute; top: 11px; left: 50%; width: 122px; height: 35px; margin-left: -61px; border-radius: 999px; background: #0b100e; }
+.ed-phone-icons { display: flex; align-items: center; gap: 6px; }
+.ed-phone-icons svg { fill: currentColor; }
+.ed-screen { position: relative; flex: 1; overflow: hidden; border-radius: 0 0 48px 48px; background: #fff; }
+.ed-screen .pg { position: absolute; left: 0; top: 0; width: 390px; }
+.ed-phone-home { position: absolute; bottom: 20px; left: 50%; z-index: 2; width: 140px; height: 5px; margin-left: -70px; border-radius: 999px; background: rgba(11, 16, 14, 0.82); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.55); }
+/* the LP's own floating card (.lp-float in SalesLandingView.vue) */
+#notif { position: absolute; left: 118px; top: 52px; display: flex; align-items: center; gap: 10px; padding: 10px 16px 10px 10px; border-radius: 14px; background: #fff; color: var(--ink);
+  box-shadow: 0 18px 40px -16px rgba(0, 0, 0, 0.55); font-family: "Inter", sans-serif; transform-origin: 0 0; white-space: nowrap; }
+#notif b { display: block; font-size: 13px; line-height: 1.2; }
+#notif small { display: block; color: #55665e; font-size: 11.5px; line-height: 1.3; }
+#notif .ico { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; background: #22c55e; color: #fff; }
+#notifWrap { position: absolute; left: 0; top: 0; }
+/* lockup: the official white logo with its arrow cut out, and the arrow itself */
+#logoWrap { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 960px 540px; }
+#logoBase { position: absolute; left: 611.5px; top: 427.5px; width: 697px; height: 225px; transform-origin: 348.5px 112.5px; }
+#arrowFly { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+#arrowFly img { position: absolute; width: 60.6px; height: 60.6px; left: -56.97px; top: -2.54px; }
+</style>
+</head>
+<body>
+<div id="main">
+  <i id="dummy" style="position:absolute;left:-10px;top:-10px;width:1px;height:1px"></i>
+
+  <!-- ============ ACT 1 (S1-S3): the real editor, light ============ -->
+  <div id="act1">
+    <div id="cam1">
+      <img class="st" id="a01b" src="assets/ed/a01b-blank-ai-tall.webp" alt="">
+      <div class="layer" id="typeL"></div>
+      <div id="caret"></div>
+      <div class="hole" id="sendHole"></div><div class="btnov" id="sendBtn"></div>
+      <div class="layer" id="streamL"></div>
+      <img class="st" id="a03" src="assets/ed/a03-structure.webp" alt="">
+      <img class="st" id="a04" src="assets/ed/a04-structure-hover.webp" alt="">
+      <div class="hole" id="insHole"></div><div class="btnov" id="insBtn"></div>
+      <img class="st" id="a05" src="assets/ed/a05-applied-t0.webp" alt="">
+      <img class="st" id="a07" src="assets/ed/a07-saved.webp" alt="">
+      <div class="layer" id="prevClip"><img id="tall" src="assets/ed/preview-tall.webp" alt=""></div>
+      <img class="st" id="b01" src="assets/ed/b01-ofertas.webp" alt="">
+      <img class="st" id="b02" src="assets/ed/b02-price-selected.webp" alt="">
+      <img class="st" id="b031" src="assets/ed/b03-price-1.webp" alt="">
+      <img class="st" id="b0311" src="assets/ed/b03-price-11.webp" alt="">
+      <img class="st" id="b03119" src="assets/ed/b03-price-119.webp" alt="">
+      <img class="st" id="b031190" src="assets/ed/b03-price-1190.webp" alt="">
+      <div id="caret2" style="position:absolute;left:0;top:0;width:1.6px;height:17px;background:#0f172a;border-radius:1px"></div>
+      <img class="st" id="c00" src="assets/ed/c00-banner-aparencia.webp" alt="">
+      <img class="st" id="c01" src="assets/ed/c01-hover-Cartao.webp" alt="">
+      <img class="st" id="c02" src="assets/ed/c02-layout-Cartao.webp" alt="">
+      <img class="st" id="d00" src="assets/ed/d00-celular-hover.webp" alt="">
+      <img class="st" id="d01" src="assets/ed/d01-celular.webp" alt="">
+      <div id="cursor"><div id="cursorPress"><img src="assets/logo/arrow-green.png" alt=""></div></div>
+    </div>
+    <div id="light1"></div>
+  </div>
+  <div id="dim1"></div>
+  <div id="claim"><div class="ln l1" id="cl1">Mais fácil que</div><div class="ln l2" id="cl2">editar no Canva!</div></div>
+
+  <!-- ============ ACT 2 (S4-S5): the client's side, night ============ -->
+  <div id="act2">
+    <img class="plate" id="pl-gramado" src="assets/plate/gramado-cartao.webp" alt="">
+    <img class="plate" id="pl-foz" src="assets/plate/foz.webp" alt="">
+    <img class="plate" id="pl-italia" src="assets/plate/italia.webp" alt="">
+    <img class="plate" id="pl-abrolhos" src="assets/plate/abrolhos.webp" alt="">
+    <div id="vign"></div>
+    <div id="phoneCam">
+      <div class="ed-phone" id="phone">
+        <div class="ed-phone-status">
+          <span class="ed-phone-time">9:41</span>
+          <span class="ed-phone-island"></span>
+          <span class="ed-phone-icons">
+            <svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1" /><rect x="5" y="5.5" width="3" height="6.5" rx="1" /><rect x="10" y="3" width="3" height="9" rx="1" /><rect x="15" y="0" width="3" height="12" rx="1" /></svg>
+            <svg width="16" height="12" viewBox="0 0 16 12"><path d="M8 2.2c2.4 0 4.6.9 6.3 2.5l1.2-1.3C13.5 1.5 10.9.4 8 .4S2.5 1.5.5 3.4l1.2 1.3C3.4 3.1 5.6 2.2 8 2.2Zm0 3.6c1.4 0 2.7.5 3.7 1.4l1.2-1.3C11.6 4.7 9.9 4 8 4s-3.6.7-4.9 1.9l1.2 1.3c1-.9 2.3-1.4 3.7-1.4Zm0 3.6c-.5 0-1 .2-1.4.5L8 11.6l1.4-1.7c-.4-.3-.9-.5-1.4-.5Z" /></svg>
+            <svg width="27" height="13" viewBox="0 0 27 13"><rect x="0.5" y="0.5" width="22" height="12" rx="3.5" fill="none" stroke="currentColor" opacity="0.4" /><rect x="2" y="2" width="19" height="9" rx="2" /><path d="M24.5 4.5v4c.8-.3 1.5-1.1 1.5-2s-.7-1.7-1.5-2Z" opacity="0.45" /></svg>
+          </span>
+        </div>
+        <div class="ed-screen">
+          <img class="pg" id="pg-gramado" src="assets/phone/gramado-cartao.webp" alt="">
+          <img class="pg" id="pg-foz" src="assets/phone/foz.webp" alt="">
+          <img class="pg" id="pg-italia" src="assets/phone/italia.webp" alt="">
+          <img class="pg" id="pg-abrolhos" src="assets/phone/abrolhos.webp" alt="">
+        </div>
+        <span class="ed-phone-home"></span>
+      </div>
+      <div id="notifWrap"><div id="notif">
+        <span class="ico"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg></span>
+        <span><b>Novo contato</b><small>“Quero reservar 2 lugares”</small></span>
+      </div></div>
+    </div>
+    <div id="logoWrap">
+      <img id="logoBase" src="assets/logo/logo-white-noarrow.png" alt="Roteiro Online">
+      <div id="arrowFly"><img src="assets/logo/arrow-white.png" alt=""></div>
+    </div>
+  </div>
+</div>
+
+<script src="./runtime/vendor/gsap.min.js"></script>
+<script src="./runtime/motion.js"></script>
+<script>
+/* SEEK CONTRACT: every frame is a pure function of t. Authored only through M.* calls. */
+const FPS = 30, DUR = 27.0;
+const M = window.__M = Motion.film({ fps: FPS, duration: DUR, width: 1920, height: 1080, clock: 'smooth' });
+const $ = s => document.querySelector(s);
+
+/* camera helper: frame the editor point (cx, cy) at the frame centre with scale s (film px per editor CSS px) */
+const C = (cx, cy, s) => ({ scale: s, x: 960 - s * cx, y: 540 - s * cy });
+const lerpC = (a, b, k) => ({ scale: a.scale + (b.scale - a.scale) * k, x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k });
+
+/* ---------------- typing states (real captures, one per grapheme count) ---------------- */
+const PROMPT = 'Gramado e Canela, 4 dias, saída 10/07. Hotel com café, city tour e Snowland. R$ 1.290 em até 10x.';
+const CARET = [[1091.0,792.0],[1101.5,792.0],[1106.7,792.0],[1114.6,792.0],[1126.8,792.0],[1134.7,792.0],[1143.3,792.0],[1151.7,792.0],[1155.6,792.0],[1163.8,792.0],[1167.7,792.0],[1177.9,792.0],[1185.8,792.0],[1194.1,792.0],[1202.2,792.0],[1205.6,792.0],[1213.5,792.0],[1217.5,792.0],[1221.5,792.0],[1230.5,792.0],[1234.4,792.0],[1243.0,792.0],[1246.4,792.0],[1254.3,792.0],[1261.7,792.0],[1265.7,792.0],[1269.6,792.0],[1277.0,792.0],[1284.9,792.0],[1288.3,792.0],[1296.8,792.0],[1304.7,792.0],[1308.6,792.0],[1314.3,792.0],[1323.2,792.0],[1328.2,792.0],[1337.0,792.0],[1344.7,792.0],[1129.3,810.9],[1133.3,810.9],[1143.7,810.9],[1152.1,810.9],[1156.7,810.9],[1164.7,810.9],[1168.1,810.9],[1172.0,810.9],[1180.0,810.9],[1188.4,810.9],[1200.7,810.9],[1204.6,810.9],[1212.6,810.9],[1220.6,810.9],[1225.8,810.9],[1233.5,810.9],[1237.6,810.9],[1241.5,810.9],[1249.5,810.9],[1252.9,810.9],[1257.5,810.9],[1265.6,810.9],[1269.6,810.9],[1274.1,810.9],[1282.4,810.9],[1290.7,810.9],[1295.9,810.9],[1299.9,810.9],[1308.0,810.9],[1312.0,810.9],[1321.0,810.9],[1329.2,810.9],[1337.6,810.9],[1127.9,829.8],[1131.2,829.8],[1139.1,829.8],[1147.4,829.8],[1156.0,829.8],[1160.0,829.8],[1163.9,829.8],[1172.9,829.8],[1181.9,829.8],[1185.9,829.8],[1191.5,829.8],[1195.6,829.8],[1204.1,829.8],[1212.8,829.8],[1221.6,829.8],[1225.6,829.8],[1233.7,829.8],[1246.0,829.8],[1249.9,829.8],[1257.8,829.8],[1262.4,829.8],[1270.4,829.8],[1274.3,829.8],[1280.0,829.8],[1288.9,829.8],[1296.5,829.8],[1300.5,829.8]];
+// authored prompt cadence, rescaled to ~44 graphemes/s; the film opens mid-word ("Gramad" already typed, the field already alive)
+let ev = M.cadence(PROMPT, { style: 'prompt', seed: 4, cps: 44 });
+const k0 = ev.findIndex(e => e[1] >= 6); const sh = ev[k0][0];
+ev = ev.slice(k0).map(e => [e[0] - sh, e[1]]);
+const TYPE_END = ev[ev.length - 1][0];
+window.__typeEv = ev;
+const typeL = $('#typeL');
+const used = [...new Set(ev.map(e => e[1]))];
+used.forEach(n => { const im = document.createElement('img'); im.id = 't' + n; im.src = 'assets/type/t' + String(n).padStart(3, '0') + '.webp'; typeL.appendChild(im); });
+const S1_CUT = 84;
+ev.forEach((e, i) => M.show('#t' + e[1], e[0], i + 1 < ev.length ? ev[i + 1][0] : S1_CUT));
+M.show('#a01b', 0, S1_CUT);
+// caret (screenshots hide the native one): follows the last glyph, solid while typing, blinks on its own clock after
+// stepped keys: hold the previous position until the frame before each event, then jump in one frame (no zero-length tweens)
+const stepKeys = pts => { const k = []; pts.forEach(([f, v], i) => { if (i && f - 1 > k[k.length - 1][0]) k.push([f - 1, k[k.length - 1][1]]); k.push([f, v]); }); return k; };
+const cx = stepKeys(ev.map(e => [e[0], CARET[Math.min(e[1], CARET.length - 1)][0]]));
+const cy = stepKeys(ev.map(e => [e[0], CARET[Math.min(e[1], CARET.length - 1)][1] + 1]));
+M.kf('#caret', 'x', cx); M.kf('#caret', 'y', cy);
+M.show('#caret', 0, TYPE_END + 9); M.show('#caret', TYPE_END + 17, TYPE_END + 26); M.show('#caret', TYPE_END + 34, S1_CUT);
+M.show('#sendHole', 60, S1_CUT); M.show('#sendBtn', 60, S1_CUT);          // the send overlay only once the field has text (mic -> send)
+
+/* ---------------- S2: the assistant works (real streamed states), then "Inserir no fim" ---------------- */
+const STREAM = [[0, 84], [1, 88], [3, 93], [6, 98], [8, 103], [10, 109], [12, 114], [15, 119], [17, 124], [19, 129], [20, 134], [21, 141]];
+const streamL = $('#streamL');
+STREAM.forEach(([n]) => { const im = document.createElement('img'); im.id = 's' + n; im.src = 'assets/stream/s' + String(n).padStart(3, '0') + '.webp'; streamL.appendChild(im); });
+const A03 = 150, A04 = 166, PRESS2 = 175, HERO = 178;
+STREAM.forEach(([n, f], i) => M.show('#s' + n, f, i + 1 < STREAM.length ? STREAM[i + 1][1] : A03));
+M.show('#a01b', S1_CUT, A03);                                             // the blank page behind the chat ("before")
+M.show('#a03', A03, A04); M.show('#a04', A04, HERO);
+M.show('#insHole', A04, HERO); M.show('#insBtn', A04, HERO);
+M.show('#a05', HERO, 222); M.show('#a07', 222, 312);
+M.show('#prevClip', 232, 312);
+// the page scrolls under the camera: accelerate, then land on the price (the prompt's own number)
+M.kf('#tall', 'y', [[232, 0], [244, 0], [262, -420, 'gentleIn'], [296, -1577, 'softLand']]);
+
+/* ---------------- S3: price 1.290 -> 1.190, then the banner layout in one click ---------------- */
+const S3 = 312;
+M.show('#b01', S3, 330); M.show('#b02', 330, 338);
+M.show('#b031', 338, 342); M.show('#b0311', 342, 346); M.show('#b03119', 346, 351); M.show('#b031190', 351, 390);
+M.kf('#caret2', 'x', stepKeys([[338, 225.5], [342, 232.8], [346, 240.3], [351, 248.6]]));
+M.kf('#caret2', 'y', [[338, 564.5]]);
+M.show('#caret2', 338, 362);
+M.show('#c00', 390, 402); M.show('#c01', 402, 412); M.show('#c02', 412, 516);
+
+/* ---------------- S4 start: "Celular" ---------------- */
+M.show('#d00', 516, 530); M.show('#d01', 530, 572);
+M.hide('#act1', 572);
+
+/* ---------------- the act-1 camera: one transform, hard cuts between framings, a snap for the reveal ---------------- */
+const K1a = C(1212, 806, 3.78), K1b = C(1222, 800, 3.55);
+const K2a = C(1205, 430, 2.6), K2b = C(1200, 492, 2.42), K2c = C(1150, 585, 2.25), K2d = C(1132, 640, 2.3);
+const K3a = C(720, 450, 1.333), K3b = C(586, 352, 1.72);
+const K4a = C(570, 520, 1.68), K4b = C(574, 520, 1.74);
+const K5a = C(300, 458, 3.2), K5b = C(294, 463, 3.3), K5c = C(870, 410, 2.3), K5d = C(866, 412, 2.36);
+const K6a = C(380, 404, 2.75), K6b = C(870, 312, 2.2), K6c = C(870, 312, 2.27);
+const K7a = C(726, 214, 2.6), K7b = C(660, 500, 1.2), K7c = C(660, 500, 1.2);
+M.camera('#cam1', [
+  [0, K1a], [S1_CUT - 1, K1b, 'glide'],
+  [S1_CUT, K2a], [134, K2b, 'cruise'], [158, K2c, 'glide'], [PRESS2, K2d, 'glide'],
+  [HERO, K2d], [HERO + 1, lerpC(K2d, K3a, 0.62), 'cruise'], [HERO + 16, K3a, 'softLand'], [228, K3b, 'glide'],
+  [232, K4a, 'softInOut'], [S3 - 1, K4b, 'cruise'],
+  [S3, K5a], [354, K5b, 'cruise'], [366, K5c, 'whip'], [389, K5d, 'cruise'],
+  [390, K6a], [413, K6a, 'cruise'], [425, K6b, 'whip'], [515, K6c, 'cruise'],
+  [516, K7a], [529, K7a, 'cruise'], [530, K7a], [531, lerpC(K7a, K7b, 0.6), 'cruise'], [546, K7b, 'softLand'], [571, K7c, 'cruise'],
+], { origin: '0px 0px' });
+
+/* ---------------- the cursor: the logo's arrow, travelling up and to the right as it navigates ---------------- */
+M.cursor('#cursor', { ease: 'glide', hideAt: 532, keys: [
+  [44, 1020, 940, 2.6, 8], [52, 1250, 872, 1.7, 4], [62, 1366, 830, 1.12, 1], [72, 1389, 821, 1, 0], [S1_CUT - 1, 1389, 821, 1, 0],
+  [S1_CUT, 1389, 821, 1, 0], [148, 1389, 821, 1, 0], [149, 1060, 860, 1.6, 6], [160, 1100, 700, 1.15, 2], [169, 1112, 666, 1, 0], [HERO - 1, 1112, 666, 1, 0],
+  [HERO, 1112, 666, 1, 0], [280, 1112, 666, 1, 0], [281, 520, 860, 1.6, 6], [292, 640, 560, 1.12, 2], [300, 700, 516, 1, 0], [S3 - 1, 700, 516, 1, 0],
+  [S3, 360, 640, 1.2, 4], [322, 300, 576, 1, 0], [334, 300, 576, 1, 0], [344, 330, 610, 1, 0], [389, 334, 614, 1, 0],
+  [390, 330, 520, 1.15, 4], [400, 460, 422, 1, 0], [430, 466, 424, 1, 0], [431, 466, 424, 1, 0],
+  [516, 640, 330, 1.25, 4], [524, 724, 104, 1, 0], [531, 724, 104, 1, 0],
+] });
+M.hide('#cursor', 431); M.show('#cursor', 516, 532);
+M.hide('#cursor', 148); M.show('#cursor', 149, 431);
+M.press('#cursorPress', '#sendBtn', { at: 78, cursorDepth: .8, targetDepth: .84, lag: 1, frames: 3, release: false });
+M.press('#cursorPress', '#insBtn', { at: PRESS2, cursorDepth: .8, targetDepth: .86, lag: 1, frames: 3, release: true, label: 'Inserir no fim' });
+M.press('#cursorPress', '#dummy', { at: 304, cursorDepth: .82, targetDepth: 1, lag: 0, frames: 2, release: true, label: 'price card' });
+M.press('#cursorPress', '#dummy', { at: 326, cursorDepth: .82, targetDepth: 1, lag: 0, frames: 2, release: true, label: 'price field' });
+M.press('#cursorPress', '#dummy', { at: 408, cursorDepth: .8, targetDepth: 1, lag: 0, frames: 3, release: true, label: 'Cartão' });
+M.press('#cursorPress', '#dummy', { at: 526, cursorDepth: .8, targetDepth: 1, lag: 0, frames: 3, release: false, label: 'Celular' });
+
+/* ---------------- the claim, over the defocused editor (proof first, then the line) ---------------- */
+M.kf('#act1', '--b', [[0, 0], [452, 0], [468, 9, 'glide'], [515, 10, 'cruise'], [516, 0], [546, 0], [568, 26, 'gentleIn']], { fmt: v => v + 'px' });
+M.kf('#dim1', 'opacity', [[0, 0], [452, 0], [468, .5, 'glide'], [515, .54, 'cruise'], [516, 0], [546, 0], [566, 1, 'gentleIn']]);
+M.show('#claim', 455, 516);
+M.words('#cl1', { at: 456, mech: 'rise', dist: 64, gaps: [5, 5], frames: 14 });
+M.words('#cl2', { at: 470, mech: 'rise', dist: 64, gaps: [5, 6], frames: 14 });
+M.kf('#claim', 'scale', [[455, 1], [515, 1.035, 'cruise']]);
+M.mark(516, 'cut', 'claim -> Celular');
+
+/* ---------------- ACT 2: the phone leaves the editor ---------------- */
+const P0 = { scale: 1.2 * 0.854, x: 960 + 1.2 * (483 - 660), y: 540 + 1.2 * (128.3 - 500) };   // the editor's phone, exactly where it sat
+const P1 = { scale: 1.1, x: 960 - 207 * 1.1, y: 548 - 434 * 1.1 };
+const P2 = { scale: 1.13, x: 960 - 207 * 1.13, y: 552 - 434 * 1.13 };
+const P3 = { scale: 1.2, x: 960 - 207 * 1.2, y: 560 - 434 * 1.2 };
+M.show('#act2', 546);
+M.kf('#act2', 'backgroundColor', [[546, 'rgba(7,19,14,0)'], [566, 'rgba(7,19,14,1)', 'gentleIn']]);
+M.camera('#phoneCam', [[546, P0], [574, P1, 'softInOut'], [612, P2, 'cruise'], [622, P3, 'softLand'], [744, { scale: 1.24, x: 960 - 207 * 1.24, y: 566 - 434 * 1.24 }, 'cruise'],
+  [759, { scale: 1.12, x: 960 - 207 * 1.12, y: 1180 }, 'accelExit']], { origin: '0px 0px' });
+M.kf('#phone', 'rotation', [[574, 0], [700, -1.6, 'softInOut']]);
+M.hide('#phoneCam', 759);
+// pages: Gramado, then real pages published by agencies (Foz, Itália, Abrolhos) on the spoken words, then home
+const PG = [['gramado', 546, 564], ['foz', 564, 580], ['italia', 580, 596], ['abrolhos', 596, 612], ['gramado', 612, 760]];
+PG.forEach(([id, a, b]) => { M.show('#pg-' + id, a, b); M.show('#pl-' + id, a, b); });
+M.kf('#pg-gramado', 'y', [[546, 0], [563, -8, 'cruise'], [612, -8], [630, -14, 'cruise'], [652, -380, 'softLand'], [664, -392, 'cruise'], [686, -720, 'softLand'], [744, -746, 'cruise']]);
+M.kf('#pg-foz', 'y', [[564, 0], [580, -22, 'cruise']]);
+M.kf('#pg-italia', 'y', [[580, 0], [596, -22, 'cruise']]);
+M.kf('#pg-abrolhos', 'y', [[596, 0], [612, -22, 'cruise']]);
+M.kf('.plate', 'scale', [[546, 1.18], [760, 1.06, 'cruise']]);
+M.kf('#pl-gramado', 'opacity', [[546, 0], [570, .9, 'softInOut'], [744, .9], [772, .32, 'softInOut']]);
+M.show('#pl-gramado', 612, 810);
+// the client answers: the LP's own floating card
+M.enter('#notif', { at: 700, frames: 14, ease: 'snapSettle', from: { y: -46, scale: 1.18 } });
+M.kf('#notifWrap', 'scale', [[700, 2.55]]);
+M.mark(704, 'pop', 'Quero reservar 2 lugares');
+
+/* ---------------- the lockup: the mark lands, the arrow comes home ---------------- */
+M.enter('#logoBase', { at: 759, frames: 22, ease: 'snapSettle', from: { scale: 1.5, blur: 10 } });
+M.mark(759, 'logo', 'roteiro online');
+// arrow tip target: logo arrow box at (611.5 + 154*.363, 427.5 + 199*.363) + tip offset in the 60.6 px box
+const TX = 611.5 + 154 * 0.363 + 56.97, TY = 427.5 + 199 * 0.363 + 2.54;
+M.cursor('#arrowFly', { ease: 'glide', keys: [[764, 380, 1140, 3.2, 10], [772, 560, 860, 2.1, 6], [781, TX - 18, TY + 34, 1.25, 2], [788, TX, TY, 1, 0]] });
+M.mark(788, 'snap', 'arrow docks in the pin');
+M.kf('#logoWrap', 'scale', [[788, 1], [810, .976, 'cruise']]);
+
+/* ready: fonts + images; ?selftest proves seek-safety */
+window.__ready = Motion.loaded().then(() => { if (/selftest/.test(location.search)) Motion.selfTest(M, { samples: 24 }); });
+</script>
+</body>
+</html>

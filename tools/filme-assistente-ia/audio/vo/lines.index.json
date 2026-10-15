@@ -1,0 +1,65 @@
+[
+ {
+  "i": 1,
+  "text": "Conte a viagem do seu jeito.",
+  "clip": "audio/vo/line01.wav",
+  "dur": 1.48,
+  "lead": 0.03,
+  "start": 0.077,
+  "end": 1.497
+ },
+ {
+  "i": 2,
+  "text": "O Roteiro Online monta a página inteira pra você.",
+  "clip": "audio/vo/line02.wav",
+  "dur": 2.72,
+  "lead": 0.03,
+  "start": 1.793,
+  "end": 4.453
+ },
+ {
+  "i": 3,
+  "text": "Mudou o preço? Clica e digita.",
+  "clip": "audio/vo/line03.wav",
+  "dur": 2.167,
+  "lead": 0.03,
+  "start": 4.791,
+  "end": 6.898
+ },
+ {
+  "i": 4,
+  "text": "Quer outro visual? Um clique.",
+  "clip": "audio/vo/line04.wav",
+  "dur": 1.671,
+  "lead": 0.03,
+  "start": 7.198,
+  "end": 8.809
+ },
+ {
+  "i": 5,
+  "text": "Sem refazer nenhuma arte.",
+  "clip": "audio/vo/line05.wav",
+  "dur": 1.426,
+  "lead": 0.03,
+  "start": 9.067,
+  "end": 10.433
+ },
+ {
+  "i": 6,
+  "text": "Serve pra qualquer viagem, e abre lindo no celular.",
+  "clip": "audio/vo/line06.wav",
+  "dur": 2.852,
+  "lead": 0.03,
+  "start": 10.716,
+  "end": 13.508
+ },
+ {
+  "i": 7,
+  "text": "Seu cliente não compra o que não consegue imaginar.",
+  "clip": "audio/vo/line07.wav",
+  "dur": 2.266,
+  "lead": 0.03,
+  "start": 13.798,
+  "end": 16.004
+ }
+]
