@@ -62,6 +62,11 @@ if engine.dialect.name == "postgresql":
         connection.execute(text(
             "ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS deactivation_estimated BOOLEAN NOT NULL DEFAULT FALSE"
         ))
+        # Valor de renovação dos planos antigos. O preenchimento é feito à mão, uma vez, por
+        # backend/sql/2026-10-15_legacy_renewal_amount.sql; aqui só garante que a coluna exista.
+        connection.execute(text(
+            "ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS legacy_renewal_amount NUMERIC(12, 2)"
+        ))
         connection.execute(text(
             "UPDATE lessons SET video_updated_at = COALESCE(updated_at, created_at, now()) WHERE video_updated_at IS NULL"
         ))

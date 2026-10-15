@@ -3,7 +3,7 @@
     <div class="pv-wrap">
       <header class="pv-head">
         <h1 class="pv-title">{{ t(copy.title) }}</h1>
-        <p class="pv-sub">{{ t(copy.subtitle) }}</p>
+        <p class="pv-sub">{{ legacyMode ? t(copy.legacySubtitle) : t(copy.subtitle) }}</p>
       </header>
 
       <div v-if="trialBlocked" class="pv-alert is-danger">
@@ -33,13 +33,41 @@
         </button>
       </div>
 
-      <!-- Plano antigo (Profissional ou Agência): continua valendo; aqui ele vê o que ganha assinando. -->
-      <div v-if="isLegacyPlan" class="pv-alert is-info">
+      <!-- Plano antigo (Profissional ou Agência) sem valor de renovação: continua como antes do plano único. -->
+      <div v-if="isLegacyPlan && !legacyMode" class="pv-alert is-info">
         <p class="pv-alert-title">{{ t(copy.legacyTitle) }} {{ getPlanLabel(activePlan) }}</p>
         <p>{{ t(copy.legacyText) }}</p>
       </div>
 
-      <section id="planos" class="pv-offer">
+      <!-- Cliente dos planos antigos: só o plano dele, o valor que já paga e a validade. Sem o plano novo. -->
+      <section v-if="legacyMode" id="planos" class="pv-legacy">
+        <div class="pv-price-box">
+          <span class="pv-current" :class="{ 'is-off': isSubscriptionInactive }">
+            <span class="pv-dot" aria-hidden="true"></span>{{ isSubscriptionInactive ? t(copy.legacyInactive) : t(copy.yourSubscription) }}
+          </span>
+          <p class="pv-legacy-plan">{{ t(copy.planPrefix) }} {{ getPlanLabel(billingInfo?.plan) }}</p>
+          <div v-if="billingInfo?.legacy_renewal_amount" class="pv-price">
+            <span class="cur">R$</span><span class="val">{{ priceNumber(billingInfo.legacy_renewal_amount) }}</span>
+            <span class="per">{{ currentCycle === "annual" ? t(copy.perYear) : t(copy.perMonth) }}</span>
+          </div>
+          <p class="pv-eq">{{ cycleLabel(currentCycle) }}<template v-if="legacyValidityText"> · {{ legacyValidityText }}</template></p>
+
+          <template v-if="legacyMode === 'panel'">
+            <button type="button" class="pv-btn" :disabled="loadingKey === 'legacy'" @click="goToLegacyRenewal">
+              <span>{{ loadingKey === "legacy" ? t(copy.redirecting) : legacyCtaLabel }}</span>
+              <ArrowRight v-if="loadingKey !== 'legacy'" :size="18" aria-hidden="true" />
+            </button>
+            <p class="pv-hint">{{ isSubscriptionInactive ? t(copy.legacySameValueInactive) : t(copy.legacySameValueActive) }}</p>
+          </template>
+          <p v-else-if="legacyMode === 'external'" class="pv-eq">{{ t(copy.legacyExternal) }}</p>
+          <p v-else class="pv-eq">{{ t(copy.legacySupport) }}</p>
+
+          <p v-if="errorMessage" class="pv-msg is-error">{{ errorMessage }}</p>
+          <p v-if="successMessage" class="pv-msg is-success">{{ successMessage }}</p>
+        </div>
+      </section>
+
+      <section v-else id="planos" class="pv-offer">
         <div class="pv-incl">
           <p class="pv-incl-title">{{ t(copy.includedTitle) }}</p>
           <ul>
@@ -111,7 +139,7 @@
 import { ArrowRight, Check, ShieldCheck } from "lucide-vue-next";
 import { computed, onMounted, ref } from "vue";
 import api from "../../services/api";
-import { getPublicSalesPlan, type SalesPlan } from "../../services/checkout";
+import { LEGACY_RENEWAL_OFFER_KEY, getPublicSalesPlan, type SalesPlan } from "../../services/checkout";
 import { useAuthStore } from "../../store/useAuthStore";
 import { getPlanLabel } from "../../utils/planLabels";
 import { formatBRL, salesPlanMath } from "../../utils/salesPlan";
@@ -121,7 +149,8 @@ import type { LocalizedString, SupportedLanguage } from "../../utils/i18n";
 /**
  * Assinatura do Roteiro Online dentro do painel: plano único (interno: Escala), pago por mês
  * ou por ano. Os valores e as ofertas vêm de Admin Master › Ofertas e checkout (as mesmas da
- * página de vendas). Clientes dos planos antigos continuam neles até assinarem.
+ * página de vendas). Clientes dos planos antigos (Profissional, Agência e Escala de antes do plano
+ * único) veem só o plano deles e renovam pelo mesmo valor (billing/me: legacy_renewal_*), sem o plano novo.
  */
 const currentLanguage = getCurrentLanguage();
 const t = createLocalizer(currentLanguage);
@@ -175,6 +204,25 @@ const copy = {
   redirecting: L("Redirecionando...", "Redirigiendo..."),
   unavailable: L("A assinatura não está disponível no momento. Fale com o suporte.", "La suscripción no está disponible por el momento. Habla con soporte."),
   guarantee: L("7 dias de garantia: não gostou, devolvemos 100%.", "7 días de garantía: si no te gusta, devolvemos el 100%."),
+  legacySubtitle: L("Seu plano, o valor da sua assinatura e a validade.", "Tu plan, el valor de tu suscripción y la vigencia."),
+  legacyInactive: L("Assinatura inativa", "Suscripción inactiva"),
+  planPrefix: L("Plano", "Plan"),
+  validUntil: L("válida até", "vigente hasta"),
+  nextRenewal: L("próxima renovação em", "próxima renovación el"),
+  expiredOn: L("venceu em", "venció el"),
+  legacySameValueActive: L(
+    "O valor é o mesmo que você já paga. Renovando agora, a nova validade conta a partir de hoje.",
+    "El valor es el mismo que ya pagas. Si renuevas ahora, la nueva vigencia cuenta desde hoy."
+  ),
+  legacySameValueInactive: L("O valor é o mesmo que você pagava.", "El valor es el mismo que pagabas."),
+  legacyExternal: L(
+    "A renovação da sua assinatura é gerida pelo local onde ela foi contratada.",
+    "La renovación de tu suscripción se gestiona en el lugar donde fue contratada."
+  ),
+  legacySupport: L(
+    "Para renovar sua assinatura, fale com o suporte.",
+    "Para renovar tu suscripción, habla con soporte."
+  ),
   checkoutError: L("Não foi possível iniciar o checkout. Tente novamente.", "No fue posible iniciar el checkout. Intenta nuevamente.")
 };
 
@@ -200,6 +248,11 @@ interface BillingInfo {
   billing_cycle?: string;
   scheduled_downgrade_plan?: string | null;
   scheduled_downgrade_at?: string | null;
+  // Plano antigo (antes do plano único): valor e forma de renovar decididos no servidor.
+  legacy?: boolean;
+  legacy_renewal_amount?: string | null;
+  legacy_renewal_mode?: "panel" | "external" | "support" | null;
+  legacy_managed_externally?: boolean;
 }
 
 const authStore = useAuthStore();
@@ -273,6 +326,33 @@ const checkoutBaseOrigin = computed(() => {
   if (typeof window === "undefined") return "";
   return window.location.origin;
 });
+
+// Plano antigo: renova no plano e no valor que o cliente já paga (o servidor monta a cobrança).
+const legacyMode = computed(() => (billingInfo.value?.legacy ? billingInfo.value.legacy_renewal_mode || "support" : null));
+const legacyCtaLabel = computed(() => (isSubscriptionInactive.value ? t(copy.reactivate) : t(copy.renew)));
+const legacyValidityText = computed(() => {
+  const raw = billingInfo.value?.valid_until;
+  if (!raw) return "";
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return "";
+  const formatted = date.toLocaleDateString(dateLocale);
+  if (date.getTime() < Date.now()) return `${t(copy.expiredOn)} ${formatted}`;
+  const status = String(billingInfo.value?.status || "").trim().toLowerCase();
+  if (status === "active" && legacyMode.value === "panel") return `${t(copy.nextRenewal)} ${formatted}`;
+  return `${t(copy.validUntil)} ${formatted}`;
+});
+
+const goToLegacyRenewal = () => {
+  loadingKey.value = "legacy";
+  errorMessage.value = null;
+  try {
+    window.location.href = `${checkoutBaseOrigin.value}/checkout/${LEGACY_RENEWAL_OFFER_KEY}?upgrade=1`;
+  } catch (err) {
+    console.error(err);
+    errorMessage.value = t(copy.checkoutError);
+    loadingKey.value = null;
+  }
+};
 
 const goToCheckout = () => {
   const offer = currentOffer.value;
@@ -372,6 +452,19 @@ onMounted(async () => {
 .pv-alert.is-info {
   background: var(--status-info);
   color: var(--status-info-foreground);
+}
+.pv-legacy {
+  max-width: 460px;
+  margin: 0 auto;
+}
+.pv-legacy-plan {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+}
+.pv-current.is-off {
+  background: var(--status-warning);
+  color: var(--status-warning-foreground);
 }
 .pv-offer {
   display: grid;

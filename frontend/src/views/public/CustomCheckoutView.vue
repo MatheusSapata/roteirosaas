@@ -60,7 +60,7 @@
 
           <template v-else-if="step === 'details'">
             <div class="checkout-copy">
-              <p class="checkout-eyebrow">{{ isUpgradeFlow ? "Vamos fazer seu upgrade!" : "Vamos começar!" }}</p>
+              <p class="checkout-eyebrow">{{ isLegacyRenewal ? "Vamos renovar sua assinatura!" : isUpgradeFlow ? "Vamos fazer seu upgrade!" : "Vamos começar!" }}</p>
               <h1 class="checkout-title">Informe seus dados para continuar</h1>
               <p class="checkout-subtitle">Todos os dados são necessários para a emissão da sua compra.</p>
             </div>
@@ -103,7 +103,8 @@
                   </div>
                 </label>
               </div>
-              <label class="checkout-field">
+              <!-- Renovação do plano antigo: o valor é o que o cliente já pagava, sem cupom. -->
+              <label v-if="!isLegacyRenewal" class="checkout-field">
                 <span>Você possui cupom de desconto?</span>
                 <div class="checkout-coupon-wrap">
                   <input v-model="form.coupon_code" placeholder="Digite seu cupom" />
@@ -271,7 +272,7 @@
             <div class="checkout-success-action">
               <button class="checkout-primary checkout-success-button" :disabled="true" type="button">
                 <span v-if="onboardingRedirecting" class="checkout-inline-spinner" aria-hidden="true"></span>
-                <span>{{ isUpgradeFlow ? "Realizando seu upgrade..." : "Iniciando seu cadastro..." }}</span>
+                <span>{{ isLegacyRenewal ? "Renovando sua assinatura..." : isUpgradeFlow ? "Realizando seu upgrade..." : "Iniciando seu cadastro..." }}</span>
               </button>
             </div>
           </template>
@@ -334,7 +335,7 @@
           <div v-if="showAccessTransition" class="checkout-access-transition">
             <div class="checkout-access-spinner"></div>
             <p class="checkout-access-line checkout-access-line-primary">
-              {{ isUpgradeFlow ? "Estamos realizando seu upgrade..." : "Estamos finalizando seu cadastro..." }}
+              {{ isLegacyRenewal ? "Estamos renovando sua assinatura..." : isUpgradeFlow ? "Estamos realizando seu upgrade..." : "Estamos finalizando seu cadastro..." }}
             </p>
             <p class="checkout-access-line checkout-access-line-secondary">
               Sua nova maneira de apresentar viagens começa agora.
@@ -450,11 +451,14 @@ import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } 
 import { useRoute, useRouter } from "vue-router";
 import api from "../../services/api";
 import {
+  LEGACY_RENEWAL_OFFER_KEY,
   createCheckoutSession,
+  createLegacyRenewalCheckoutSession,
   createUpgradeCheckoutSession,
   finishCheckoutPassword,
   getCheckoutConfig,
   getCheckoutSession,
+  getLegacyRenewalCheckoutConfig,
   previewCheckoutCoupon,
   trackCheckoutEvent,
   refreshCheckoutSession,
@@ -479,7 +483,11 @@ const router = useRouter();
 const auth = useAuthStore();
 
 const offerKey = computed(() => String(route.params.offerKey || route.query.offer || "").trim().toLowerCase());
-const isUpgradeFlow = computed(() => String(route.query.upgrade || "") === "1" || Boolean(session.value?.is_upgrade));
+// Renovação do plano antigo (/checkout/renovacao-assinatura): plano, ciclo e valor vêm do servidor.
+const isLegacyRenewal = computed(() => offerKey.value === LEGACY_RENEWAL_OFFER_KEY || Boolean(session.value?.is_legacy_renewal));
+const isUpgradeFlow = computed(
+  () => String(route.query.upgrade || "") === "1" || Boolean(session.value?.is_upgrade) || isLegacyRenewal.value
+);
 const config = ref<CheckoutPublicConfig | null>(null);
 const session = ref<CheckoutSession | null>(null);
 const couponPreview = ref<CheckoutCouponPreview | null>(null);
@@ -838,7 +846,7 @@ const loadConfig = async () => {
   loading.value = true;
   errorMessage.value = "";
   try {
-    config.value = await getCheckoutConfig(offerKey.value);
+    config.value = isLegacyRenewal.value ? await getLegacyRenewalCheckoutConfig() : await getCheckoutConfig(offerKey.value);
     initializeMetaPixels();
   } catch (error) {
     console.error(error);
@@ -1040,7 +1048,7 @@ const submitDetails = async () => {
 };
 
 const applyCoupon = async () => {
-  if (!config.value) return;
+  if (!config.value || isLegacyRenewal.value) return;
   const coupon = form.coupon_code.trim();
   if (!coupon) return;
   submitting.value = true;
@@ -1475,7 +1483,9 @@ onMounted(async () => {
 
   if (isUpgradeFlow.value && config.value) {
     try {
-      session.value = await createUpgradeCheckoutSession(config.value.offer.key, form.coupon_code || null);
+      session.value = isLegacyRenewal.value
+        ? await createLegacyRenewalCheckoutSession()
+        : await createUpgradeCheckoutSession(config.value.offer.key, form.coupon_code || null);
       fillFormFromSession(session.value);
       lockUpgradePrefilledFields(session.value);
       router.replace({ query: { ...route.query, token: session.value.token, upgrade: "1" } }).catch(() => {});

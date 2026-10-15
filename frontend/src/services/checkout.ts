@@ -139,6 +139,8 @@ export interface CheckoutSession {
   user_exists: boolean;
   requires_password_setup: boolean;
   is_upgrade?: boolean;
+  /** Renovação do plano antigo pelo valor que o cliente pagava (sem cupom e sem promoção). */
+  is_legacy_renewal?: boolean;
   locked_profile_fields?: Record<string, boolean> | null;
   /** 1ª cobrança promocional desta compra (mensal). */
   first_payment_amount?: string | null;
@@ -283,6 +285,20 @@ export const createUpgradeCheckoutSession = async (offerKey: string, couponCode?
     offer_key: offerKey,
     coupon_code: couponCode || null,
   });
+  return response.data;
+};
+
+/** Chave usada na rota do checkout para a renovação do plano antigo (não é uma oferta do Admin Master). */
+export const LEGACY_RENEWAL_OFFER_KEY = "renovacao-assinatura";
+
+/** Aparência do checkout e resumo da renovação do plano antigo do cliente logado (valor vem do servidor). */
+export const getLegacyRenewalCheckoutConfig = async () => {
+  const response = await api.get<CheckoutPublicConfig>("/checkout/public/legacy-renewal/config");
+  return response.data;
+};
+
+export const createLegacyRenewalCheckoutSession = async () => {
+  const response = await api.post<CheckoutSession>("/checkout/public/session/legacy-renewal");
   return response.data;
 };
 

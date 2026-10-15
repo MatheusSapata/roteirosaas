@@ -1126,7 +1126,7 @@
             {{ viewCopy.settings.planGate.title }}
           </h2>
           <p class="mt-2 text-sm text-muted-foreground">
-            {{ viewCopy.settings.planGate.description }}
+            {{ isLegacyLimitedPlan(authStore.user?.plan) ? viewCopy.settings.planGate.descriptionLegacy : viewCopy.settings.planGate.description }}
           </p>
           <button
             type="button"
@@ -1386,6 +1386,7 @@ import { ensureWhatsAppConversation, sendWhatsAppText } from "../../services/wha
 
 import { useThemeStore } from "../../store/useThemeStore";
 import { useAuthStore } from "../../store/useAuthStore";
+import { isLegacyLimitedPlan } from "../../utils/planLabels";
 
 
 
@@ -1587,6 +1588,11 @@ const viewCopySource = {
       description: {
         pt: "A captação de leads vem na assinatura do Roteiro Online. Assine para desbloquear essa funcionalidade.",
         es: "La captación de leads viene en la suscripción de Roteiro Online. Suscríbete para desbloquear esta funcionalidad."
+      },
+      // Planos antigos (Profissional e Agência): sem oferecer o plano novo.
+      descriptionLegacy: {
+        pt: "A captação de leads não está incluída no seu plano atual.",
+        es: "La captación de leads no está incluida en tu plan actual."
       },
       cta: { pt: "Ver assinatura", es: "Ver suscripción" }
     }
