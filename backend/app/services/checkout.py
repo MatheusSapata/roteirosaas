@@ -1156,6 +1156,7 @@ def create_checkout_session(
     coupon_code: str | None,
     metadata: dict[str, Any] | None,
     allow_existing_user: bool = False,
+    plan_key: str | None = None,
 ) -> CheckoutSession:
     settings_record = get_checkout_settings(db)
     coupon = resolve_coupon(settings_record, coupon_code, offer.key)
@@ -1198,7 +1199,8 @@ def create_checkout_session(
         token=token,
         offer_key=offer.key,
         product_name=offer.title,
-        plan_key=_normalize_plan_key(offer.plan_key),
+        # A renovação dos planos antigos mantém o plano como está na assinatura (ex.: "essencial").
+        plan_key=plan_key or _normalize_plan_key(offer.plan_key),
         billing_cycle=offer.billing_cycle,
         amount=final_amount,
         status="details_completed",
@@ -1224,6 +1226,8 @@ def create_upgrade_checkout_session(
     offer: CheckoutOfferOut,
     user: User,
     coupon_code: str | None = None,
+    plan_key: str | None = None,
+    extra_metadata: dict[str, Any] | None = None,
 ) -> CheckoutSession:
     document = user.cnpj or user.cpf or ""
     phone = user.whatsapp or ""
@@ -1249,6 +1253,7 @@ def create_upgrade_checkout_session(
             "customer_zipcode": bool((zipcode or "").strip()),
         },
     }
+    metadata.update(extra_metadata or {})
     return create_checkout_session(
         db,
         offer=offer,
@@ -1260,6 +1265,7 @@ def create_upgrade_checkout_session(
         coupon_code=coupon_code,
         metadata=metadata,
         allow_existing_user=True,
+        plan_key=plan_key,
     )
 
 
@@ -1739,6 +1745,7 @@ def serialize_checkout_session(db: Session, session: CheckoutSession) -> dict[st
         "user_exists": user_exists,
         "requires_password_setup": False if _is_upgrade_session(session) else requires_password_setup,
         "is_upgrade": _is_upgrade_session(session),
+        "is_legacy_renewal": bool(metadata.get("legacy_renewal")),
         "locked_profile_fields": metadata.get("locked_profile_fields"),
         "first_payment_amount": session_first_payment_amount(session),
         "installment_options": [option.as_dict() for option in session_installment_options(session)],
@@ -2040,6 +2047,21 @@ def _apply_pending_subscription_value(
     session.metadata_json = metadata
     return True
 
+def _detach_cakto_after_legacy_renewal(session: CheckoutSession, subscription: Subscription) -> None:
+    """Renovação de um plano antigo da Cakto, agora cobrada no Asaas: os códigos da Cakto saem da
+    assinatura (avisos atrasados da Cakto não mexem mais nela) e ficam guardados na compra."""
+    metadata = dict(session.metadata_json or {})
+    metadata["replaced_cakto"] = {
+        "subscription_code": subscription.cakto_subscription_code,
+        "order_id": subscription.cakto_order_id,
+        "offer_id": subscription.cakto_offer_id,
+        "status": subscription.status,
+    }
+    session.metadata_json = metadata
+    subscription.cakto_subscription_code = None
+    subscription.cakto_order_id = None
+
+
 def _upsert_paid_user_and_subscription(db: Session, session: CheckoutSession) -> User:
     user = session.user or _find_existing_user(db, session.customer_email, session.customer_document)
     previous_plan = str(user.plan or "").strip().lower() if user else ""
@@ -2079,6 +2101,8 @@ def _upsert_paid_user_and_subscription(db: Session, session: CheckoutSession) ->
         user.subscription_id = subscription.id
 
     previous_provider = (subscription.provider or "").strip().lower()
+    if previous_provider == "cakto" and (session.metadata_json or {}).get("legacy_renewal"):
+        _detach_cakto_after_legacy_renewal(session, subscription)
     subscription.provider = "asaas"
     subscription.plan = session.plan_key
     subscription.status = "active"

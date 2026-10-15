@@ -27,6 +27,10 @@ from app.schemas.checkout import (
     CheckoutTrackingDocumentDetailOut,
     CheckoutTrackingItemOut,
 )
+from app.services.legacy_renewal import (
+    create_legacy_renewal_checkout_session,
+    legacy_renewal_offer_for_user,
+)
 from app.services.checkout import (
     coerce_checkout_http_error,
     create_checkout_session,
@@ -178,6 +182,36 @@ def create_public_upgrade_checkout_session(
         user=current_user,
         coupon_code=payload.coupon_code,
     )
+    return CheckoutSessionOut.model_validate(serialize_checkout_session(db, session))
+
+
+@router.get("/public/legacy-renewal/config", response_model=CheckoutConfigResponse)
+def get_legacy_renewal_checkout_config(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> CheckoutConfigResponse:
+    """Aparência do checkout e resumo da renovação do plano antigo do próprio cliente."""
+    offer = legacy_renewal_offer_for_user(current_user)
+    settings = get_checkout_settings(db)
+    checkout = resolve_offer_checkout(settings, offer)
+    return CheckoutConfigResponse(
+        theme_mode=checkout.theme_mode,
+        layout=checkout.layout,
+        desktop_image_url=checkout.desktop_image_url,
+        mobile_banner_url=checkout.mobile_banner_url,
+        offer=offer,
+        pixels=[],
+    )
+
+
+@router.post("/public/session/legacy-renewal", response_model=CheckoutSessionOut, status_code=status.HTTP_201_CREATED)
+def create_public_legacy_renewal_checkout_session(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> CheckoutSessionOut:
+    """Renovação do plano antigo: plano, ciclo e valor vêm da assinatura no banco; o cliente não
+    envia valor, oferta nem cupom."""
+    session = create_legacy_renewal_checkout_session(db, current_user)
     return CheckoutSessionOut.model_validate(serialize_checkout_session(db, session))
 
 
