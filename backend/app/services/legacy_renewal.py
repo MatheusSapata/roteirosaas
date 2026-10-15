@@ -1,9 +1,13 @@
 """Renovação dos planos antigos (Profissional, Agência e Escala) pelo mesmo valor que o cliente pagava.
 
 Quem já assinava antes do plano único (vendido desde 14/10/2026) renova no plano e no valor que
-tinha, sem ver o plano novo. O valor de cada cliente fica em subscriptions.legacy_renewal_amount,
-preenchido uma vez pelo SQL de backend/sql/2026-10-15_legacy_renewal_amount.sql (a regra está lá).
+tinha. O valor de cada cliente fica em subscriptions.legacy_renewal_amount, preenchido uma vez pelo
+SQL de backend/sql/2026-10-15_legacy_renewal_amount.sql (a regra está lá).
 O cliente nunca envia valor: a sessão do checkout é montada aqui, a partir do banco.
+
+Profissional e Agência que renovam pela tela também podem fazer upgrade para o plano único (oferta
+mensal ou anual do Admin Master), no valor cheio e sem a promoção da 1ª mensalidade. Depois do
+upgrade pago o cliente deixa de ser legado: o checkout apaga legacy_renewal_amount.
 """
 from __future__ import annotations
 
@@ -28,6 +32,8 @@ LEGACY_PLANS = frozenset({"professional", "essencial", "agency", "growth", "scal
 PANEL_RENEWAL_PROVIDERS = frozenset({"asaas", "cakto"})
 # Oferta "virtual" da renovação: não existe no Admin Master, então não aceita cupom nem promoção.
 LEGACY_RENEWAL_OFFER_KEY = "renovacao-assinatura"
+# Planos antigos que podem fazer upgrade para o plano único (o Escala antigo só renova).
+LEGACY_UPGRADE_PLANS = frozenset({"professional", "essencial", "agency", "growth"})
 
 PLAN_NAMES = {
     "professional": "Profissional",
@@ -171,3 +177,55 @@ def create_legacy_renewal_checkout_session(db: Session, user: User) -> CheckoutS
 
 def is_legacy_renewal_session(session: CheckoutSession) -> bool:
     return bool((session.metadata_json or {}).get("legacy_renewal"))
+
+
+# ---------------------------------------------------------------- upgrade para o plano único
+
+
+def legacy_upgrade_available(subscription: Subscription | None) -> bool:
+    """Profissional ou Agência dos planos antigos que renova pela tela pode fazer upgrade para o
+    plano único. Escala antigo, cobrança de fora (external) e sem valor (support) não."""
+    if subscription is None:
+        return False
+    info = legacy_renewal_info(subscription)
+    plan = str(subscription.plan or "").strip().lower()
+    return info.legacy and info.mode == "panel" and info.amount is not None and plan in LEGACY_UPGRADE_PLANS
+
+
+def require_legacy_upgrade(user: User) -> Subscription:
+    subscription = user.subscription
+    if not legacy_renewal_info(subscription).legacy:
+        raise HTTPException(status_code=403, detail="Sua assinatura não tem upgrade pelo plano antigo.")
+    if not legacy_upgrade_available(subscription) or subscription is None:
+        raise HTTPException(status_code=400, detail="O upgrade não está disponível para a sua assinatura.")
+    return subscription
+
+
+def create_legacy_upgrade_checkout_session(db: Session, user: User, billing_cycle: str) -> CheckoutSession:
+    """Upgrade de Profissional ou Agência antigo para o plano único: a oferta é a ativa do Admin
+    Master para o ciclo escolhido (mensal ou anual), no valor cheio, sem cupom e sem a promoção da
+    1ª mensalidade. Segue o fluxo de upgrade (contrato novo no Asaas, o anterior é encerrado depois
+    do pagamento e a nova validade conta a partir do pagamento)."""
+    from app.services.checkout import create_upgrade_checkout_session, get_public_sales_plan, resolve_offer
+
+    subscription = require_legacy_upgrade(user)
+    cycle = str(billing_cycle or "").strip().lower()
+    if cycle not in {"monthly", "annual"}:
+        raise HTTPException(status_code=400, detail="Escolha o pagamento mensal ou anual.")
+    chosen = get_public_sales_plan(db).get(cycle)
+    if not chosen:
+        raise HTTPException(status_code=404, detail="O plano não está disponível no momento. Fale com o suporte.")
+    offer = resolve_offer(db, chosen["key"])
+    return create_upgrade_checkout_session(
+        db,
+        offer=offer,
+        user=user,
+        coupon_code=None,
+        extra_metadata={
+            "legacy_upgrade": True,
+            "first_subscription": False,
+            "legacy_previous_plan": str(subscription.plan or "").strip().lower(),
+            "legacy_previous_provider": str(subscription.provider or "").strip().lower(),
+            "legacy_previous_amount": str(legacy_renewal_info(subscription).amount),
+        },
+    )

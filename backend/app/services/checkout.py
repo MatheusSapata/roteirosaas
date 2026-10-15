@@ -33,6 +33,7 @@ from app.services import auth as auth_service
 from app.services.asaas import AsaasAPIError, AsaasClient, build_default_split_payload
 from app.services.card_installments import InstallmentOption, installment_options, option_for
 from app.services.company_status import mark_subscription_overdue
+from app.services.legacy_renewal import is_legacy_renewal_session, legacy_renewal_info
 from app.services.ntfy import SubscriptionPushScenario, publish_subscription_notification
 from app.services.trial import end_trial
 from app.services.trial import republish_all_user_pages
@@ -429,6 +430,7 @@ def _apply_upgrade_after_payment(db: Session, session: CheckoutSession) -> tuple
         if session.billing_cycle == "annual"
         else _parse_decimal(session.amount)
     )
+    _leave_legacy_plan_after_purchase(session, subscription)
     end_trial(user, db, keep_plan=session.plan_key)
     if not _is_comeco_like_plan(session.plan_key):
         republish_all_user_pages(user, db)
@@ -1238,9 +1240,12 @@ def create_upgrade_checkout_session(
         "target_user_id": user.id,
         "current_plan": user.plan,
         # Assina pela primeira vez (teste grátis ou conta sem plano pago): vale a promoção da 1ª mensalidade.
+        # Cliente dos planos antigos nunca é primeira assinatura, mesmo inativo ou vindo da Cakto: o
+        # upgrade dele é no valor cheio.
         "first_subscription": subscription is None
         or (
-            _parse_decimal(subscription.mrr_amount or 0) <= 0
+            not legacy_renewal_info(subscription).legacy
+            and _parse_decimal(subscription.mrr_amount or 0) <= 0
             and not subscription.asaas_subscription_id
             and not subscription.cakto_subscription_code
             and str(subscription.status or "").strip().lower() not in {"active", "past_due", "cancel_at_period_end"}
@@ -1746,6 +1751,7 @@ def serialize_checkout_session(db: Session, session: CheckoutSession) -> dict[st
         "requires_password_setup": False if _is_upgrade_session(session) else requires_password_setup,
         "is_upgrade": _is_upgrade_session(session),
         "is_legacy_renewal": bool(metadata.get("legacy_renewal")),
+        "is_legacy_upgrade": bool(metadata.get("legacy_upgrade")),
         "locked_profile_fields": metadata.get("locked_profile_fields"),
         "first_payment_amount": session_first_payment_amount(session),
         "installment_options": [option.as_dict() for option in session_installment_options(session)],
@@ -2047,9 +2053,20 @@ def _apply_pending_subscription_value(
     session.metadata_json = metadata
     return True
 
+
+def _leave_legacy_plan_after_purchase(session: CheckoutSession, subscription: Subscription) -> None:
+    """Compra paga que não é a renovação do plano antigo (ex.: upgrade para o plano único): o
+    cliente deixa de ser dos planos antigos. Sem isso, um plano Escala novo com o valor antigo
+    gravado seria tratado como Escala antigo e renovaria pelo valor de antes. Só vale na conclusão
+    da compra; as renovações automáticas do mesmo contrato não passam por aqui."""
+    if is_legacy_renewal_session(session):
+        return
+    subscription.legacy_renewal_amount = None
+
+
 def _detach_cakto_after_legacy_renewal(session: CheckoutSession, subscription: Subscription) -> None:
-    """Renovação de um plano antigo da Cakto, agora cobrada no Asaas: os códigos da Cakto saem da
-    assinatura (avisos atrasados da Cakto não mexem mais nela) e ficam guardados na compra."""
+    """Plano antigo da Cakto renovado ou com upgrade, agora cobrado no Asaas: os códigos da Cakto
+    saem da assinatura (avisos atrasados da Cakto não mexem mais nela) e ficam guardados na compra."""
     metadata = dict(session.metadata_json or {})
     metadata["replaced_cakto"] = {
         "subscription_code": subscription.cakto_subscription_code,
@@ -2101,7 +2118,10 @@ def _upsert_paid_user_and_subscription(db: Session, session: CheckoutSession) ->
         user.subscription_id = subscription.id
 
     previous_provider = (subscription.provider or "").strip().lower()
-    if previous_provider == "cakto" and (session.metadata_json or {}).get("legacy_renewal"):
+    # Cakto antiga já encerrada (renova pela tela): renovando ou fazendo upgrade, passa para o Asaas.
+    if previous_provider == "cakto" and (
+        is_legacy_renewal_session(session) or legacy_renewal_info(subscription).mode == "panel"
+    ):
         _detach_cakto_after_legacy_renewal(session, subscription)
     subscription.provider = "asaas"
     subscription.plan = session.plan_key
@@ -2127,6 +2147,7 @@ def _upsert_paid_user_and_subscription(db: Session, session: CheckoutSession) ->
         if session.billing_cycle == "annual"
         else _parse_decimal(session.amount)
     )
+    _leave_legacy_plan_after_purchase(session, subscription)
 
     session.user_id = user.id
     session.updated_at = _utcnow()

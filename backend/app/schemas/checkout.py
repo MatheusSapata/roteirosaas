@@ -324,6 +324,8 @@ class CheckoutSessionOut(BaseModel):
     is_upgrade: bool = False
     # Renovação de plano antigo pelo valor que o cliente pagava (sem cupom e sem promoção).
     is_legacy_renewal: bool = False
+    # Upgrade de Profissional ou Agência antigo para o plano único (valor cheio, sem cupom e sem promoção).
+    is_legacy_upgrade: bool = False
     locked_profile_fields: dict[str, bool] | None = None
     # Valor da 1ª cobrança quando a promoção da 1ª mensalidade vale para esta compra.
     first_payment_amount: Decimal | None = None
