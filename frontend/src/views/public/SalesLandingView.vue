@@ -112,8 +112,7 @@
     <section class="lp-sec is-mist">
       <div class="lp-wrap">
         <h2 class="lp-h2">
-          É sério... mandando <span class="is-red lp-nowrap">textão no WhatsApp,</span><br />
-          você já viveu isso:
+          Mandando <span class="is-red lp-nowrap">textão no WhatsApp:</span>
         </h2>
         <div class="lp-pains">
           <div v-for="(pain, index) in PAINS" :key="pain.title" class="lp-pain">
