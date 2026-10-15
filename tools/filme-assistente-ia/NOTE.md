@@ -1,4 +1,4 @@
-# NOTE: "Conte a viagem" (Roteiro Online), 27,0 s, 1920x1080, 30 fps, com som (versão v1)
+# NOTE: "Conte a viagem" (Roteiro Online), 27,0 s, 1920x1080, 30 fps, com som (versão final v2)
 
 ## A ideia, em uma linha
 Um documentário de interface de uma tarefa real: uma frase comum digitada no Assistente IA vira a página completa de Gramado e Canela, o preço muda digitando, o visual muda com um clique, a página abre no celular e o cliente chama. O ponteiro do filme é a **seta de navegação do próprio logo** (recortada do arquivo oficial) e, no fim, ela volta para dentro do pin.
@@ -39,7 +39,7 @@ Não há obrigação de crédito; deixo a lista acima por boa prática.
 - Trilha e efeitos: a chave da ElevenLabs não tem permissão de música nem de efeitos (`music_generation`, `sound_generation`), então ambos foram **sintetizados em código** (`ferramentas/synth_music.py`, `ferramentas/synth_sfx.py`): violão dedilhado em levada de bossa (síntese aditiva), pad, shaker, baixo e kick suaves, a 100 BPM, com a levada entrando no quadro em que a página aparece (6,1 s), mais brilho quando o celular sai do editor (18,1 s) e o acorde final quando o logo pousa (25,3 s); respiros de 8 a 10 dB antes desses três momentos. Efeitos: teclado (um tick por rajada de digitação), clique, whoosh, notificação, pouso do logo.
 - Também entrego `audio/voz-e-efeitos.wav` (sem trilha) para trocar a música por uma licenciada, se preferirem.
 
-## Gates (números dos scripts, sobre `final-v1.mp4`)
+## Gates (números dos scripts; iguais em `final-v1.mp4` e `final.mp4`, a v2)
 - **G0 render existe:** PASS. 27,00 s, 810 quadros, 1920x1080, h264, áudio AAC presente (`look.py --expect 27 --expect-audio`).
 - **G1 prova legível:** por olho no sheet. Campo do assistente com texto a 0,05 H; card de preço a 0,56 W; banner a 0,61 W; notificação ampliada para ~0,04 H.
 - **G2 sem quadro vazio:** PASS. Nenhum trecho com mais de 3 quadros chapados.
@@ -69,7 +69,7 @@ Não há obrigação de crédito; deixo a lista acima por boa prática.
 16. O logo branco com a seta encaixada no pin.
 
 ## O que eu ainda melhoraria
-- **Defeito conhecido da v1:** nos quadros em que o cursor de texto pula de uma letra para a próxima, o blur de obturador deixa um pequeno rastro cinza. Já está corrigido no `index.html` (um cursor por posição, com corte seco) e falta só renderizar a v2.
+- **Corrigido na v2 (`final.mp4`):** na v1, nos quadros em que o cursor de texto pulava de uma letra para a próxima, o blur de obturador deixava um pequeno rastro cinza. Agora há um cursor por posição, com corte seco, e ele fica nítido em todos os quadros.
 - Ouvir a voz e trocar a trilha sintetizada por uma música licenciada, se a equipe tiver.
 - O primeiro plano ainda tem uma faixa branca vazia acima do campo do assistente.
 - Uma versão vertical 9:16 para Reels e Stories.
