@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_superuser, get_db
 from app.api.v1.endpoints.flight_api_keys import FlightApiKeyOut, get_key_or_404, serialize_key
 from app.models.external_api_key import ExternalApiKey
-from app.models.stock_image import StockImage, StockImageSearch
+from app.models.stock_image import StockImage
 from app.models.user import User
 from app.services.api_key_crypto import ApiKeyDecryptionError, decrypt_api_key, encrypt_api_key, extract_api_key_last4
 from app.services.image_api_keys import DEFAULT_HOURLY_LIMIT, IMAGE_PROVIDERS, env_image_key, ImageKey, record_image_call, roll_hour
@@ -88,10 +88,8 @@ def list_image_api_keys(
     if any(roll_hour(record) for record in records):
         db.commit()
     summary: dict[str, Any] = {
-        "searches": db.query(func.count(StockImageSearch.id)).scalar() or 0,
         "photos": db.query(func.count(StockImage.id)).scalar() or 0,
         "photo_uses": int(db.query(func.coalesce(func.sum(StockImage.uses), 0)).scalar() or 0),
-        "search_reuses": int(db.query(func.coalesce(func.sum(StockImageSearch.uses), 0)).scalar() or 0),
         "curated_photos": db.query(func.count(StockImage.id)).filter(StockImage.provider == "manual").scalar() or 0,
     }
     for provider in IMAGE_PROVIDERS:

@@ -56,6 +56,8 @@ if engine.dialect.name == "postgresql":
         connection.execute(text("ALTER TABLE stock_images ADD COLUMN IF NOT EXISTS published_at TIMESTAMP WITH TIME ZONE"))
         connection.execute(text("ALTER TABLE stock_images ADD COLUMN IF NOT EXISTS source_name VARCHAR(120)"))
         connection.execute(text("ALTER TABLE stock_images ADD COLUMN IF NOT EXISTS preview_url VARCHAR(1000)"))
+        # Buscas de fotos guardadas (a mesma busca devolvia sempre as mesmas fotos): saíram.
+        connection.execute(text("DROP TABLE IF EXISTS stock_image_searches"))
         connection.execute(text("ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS deactivated_at TIMESTAMP WITH TIME ZONE"))
         connection.execute(text(
             "ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS deactivation_estimated BOOLEAN NOT NULL DEFAULT FALSE"

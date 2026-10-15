@@ -791,16 +791,15 @@ def test_contract_guides_conversation_and_photos() -> None:
     assert "bancos gratuitos (Pixabay, Unsplash e Pexels)" in PLATFORM_FORMAT_CONTRACT
 
 
-def test_stock_photos_fill_sections_and_reuse_cache(monkeypatch) -> None:
+def test_stock_photos_fill_sections_without_saved_searches(monkeypatch) -> None:
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
 
-    from app.models.stock_image import StockImage, StockImageSearch
+    from app.models.stock_image import StockImage
     from app.services import stock_images
 
     engine = create_engine("sqlite://")
     StockImage.__table__.create(engine)
-    StockImageSearch.__table__.create(engine)
     db = sessionmaker(bind=engine)()
 
     calls = []
@@ -820,8 +819,10 @@ def test_stock_photos_fill_sections_and_reuse_cache(monkeypatch) -> None:
     pexels_key = stock_images.ImageKey(provider="pexels", plain_key="k")
     monkeypatch.setattr(stock_images, "available_image_keys", lambda db, provider: [pexels_key] if provider == "pexels" else [])
     monkeypatch.setattr(stock_images, "has_any_image_key", lambda db: True)
-    # Sem a IA escolhendo (testada à parte): vale a ordem do ranking.
+    # Sem a IA escolhendo nem sugerindo buscas (testadas à parte): vale a ordem do ranking.
     monkeypatch.setattr(stock_images, "choose_photos", lambda *args, **kwargs: None)
+    monkeypatch.setattr(stock_images, "refine_queries", lambda db, slots, *, timeout: {})
+    monkeypatch.setattr(stock_images, "prepare_download", lambda client, url: None)
 
     config, _ = build_page_base_config_from_reply(reply_with(
         "🟩 SEÇÃO: BANNER INICIAL\nTítulo: Gramado\nBusca de imagem: Gramado Brazil street | couple drinking wine",
@@ -841,22 +842,24 @@ def test_stock_photos_fill_sections_and_reuse_cache(monkeypatch) -> None:
     assert "aiStockPhoto" not in swap
     assert links["items"][0]["image"] == "/uploads/Gramado Brazil street-1.webp"
     assert all("aiImageQuery" not in section for section in sections)
-    # A mesma busca de novo vem do banco de buscas, sem consultar o Pexels.
+    # A mesma busca saiu uma vez só para o banner e o card; na próxima página ela vai ao banco de
+    # novo (não há busca guardada, que devolvia sempre as mesmas fotos).
+    assert calls.count("Gramado Brazil street") == 1
     before = len(calls)
     assert len(stock_images.search_stock_images(db, None, "Gramado  brazil STREET")) == 3
-    assert len(calls) == before
+    assert len(calls) == before + 1
 
 
-def test_stock_search_reuses_similar_searches_descriptions_and_rotates_keys(monkeypatch) -> None:
+def test_stock_search_rotates_keys_and_respects_paused_banks(monkeypatch) -> None:
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
 
     from app.models.external_api_key import ExternalApiKey
-    from app.models.stock_image import StockImage, StockImageSearch
+    from app.models.stock_image import StockImage
     from app.services import image_api_keys, stock_images
 
     engine = create_engine("sqlite://")
-    for table in (StockImage.__table__, StockImageSearch.__table__, ExternalApiKey.__table__):
+    for table in (StockImage.__table__, ExternalApiKey.__table__):
         table.create(engine)
     db = sessionmaker(bind=engine)()
     monkeypatch.setattr(image_api_keys, "decrypt_api_key", lambda value: value)
@@ -888,23 +891,22 @@ def test_stock_search_reuses_similar_searches_descriptions_and_rotates_keys(monk
 
     assert len(search("Gramado Brazil street")) == 4
     assert len(search("red wine couple")) == 4
-    # A mesma busca vem do banco de buscas, sem chamar o Unsplash.
-    assert len(search("gramado  brazil STREET")) == 4 and len(calls) == 2
-    # A chave A esgotou na hora: a busca nova vai para a B. Uma busca parecida já guardada
-    # ("Gramado Brazil street") não passa na frente da nova, que é mais precisa.
+    # A chave A esgotou na hora: a busca seguinte vai para a B. A mesma busca de antes vai ao
+    # banco de novo (nada fica guardado).
     key_a = db.query(ExternalApiKey).filter_by(label="A").one()
     key_b = db.query(ExternalApiKey).filter_by(label="B").one()
     assert key_a.monthly_usage_estimated == 2
-    assert search("Gramado street winter")[0].provider_id == "Gramado street winter-0"
-    assert [key for key, _ in calls] == ["key-a", "key-a", "key-b"]
-    # Sem chamada sobrando na hora: aí sim reaproveita o que está guardado (descrição parecida).
+    assert len(search("Gramado Brazil street")) == 4 and db.query(StockImage).count() == 8
+    assert calls[-1] == ("key-b", "Gramado Brazil street") and [key for key, _ in calls] == ["key-a", "key-a", "key-b"]
+    # Sem chamada sobrando na hora: nada vem de busca guardada nem de foto parecida já vista.
     key_b.monthly_usage_estimated, key_b.last_used_at = 50, datetime.now(timezone.utc)
     db.flush()
-    assert len(search("vineyard couple drinking")) >= 3 and len(calls) == 3
-    # Unsplash pausado no Admin Master: nem busca nova, nem busca guardada, nem foto guardada dele.
+    assert search("vineyard couple drinking") == [] and len(calls) == 3
+    # Unsplash pausado no Admin Master: nenhuma busca.
     key_a.is_active = key_b.is_active = False
+    key_b.monthly_usage_estimated = 0
     db.flush()
-    assert search("vineyard couple drinking") == [] and search("Gramado Brazil street") == [] and len(calls) == 3
+    assert search("Gramado Brazil street") == [] and len(calls) == 3
     key_a.is_active = key_b.is_active = True
     # Chave recusada pelo banco fica "com erro"; esgotada volta na hora seguinte.
     image_api_keys.record_image_call(db, image_api_keys.ImageKey("unsplash", "key-b", key_b), SimpleNamespace(status_code=401, headers={}))
@@ -971,12 +973,11 @@ def test_pixabay_comes_first_after_curated_and_hides_key(monkeypatch):
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
 
-    from app.models.stock_image import StockImage, StockImageSearch
+    from app.models.stock_image import StockImage
     from app.services import stock_images
 
     engine = create_engine("sqlite://")
     StockImage.__table__.create(engine)
-    StockImageSearch.__table__.create(engine)
     db = sessionmaker(bind=engine)()
 
     calls = []

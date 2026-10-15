@@ -2,16 +2,16 @@
 
 Busca, nesta ordem:
 1) fotos cadastradas no Admin Master (banco próprio), quando as palavras-chave estão na busca;
-2) a mesma busca já feita (stock_image_searches), se o banco dela continua ligado;
-3) os bancos gratuitos Pixabay, Unsplash e Pexels, nessa ordem, com as chaves do Admin Master
-   dentro do limite por hora de cada uma (quando uma esgota, a próxima assume);
-4) só quando nenhum banco responde agora: buscas parecidas e fotos guardadas com descrição
-   parecida. Busca guardada não passa na frente de uma busca nova e mais precisa.
-Banco pausado no Admin Master fica de fora de tudo, inclusive das fotos já guardadas dele.
+2) os bancos gratuitos Pixabay, Unsplash e Pexels, nessa ordem, com as chaves do Admin Master
+   dentro do limite por hora de cada uma (quando uma esgota, a próxima assume).
+Toda busca vai ao banco na hora: não há busca guardada (a mesma busca devolvia sempre as mesmas
+fotos). As buscas de uma página saem ao mesmo tempo, e a foto já baixada antes é reaproveitada.
 
 Depois a IA olha as candidatas de cada seção (photo_choice) e escolhe as que mostram o que a
-seção pede. Sem fotos cadastradas nem chaves, nada é buscado e as seções ficam com a imagem
-provisória.
+seção pede. Vaga sem fotos (ou com poucas), ou em que a IA recusou todas, ganha buscas novas
+sugeridas pela IA (da mais refinada para a mais ampla) e tenta de novo; por último, a busca
+genérica do tipo da seção. Sem fotos cadastradas nem chaves, nada é buscado e as seções ficam com
+a imagem provisória.
 """
 from __future__ import annotations
 
@@ -19,7 +19,8 @@ import logging
 import re
 import time
 import unicodedata
-from datetime import datetime, timedelta, timezone
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
 from dataclasses import dataclass, field
 from typing import Any, Callable, Iterable
 
@@ -28,7 +29,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.models.media import MediaAsset
-from app.models.stock_image import StockImage, StockImageSearch
+from app.models.stock_image import StockImage
 from app.models.external_api_key import ExternalApiKey
 from app.services.image_api_keys import (
     IMAGE_PROVIDERS,
@@ -40,25 +41,27 @@ from app.services.image_api_keys import (
 )
 from app.services.image_optimizer import optimize_image
 from app.services.media_storage import media_storage
-from app.services.photo_choice import PhotoSlot, choose_photos
+from app.services.photo_choice import PhotoSlot, choose_photos, refine_queries
 
 logger = logging.getLogger(__name__)
 
-SEARCH_TTL = timedelta(days=180)
 # Fotos cadastradas à mão no Admin Master (qualquer site, com palavras-chave e crédito).
 MANUAL_PROVIDER = "manual"
-PER_PAGE = 30  # máximo por chamada: cada busca enche o banco com o máximo de fotos
-# Para reaproveitar uma busca parecida, ela precisa cobrir esta fração das palavras da nova.
-SIMILAR_SEARCH_MIN_SCORE = 0.6
+PER_PAGE = 30  # máximo por chamada
 STOPWORDS = frozenset(
     "a an and at by de da das do dos e em for in na nas no nos of on or para por the to with com um uma".split()
 )
 REQUEST_TIMEOUT = 8.0
-# Tempo máximo ao aplicar uma estrutura (busca, escolha da IA e download); o que faltar fica com
-# a imagem provisória. A busca para em SEARCH_SECONDS e a escolha da IA em CHOICE_SECONDS.
+# Tempo máximo para preparar as fotos de uma estrutura (buscas, ajustes da IA, escolha e
+# download); o que faltar fica com a imagem provisória. Novas buscas só até SEARCH_SECONDS, cada
+# escolha da IA até CHOICE_SECONDS e cada pedido de buscas novas até REFINE_SECONDS.
 TIME_BUDGET_SECONDS = 40.0
-SEARCH_SECONDS = 16.0
+SEARCH_SECONDS = 24.0
 CHOICE_SECONDS = 14.0
+REFINE_SECONDS = 7.0
+# Buscas ao mesmo tempo nos bancos e downloads ao mesmo tempo.
+PARALLEL_SEARCHES = 6
+PARALLEL_DOWNLOADS = 6
 # Texto e Imagens é um carrossel: leva mais de uma foto.
 STORY_PHOTOS = 3
 # Candidatas por vaga mostradas à IA, além das fotos que a vaga leva.
@@ -319,59 +322,6 @@ def _upsert_images(db: Session, results: Iterable[dict[str, Any]]) -> list[Stock
     return images
 
 
-def _images_by_ids(db: Session, ids: list[int]) -> list[StockImage]:
-    if not ids:
-        return []
-    by_id = {image.id: image for image in db.query(StockImage).filter(StockImage.id.in_(ids)).all()}
-    return [by_id[image_id] for image_id in ids if image_id in by_id]
-
-
-def _fresh(search: StockImageSearch, now: datetime) -> bool:
-    created = search.created_at
-    if created is None:
-        return False
-    if created.tzinfo is None:
-        created = created.replace(tzinfo=timezone.utc)
-    return created > now - SEARCH_TTL
-
-
-def _similar_search(db: Session, terms: set[str], now: datetime, allowed: set[str]) -> StockImageSearch | None:
-    """Busca guardada que cobre a maior parte das palavras da nova (ex.: mesmo destino)."""
-    if not terms:
-        return None
-    best, best_score = None, 0.0
-    for search in db.query(StockImageSearch).filter(StockImageSearch.provider.in_(allowed)).all():
-        other = query_terms(search.query)
-        if not other or not _fresh(search, now):
-            continue
-        score = len(terms & other) / len(terms)
-        if score > best_score or (score == best_score and best is not None and (search.uses or 0) > (best.uses or 0)):
-            best, best_score = search, score
-    return best if best_score >= SIMILAR_SEARCH_MIN_SCORE else None
-
-
-def _photos_by_description(db: Session, terms: set[str], limit: int = PER_PAGE) -> list[StockImage]:
-    """Fotos guardadas cuja descrição tem as palavras da busca (as mais usadas primeiro)."""
-    if not terms:
-        return []
-    needed = max(1, round(len(terms) * SIMILAR_SEARCH_MIN_SCORE))
-    first = sorted(terms, key=len, reverse=True)[0]
-    candidates = (
-        db.query(StockImage)
-        .filter(or_(StockImage.alt.ilike(f"%{first}%"), StockImage.tags.ilike(f"%{first}%")))
-        .limit(400)
-        .all()
-    )
-    scored = []
-    for image in candidates:
-        alt_terms = query_terms(" ".join(part for part in (image.alt, image.tags, image.location) if part))
-        hits = len(terms & alt_terms)
-        if hits >= needed:
-            scored.append((hits, image.uses or 0, image))
-    scored.sort(key=lambda item: (item[0], item[1]), reverse=True)
-    return [image for _, _, image in scored[:limit]]
-
-
 def keyword_list(value: str | None) -> list[str]:
     """ "Beto Carrero, parque; theme park" → ["beto carrero", "parque", "theme park"]."""
     seen: dict[str, None] = {}
@@ -401,16 +351,6 @@ def _curated_matches(db: Session, terms: set[str]) -> list[StockImage]:
     return [image for _, _, image in scored]
 
 
-def search_stock_images(db: Session, client: httpx.Client, query: str, *, minimum: int = 1) -> list[StockImage]:
-    """Fotos para os termos. As cadastradas à mão no Admin Master vêm primeiro; se bastarem,
-    nem consulta o resto. Depois, a mesma busca já feita ou os bancos ao vivo (_search_bank)."""
-    curated = _curated_matches(db, query_terms(normalize_query(query)))
-    if len(curated) >= minimum:
-        return curated
-    found = _search_bank(db, client, query, minimum=minimum - len(curated))
-    return curated + [image for image in found if image not in curated]
-
-
 def active_providers(db: Session) -> set[str]:
     """Bancos ligados no Admin Master (ou com chave de reserva no servidor), mais as fotos
     cadastradas à mão. Chave esgotada na hora continua ligada; chave pausada, não."""
@@ -427,68 +367,117 @@ def active_providers(db: Session) -> set[str]:
     return active | {provider for (provider,) in rows}
 
 
-def _search_bank(db: Session, client: httpx.Client, query: str, *, minimum: int = 1) -> list[StockImage]:
-    """1) a mesma busca, se o banco dela continua ligado; 2) os bancos ao vivo, se ainda houver
-    chamadas na hora; 3) só sem banco ao vivo: busca parecida e fotos com descrição parecida."""
-    normalized = normalize_query(query)
-    if not normalized:
-        return []
-    now = datetime.now(timezone.utc)
-    terms = query_terms(normalized)
-    allowed = active_providers(db)
+def _searchers() -> dict[str, Callable[..., list[dict[str, Any]]]]:
+    # Lido na hora (e não guardado no módulo) para os testes poderem trocar a busca de um banco.
+    return {"pixabay": _search_pixabay, "unsplash": _search_unsplash, "pexels": _search_pexels}
 
-    def usable(images: list[StockImage]) -> list[StockImage]:
-        return [image for image in images if image.provider in allowed]
 
-    cached = db.query(StockImageSearch).filter(StockImageSearch.query == normalized).first()
-    if cached and _fresh(cached, now) and cached.provider in allowed:
-        images = usable(_images_by_ids(db, list(cached.image_ids or [])))
-        if images:
-            cached.uses = (cached.uses or 0) + 1
-            cached.last_used_at = now
-            return images
+# Pixabay primeiro, depois Unsplash e Pexels (as fotos cadastradas já vieram antes).
+PROVIDER_ORDER = ("pixabay", "unsplash", "pexels")
 
-    results: list[dict[str, Any]] = []
-    provider = None
-    # Pixabay primeiro, depois Unsplash e Pexels (as fotos cadastradas já vieram antes); em cada
-    # banco, as chaves na ordem do Admin Master. Chave esgotada na hora (ou recusada) passa a vez.
-    for name, search in (("pixabay", _search_pixabay), ("unsplash", _search_unsplash), ("pexels", _search_pexels)):
+
+def _key_plan(db: Session, allowed: set[str]) -> list[tuple[str, list[ImageKey]]]:
+    """Bancos ligados com chamada sobrando na hora, cada um com as chaves na ordem do Admin Master."""
+    plan = []
+    for name in PROVIDER_ORDER:
         if name not in allowed:
             continue
-        for key in available_image_keys(db, name):
+        keys = available_image_keys(db, name)
+        if keys:
+            plan.append((name, keys))
+    return plan
+
+
+def _live_search(client: httpx.Client, plan: list[tuple[str, list[ImageKey]]], query: str) -> tuple[str | None, list[dict[str, Any]], list[tuple[ImageKey, Any]]]:
+    """Uma busca nos bancos, sem tocar no banco de dados (roda em paralelo com as outras).
+    Chave recusada passa a vez à próxima; banco sem resultado passa a vez ao próximo banco.
+    Devolve o banco que achou, os resultados e as chamadas feitas (para contar no limite)."""
+    calls: list[tuple[ImageKey, Any]] = []
+    searchers = _searchers()
+    for name, keys in plan:
+        for key in keys:
             try:
-                results = search(client, key.plain_key, query, record=lambda response, key=key: record_image_call(db, key, response))
+                results = searchers[name](client, key.plain_key, query, record=lambda response, key=key: calls.append((key, response)))
             except Exception as exc:  # pragma: no cover - rede/limite do provedor
                 logger.warning("stock_search_failed key=%s query=%r error=%s", key.ident, query, exc)
                 continue
-            provider = name
+            if results:
+                return name, results, calls
             break
-        if provider and results:
-            break
+    return None, [], calls
 
-    images = _upsert_images(db, results) if provider else []
-    if provider:
-        if cached is None:
-            cached = StockImageSearch(query=normalized)
-            db.add(cached)
-        cached.provider = provider
-        cached.image_ids = [image.id for image in images]
-        cached.created_at = now
-        cached.last_used_at = now
-        cached.uses = (cached.uses or 0) + 1
-        db.flush()
-    if images:
-        return images
 
-    # Nenhum banco respondeu agora (sem chave, limite da hora ou sem resultado): o que já está
-    # guardado de bancos ligados, de uma busca parecida ou com descrição parecida.
-    similar = _similar_search(db, terms, now, allowed)
-    reused = usable(_images_by_ids(db, list(similar.image_ids or []))) if similar else []
-    if len(reused) >= minimum:
-        similar.uses = (similar.uses or 0) + 1
-        similar.last_used_at = now
-        return reused
-    return usable(_photos_by_description(db, terms)) or reused
+class _BankSearch:
+    """Buscas de uma página: saem ao mesmo tempo e a mesma busca não vai duas vezes ao banco.
+    Vale só durante o preparo da página (nada fica guardado para a próxima)."""
+
+    def __init__(self, db: Session, client: httpx.Client) -> None:
+        self.db, self.client = db, client
+        self.allowed = active_providers(db)
+        self.results: dict[str, list[StockImage]] = {}
+
+    def run(self, requests: Iterable[tuple[str, int]]) -> None:
+        """requests: (busca, fotos que a vaga leva). As cadastradas à mão vêm primeiro; se
+        bastarem, a busca nem vai aos bancos."""
+        pending: list[str] = []
+        for query, minimum in requests:
+            normalized = normalize_query(query)
+            if not normalized or normalized in self.results or query in pending:
+                continue
+            curated = _curated_matches(self.db, query_terms(normalized))
+            self.results[normalized] = curated
+            if len(curated) < minimum:
+                pending.append(query)
+        if not pending:
+            return
+        plan = _key_plan(self.db, self.allowed)
+        if not plan:
+            return
+        with ThreadPoolExecutor(max_workers=min(PARALLEL_SEARCHES, len(pending))) as pool:
+            outcomes = list(pool.map(lambda query: (query, _live_search(self.client, plan, query)), pending))
+        for query, (provider, found, calls) in outcomes:
+            for key, response in calls:
+                record_image_call(self.db, key, response)
+            images = [image for image in _upsert_images(self.db, found) if image.provider in self.allowed] if provider else []
+            normalized = normalize_query(query)
+            curated = self.results.get(normalized, [])
+            self.results[normalized] = curated + [image for image in images if image not in curated]
+        self.db.flush()
+
+    def get(self, query: str) -> list[StockImage]:
+        return self.results.get(normalize_query(query), [])
+
+
+def search_stock_images(db: Session, client: httpx.Client, query: str, *, minimum: int = 1) -> list[StockImage]:
+    """Fotos para os termos: as cadastradas à mão no Admin Master primeiro (se bastarem, nem
+    consulta o resto) e depois os bancos ao vivo."""
+    bank = _BankSearch(db, client)
+    bank.run([(query, minimum)])
+    return bank.get(query)
+
+
+def _needs_download(image: StockImage) -> bool:
+    """Foto que precisa ser baixada e guardada (Pixabay e Pexels na primeira vez)."""
+    return image.provider not in (MANUAL_PROVIDER, "unsplash") and not image.stored_url
+
+
+def prepare_download(client: httpx.Client, url: str) -> tuple[bytes, dict[int, bytes] | None] | None:
+    """Baixa e otimiza uma foto, sem tocar no banco de dados (roda em paralelo com as outras)."""
+    try:
+        response = client.get(url)
+        response.raise_for_status()
+    except Exception as exc:  # pragma: no cover - rede
+        logger.warning("stock_download_failed url=%s error=%s", url[:120], exc)
+        return None
+    return response.content, optimize_image(response.content)
+
+
+def store_prepared(db: Session, image: StockImage, prepared: tuple[bytes, dict[int, bytes] | None]) -> str:
+    content, variants = prepared
+    url = media_storage.save_image_variants(variants) if variants else media_storage.save(content, "foto.jpg", "image/jpeg")
+    image.stored_url = url
+    db.flush()
+    return url
 
 
 def materialize(db: Session, client: httpx.Client, image: StockImage) -> str | None:
@@ -508,17 +497,8 @@ def materialize(db: Session, client: httpx.Client, image: StockImage) -> str | N
         return image.stored_url
     if image.stored_url:
         return image.stored_url
-    try:
-        response = client.get(image.download_url)
-        response.raise_for_status()
-    except Exception as exc:  # pragma: no cover - rede
-        logger.warning("stock_download_failed id=%s error=%s", image.id, exc)
-        return None
-    variants = optimize_image(response.content)
-    url = media_storage.save_image_variants(variants) if variants else media_storage.save(response.content, "foto.jpg", "image/jpeg")
-    image.stored_url = url
-    db.flush()
-    return url
+    prepared = prepare_download(client, image.download_url)
+    return store_prepared(db, image, prepared) if prepared else None
 
 
 UTM = "utm_source=roteiro_online&utm_medium=referral"
@@ -577,7 +557,10 @@ def _plain_text(value: Any, limit: int) -> str:
 
 @dataclass
 class _Slot(PhotoSlot):
+    # Buscas da IA (o lugar, depois a sensação) e a busca genérica do tipo da seção.
     queries: list[str] = field(default_factory=list)
+    fallback: str = ""
+    prefer_brazil: bool = False
     assign: Callable[[list[str], list[dict[str, str]]], None] | None = None
     # Troca pedida pelo usuário ("troca a foto do banner"): sempre sai uma foto nova.
     swap: bool = False
@@ -592,6 +575,8 @@ class _Picker:
         self.used: set[int] = set()
         self.started = time.monotonic()
         self.saved_urls: set[str] = set()
+        # Fotos já baixadas e otimizadas (em paralelo), à espera de serem guardadas.
+        self.prepared: dict[int, tuple[bytes, dict[int, bytes] | None]] = {}
         # Crédito de cada foto escolhida (url → crédito), para a seção guardar.
         self.credits: dict[str, dict[str, str]] = {}
         urls = [url for url in dict.fromkeys(exclude_urls) if isinstance(url, str) and url.startswith(("http", "/"))][:200]
@@ -610,25 +595,28 @@ class _Picker:
     def out_of_time(self) -> bool:
         return self.elapsed() > TIME_BUDGET_SECONDS
 
-    def gather(self, slot: _Slot) -> None:
-        """Candidatas da vaga: as melhores da primeira busca, algumas da segunda (outra
-        sensação) e, se faltar, da busca genérica do tipo da seção."""
-        queries = slot.queries
-        prefer_brazil = bool(queries) and mentions_brazil(queries[0])
-        if prefer_brazil:
-            queries = [with_country(queries[0]), *queries[1:]]
-        budget = min(MAX_CANDIDATES, slot.count + EXTRA_CANDIDATES)
-        generic = len(queries) - 1  # a última é sempre a busca genérica do tipo
-        seen: set[int] = set()
+    def budget(self, slot: _Slot) -> int:
+        return min(MAX_CANDIDATES, slot.count + EXTRA_CANDIDATES)
+
+    def needs_more(self, slot: _Slot) -> bool:
+        """Poucas opções para a IA escolher (ou nenhuma): vale pedir buscas novas."""
+        return len(slot.candidates) < min(self.budget(slot), slot.count + 2)
+
+    def choice_timeout(self) -> float:
+        return min(CHOICE_SECONDS, TIME_BUDGET_SECONDS - self.elapsed() - 6)
+
+    def gather(self, slot: _Slot, bank: _BankSearch, queries: list[str]) -> None:
+        """Junta à vaga as candidatas das buscas, na ordem: as melhores da primeira e, se houver
+        mais de uma busca, espaço para a segunda trazer outra opção."""
+        budget = self.budget(slot)
+        seen = {image.id for image in slot.candidates} | {image.id for image in slot.rejected}
         for position, query in enumerate(queries):
-            if len(slot.candidates) >= budget or self.elapsed() > SEARCH_SECONDS:
+            if len(slot.candidates) >= budget:
                 break
-            if position == generic and position > 0 and len(slot.candidates) > slot.count:
-                break
-            # Da primeira busca, deixa espaço para a segunda trazer outra opção.
-            room = budget - len(slot.candidates) - (2 if position == 0 and generic > 1 else 0)
-            found = search_stock_images(self.db, self.client, query, minimum=slot.count)
-            for image in rank_images(found, query, prefer_brazil=prefer_brazil):
+            if query not in slot.tried:
+                slot.tried.append(query)
+            room = budget - len(slot.candidates) - (2 if position == 0 and len(queries) > 1 else 0)
+            for image in rank_images(bank.get(query), query, prefer_brazil=slot.prefer_brazil):
                 if room <= 0:
                     break
                 if image.id in seen or image.id in self.excluded or image.id in self.used:
@@ -637,6 +625,60 @@ class _Picker:
                 slot.candidates.append(image)
                 room -= 1
 
+    def refine(self, bank: _BankSearch, slots: list[_Slot]) -> None:
+        """Vagas sem fotos (ou com poucas): a IA sugere buscas novas, da mais refinada para a mais
+        ampla, e elas saem ao mesmo tempo."""
+        if not slots or self.elapsed() > SEARCH_SECONDS:
+            return
+        suggestions = refine_queries(self.db, slots, timeout=min(REFINE_SECONDS, SEARCH_SECONDS - self.elapsed()))
+        if not suggestions:
+            return
+        queries = {
+            slot.key: [with_country(query) if slot.prefer_brazil else query for query in suggestions.get(slot.key, [])]
+            for slot in slots
+        }
+        bank.run((query, slot.count) for slot in slots for query in queries[slot.key])
+        for slot in slots:
+            if queries[slot.key]:
+                self.gather(slot, bank, queries[slot.key])
+
+    def retry_refused(self, bank: _BankSearch, slots: list[_Slot]) -> dict[str, list[StockImage]] | None:
+        """A IA recusou todas as candidatas: buscas novas (contando o que foi recusado) e outra
+        escolha. Devolve a nova escolha ({} se nada mudou; None se a IA não respondeu)."""
+        if not slots or self.elapsed() > SEARCH_SECONDS:
+            return {}
+        for slot in slots:
+            slot.rejected.extend(slot.candidates)
+            slot.candidates = []
+        self.refine(bank, slots)
+        retry = [slot for slot in slots if slot.candidates]
+        for slot in slots:
+            if not slot.candidates:
+                # Nada novo: volta às recusadas (a troca pedida ainda usa o ranking delas).
+                slot.candidates, slot.rejected = slot.rejected, []
+        if not retry:
+            return {}
+        return choose_photos(self.db, self.client, retry, timeout=self.choice_timeout())
+
+    def prefetch(self, plans: list[tuple[_Slot, list[StockImage]]]) -> None:
+        """Baixa ao mesmo tempo as fotos que vão para a página (as escolhidas e uma reserva por vaga)."""
+        targets: dict[int, str] = {}
+        for slot, ordered in plans:
+            for image in [image for image in ordered if image.id not in self.used][: slot.count + 1]:
+                if _needs_download(image) and image.id not in self.prepared:
+                    targets[image.id] = image.download_url
+        if not targets or self.out_of_time():
+            return
+        with ThreadPoolExecutor(max_workers=min(PARALLEL_DOWNLOADS, len(targets))) as pool:
+            results = list(pool.map(lambda item: (item[0], prepare_download(self.client, item[1])), targets.items()))
+        self.prepared.update({image_id: prepared for image_id, prepared in results if prepared})
+
+    def _url_for(self, image: StockImage) -> str | None:
+        prepared = self.prepared.pop(image.id, None)
+        if prepared and _needs_download(image):
+            return store_prepared(self.db, image, prepared)
+        return materialize(self.db, self.client, image)
+
     def place(self, slot: _Slot, ordered: list[StockImage]) -> int:
         urls: list[str] = []
         for image in ordered:
@@ -644,7 +686,7 @@ class _Picker:
                 break
             if image.id in self.used:
                 continue
-            url = materialize(self.db, self.client, image)
+            url = self._url_for(image)
             if not url:
                 continue
             self.used.add(image.id)
@@ -688,9 +730,14 @@ def _photo_slots(sections: list[dict[str, Any]]) -> list[_Slot]:
     swap = False
 
     def add(context: str, raw_query: str, fallback: str, count: int, assign) -> None:
-        queries = split_queries(raw_query or "") + [fallback]
+        queries = split_queries(raw_query or "")
+        # Destino brasileiro: a primeira busca leva "Brazil" e as fotos daqui sobem no ranking.
+        prefer_brazil = bool(queries) and mentions_brazil(queries[0])
+        if prefer_brazil:
+            queries[0] = with_country(queries[0])
         slots.append(_Slot(key=f"V{len(slots) + 1}", context=f"{context} · busca: {raw_query or fallback}",
-                           count=count, queries=queries, assign=assign, swap=swap))
+                           count=count, queries=queries, fallback=fallback, prefer_brazil=prefer_brazil,
+                           assign=assign, swap=swap))
 
     for section in sections:
         kind = section.get("type")
@@ -756,8 +803,9 @@ def fill_section_photos(
 ) -> int:
     """Troca as imagens provisórias das seções da IA por fotos dos bancos.
 
-    Para cada vaga junta candidatas da "Busca de imagem" (o lugar e, em seguida, a sensação) e de
-    uma busca genérica do tipo; a IA olha as candidatas e escolhe; sem a IA, vale o ranking.
+    Para cada vaga junta candidatas da "Busca de imagem" (o lugar e, em seguida, a sensação); com
+    poucas, a IA sugere buscas novas e, por último, entra a busca genérica do tipo. A IA olha as
+    candidatas e escolhe (recusou todas: outra rodada de buscas); sem a IA, vale o ranking.
     exclude_urls: fotos que já estão na página (a troca não devolve a mesma). Devolve quantas
     fotos foram colocadas."""
     has_queries = any(
@@ -773,24 +821,48 @@ def fill_section_photos(
     with httpx.Client(timeout=REQUEST_TIMEOUT, follow_redirects=True) as client:
         picker = _Picker(db, client, agency_id, exclude_urls)
         slots = _photo_slots(sections)
+        bank = _BankSearch(db, client)
+        # 1) As buscas da IA de todas as vagas ao mesmo tempo (o lugar e a sensação).
+        bank.run((query, slot.count) for slot in slots for query in slot.queries)
         for slot in slots:
-            picker.gather(slot)
+            picker.gather(slot, bank, slot.queries)
+        # 2) Vaga sem fotos ou com poucas: a IA sugere buscas mais refinadas (ou mais amplas).
+        if ai_choice:
+            picker.refine(bank, [slot for slot in slots if picker.needs_more(slot)])
+        # 3) Ainda faltando: a busca genérica do tipo da seção.
+        short = [slot for slot in slots if len(slot.candidates) <= slot.count and slot.fallback]
+        bank.run((slot.fallback, slot.count) for slot in short)
+        for slot in short:
+            picker.gather(slot, bank, [slot.fallback])
+        # 4) A IA escolhe olhando as fotos; 5) vaga em que ela recusou todas ganha outra rodada.
         choice = None
         if ai_choice:
-            choice = choose_photos(db, client, slots, timeout=min(CHOICE_SECONDS, TIME_BUDGET_SECONDS - picker.elapsed() - 6))
+            choice = choose_photos(db, client, slots, timeout=picker.choice_timeout())
+            refused = [slot for slot in slots if choice is not None and slot.key in choice and not choice[slot.key] and slot.candidates]
+            if refused:
+                second = picker.retry_refused(bank, refused)
+                for slot in refused:
+                    if second is None:
+                        choice.pop(slot.key, None)  # sem a IA na segunda rodada: vale o ranking das novas
+                    elif slot.key in second:
+                        choice[slot.key] = second[slot.key]
+        plans: list[tuple[_Slot, list[StockImage]]] = []
         for slot in slots:
-            if picker.out_of_time():
-                logger.info("stock_photos_time_budget_reached filled=%s", filled)
-                break
             if choice is not None and slot.key in choice and (choice[slot.key] or not slot.swap):
                 picked = choice[slot.key]
                 # A IA escolheu menos fotos que o carrossel ou o roteiro pedem: completa com o ranking.
                 rest = [image for image in slot.candidates if image not in picked] if picked and slot.count > 1 else []
-                ordered = picked + rest
+                plans.append((slot, picked + rest))
             else:
                 # Sem a escolha da IA, ou troca pedida em que a IA recusou todas: vale o ranking (o
                 # usuário pediu outra foto; ficar com a mesma parece que nada aconteceu).
-                ordered = slot.candidates
+                plans.append((slot, slot.candidates))
+        # 6) Coloca as fotos: os downloads saem ao mesmo tempo.
+        picker.prefetch(plans)
+        for slot, ordered in plans:
+            if picker.out_of_time():
+                logger.info("stock_photos_time_budget_reached filled=%s", filled)
+                break
             filled += picker.place(slot, ordered)
         clear_photo_queries(sections)
     db.commit()
