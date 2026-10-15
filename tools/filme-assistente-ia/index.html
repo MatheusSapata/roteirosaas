@@ -30,7 +30,7 @@ img { display: block; }
 #streamL { left: 1004px; top: 0; width: 428px; height: 900px; }
 #prevClip { left: 182px; top: 170px; width: 808px; height: 700px; border-radius: 0 0 14px 14px; }
 #prevClip img { height: auto; width: 808px; }
-#caret { position: absolute; left: 0; top: 0; width: 1.6px; height: 17px; background: #0f172a; border-radius: 1px; }
+.caret { position: absolute; width: 1.6px; height: 17px; background: #0f172a; border-radius: 1px; }
 .hole { position: absolute; }
 .btnov { position: absolute; background-repeat: no-repeat; background-size: 1440px 900px; }
 #sendHole { left: 1366px; top: 798px; width: 46px; height: 46px; background: #fff; border-radius: 50%; }
@@ -96,7 +96,6 @@ img { display: block; }
     <div id="cam1">
       <img class="st" id="a01b" src="assets/ed/a01b-blank-ai-tall.webp" alt="">
       <div class="layer" id="typeL"></div>
-      <div id="caret"></div>
       <div class="hole" id="sendHole"></div><div class="btnov" id="sendBtn"></div>
       <div class="layer" id="streamL"></div>
       <img class="st" id="a03" src="assets/ed/a03-structure.webp" alt="">
@@ -111,7 +110,6 @@ img { display: block; }
       <img class="st" id="b0311" src="assets/ed/b03-price-11.webp" alt="">
       <img class="st" id="b03119" src="assets/ed/b03-price-119.webp" alt="">
       <img class="st" id="b031190" src="assets/ed/b03-price-1190.webp" alt="">
-      <div id="caret2" style="position:absolute;left:0;top:0;width:1.6px;height:17px;background:#0f172a;border-radius:1px"></div>
       <img class="st" id="c00" src="assets/ed/c00-banner-aparencia.webp" alt="">
       <img class="st" id="c01" src="assets/ed/c01-hover-Cartao.webp" alt="">
       <img class="st" id="c02" src="assets/ed/c02-layout-Cartao.webp" alt="">
@@ -189,13 +187,15 @@ used.forEach(n => { const im = document.createElement('img'); im.id = 't' + n; i
 const S1_CUT = 84;
 ev.forEach((e, i) => M.show('#t' + e[1], e[0], i + 1 < ev.length ? ev[i + 1][0] : S1_CUT));
 M.show('#a01b', 0, S1_CUT);
-// caret (screenshots hide the native one): follows the last glyph, solid while typing, blinks on its own clock after
-// stepped keys: hold the previous position until the frame before each event, then jump in one frame (no zero-length tweens)
-const stepKeys = pts => { const k = []; pts.forEach(([f, v], i) => { if (i && f - 1 > k[k.length - 1][0]) k.push([f - 1, k[k.length - 1][1]]); k.push([f, v]); }); return k; };
-const cx = stepKeys(ev.map(e => [e[0], CARET[Math.min(e[1], CARET.length - 1)][0]]));
-const cy = stepKeys(ev.map(e => [e[0], CARET[Math.min(e[1], CARET.length - 1)][1] + 1]));
-M.kf('#caret', 'x', cx); M.kf('#caret', 'y', cy);
-M.show('#caret', 0, TYPE_END + 9); M.show('#caret', TYPE_END + 17, TYPE_END + 26); M.show('#caret', TYPE_END + 34, S1_CUT);
+// caret (screenshots hide the native one): one element per position, hard on/off on frame boundaries (a real caret jumps,
+// it never travels, so it stays crisp under shutter blur). Solid while typing, blinks on its own clock after.
+const caretAt = (id, x, y, before) => { const d = document.createElement('div'); d.className = 'caret'; d.id = id;
+  d.style.left = x + 'px'; d.style.top = y + 'px'; $('#cam1').insertBefore(d, $(before)); return '#' + id; };
+ev.forEach((e, i) => {
+  const p = CARET[Math.min(e[1], CARET.length - 1)], id = caretAt('cr' + i, p[0], p[1] + 1, '#sendHole');
+  if (i + 1 < ev.length) M.show(id, e[0], ev[i + 1][0]);
+  else { M.show(id, e[0], TYPE_END + 9); M.show(id, TYPE_END + 17, TYPE_END + 26); M.show(id, TYPE_END + 34, S1_CUT); }
+});
 M.show('#sendHole', 60, S1_CUT); M.show('#sendBtn', 60, S1_CUT);          // the send overlay only once the field has text (mic -> send)
 
 /* ---------------- S2: the assistant works (real streamed states), then "Inserir no fim" ---------------- */
@@ -216,9 +216,7 @@ M.kf('#tall', 'y', [[232, 0], [244, 0], [262, -420, 'gentleIn'], [296, -1577, 's
 const S3 = 312;
 M.show('#b01', S3, 330); M.show('#b02', 330, 338);
 M.show('#b031', 338, 342); M.show('#b0311', 342, 346); M.show('#b03119', 346, 351); M.show('#b031190', 351, 390);
-M.kf('#caret2', 'x', stepKeys([[338, 225.5], [342, 232.8], [346, 240.3], [351, 248.6]]));
-M.kf('#caret2', 'y', [[338, 564.5]]);
-M.show('#caret2', 338, 362);
+[[338, 225.5], [342, 232.8], [346, 240.3], [351, 248.6]].forEach(([f, x], i, a) => M.show(caretAt('cp' + i, x, 564.5, '#c00'), f, i + 1 < a.length ? a[i + 1][0] : 362));
 M.show('#c00', 390, 402); M.show('#c01', 402, 412); M.show('#c02', 412, 516);
 
 /* ---------------- S4 start: "Celular" ---------------- */

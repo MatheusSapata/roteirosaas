@@ -1,4 +1,4 @@
-# NOTE: "Conte a viagem" (Roteiro Online), 27,6 s, 1920x1080, 30 fps, com som
+# NOTE: "Conte a viagem" (Roteiro Online), 27,0 s, 1920x1080, 30 fps, com som (versão v1)
 
 ## A ideia, em uma linha
 Um documentário de interface de uma tarefa real: uma frase comum digitada no Assistente IA vira a página completa de Gramado e Canela, o preço muda digitando, o visual muda com um clique, a página abre no celular e o cliente chama. O ponteiro do filme é a **seta de navegação do próprio logo** (recortada do arquivo oficial) e, no fim, ela volta para dentro do pin.
@@ -39,11 +39,37 @@ Não há obrigação de crédito; deixo a lista acima por boa prática.
 - Trilha e efeitos: a chave da ElevenLabs não tem permissão de música nem de efeitos (`music_generation`, `sound_generation`), então ambos foram **sintetizados em código** (`ferramentas/synth_music.py`, `ferramentas/synth_sfx.py`): violão dedilhado em levada de bossa (síntese aditiva), pad, shaker, baixo e kick suaves, a 100 BPM, com a levada entrando no quadro em que a página aparece (6,1 s), mais brilho quando o celular sai do editor (18,1 s) e o acorde final quando o logo pousa (25,3 s); respiros de 8 a 10 dB antes desses três momentos. Efeitos: teclado (um tick por rajada de digitação), clique, whoosh, notificação, pouso do logo.
 - Também entrego `audio/voz-e-efeitos.wav` (sem trilha) para trocar a música por uma licenciada, se preferirem.
 
-## Gates (números dos scripts)
-(preenchido após o render)
+## Gates (números dos scripts, sobre `final-v1.mp4`)
+- **G0 render existe:** PASS. 27,00 s, 810 quadros, 1920x1080, h264, áudio AAC presente (`look.py --expect 27 --expect-audio`).
+- **G1 prova legível:** por olho no sheet. Campo do assistente com texto a 0,05 H; card de preço a 0,56 W; banner a 0,61 W; notificação ampliada para ~0,04 H.
+- **G2 sem quadro vazio:** PASS. Nenhum trecho com mais de 3 quadros chapados.
+- **G3 fim curto:** PASS. Logo parado 1,03 s (faixa 0,6-1,4 s); último plano 1,70 s = 6 % do filme.
+- **G4 um herói por quadro:** por olho no sheet. Um objeto legível por vez; a câmera se move entre campo e prévia.
+- **G5 sem cara de página:** PASS em todas as regras (`lint.mjs`). O lint não lê texto dentro das capturas, que é a interface real do produto.
+- **Autoteste de seek:** 0 divergências em 24 saltos aleatórios (`Motion.selfTest`).
+- **Áudio:** -14,2 LUFS integrado, LRA 2,1 LU, pico real -1,4 dBTP, 100 % audível, sem silêncio no fim. Trilha 9 dB abaixo sob a voz (medido 8,3 dB).
+- **Movimento:** variação média 4,4/255, no limite de baixo da faixa de filmes feitos por pessoas (4,4-9,8). É um documentário de interface com pausas de leitura.
 
-## Quadros (uma frase por quadro do sheet)
-(preenchido após o render)
+## Quadros (uma frase por quadro do sheet, `look-final/sheet.jpg`)
+1. Macro do campo real do assistente com "Gramado e Canela, 4 dias, saída 10/07. Hotel" sendo digitado.
+2. Frase completa; a seta verde do logo aperta "enviar".
+3. Balão escuro com o prompt e a lista "Montando as seções" crescendo.
+4. Estrutura sugerida com 5 seções; a seta em "Inserir no fim".
+5. A página aparece: Catedral de Pedra, "Gramado e Canela no inverno".
+6. A câmera desce pela página com blur de movimento até "Escolha seu pacote".
+7. Painel de ofertas com o campo Preço "1290".
+8. O card agora mostra R$ 1.190,00.
+9. O banner trocado para o layout Cartão.
+10. "Mais fácil que / editar no Canva!" sobre o editor desfocado (segunda linha ainda entrando).
+11. O celular da prévia saindo do editor.
+12. Página real "Itália Magnífica" no celular, com o fundo dourado da própria foto.
+13. Gramado no celular sobre o fundo de pedra e céu.
+14. O cliente rola até o dia a dia (foto da Rua Coberta).
+15. A notificação "Novo contato / Quero reservar 2 lugares".
+16. O logo branco com a seta encaixada no pin.
 
 ## O que eu ainda melhoraria
-(preenchido após o render)
+- **Defeito conhecido da v1:** nos quadros em que o cursor de texto pula de uma letra para a próxima, o blur de obturador deixa um pequeno rastro cinza. Já está corrigido no `index.html` (um cursor por posição, com corte seco) e falta só renderizar a v2.
+- Ouvir a voz e trocar a trilha sintetizada por uma música licenciada, se a equipe tiver.
+- O primeiro plano ainda tem uma faixa branca vazia acima do campo do assistente.
+- Uma versão vertical 9:16 para Reels e Stories.
