@@ -112,8 +112,8 @@
     <section class="lp-sec is-mist">
       <div class="lp-wrap">
         <h2 class="lp-h2">
-          É sério... mandando <span class="is-red">textão no WhatsApp,</span><br />
-          é bem provável que...
+          É sério... mandando <span class="is-red lp-nowrap">textão no WhatsApp,</span><br />
+          você já viveu isso:
         </h2>
         <div class="lp-pains">
           <div v-for="(pain, index) in PAINS" :key="pain.title" class="lp-pain">
@@ -554,17 +554,17 @@ const METRICS = [
 const PAINS = [
   {
     icon: Ghost,
-    title: "suas cotações estejam sumindo",
+    title: "Suas cotações somem",
     text: "O lead pede, você manda, ele some. Sem página profissional, a cotação vira só mais uma mensagem perdida no WhatsApp."
   },
   {
     icon: EyeOff,
-    title: "seus clientes não vejam valor",
+    title: "Seus clientes não veem valor",
     text: "Quando o passageiro vê só o preço, compara por preço. Quando enxerga a experiência completa, compra a experiência."
   },
   {
     icon: TrendingDown,
-    title: "você esteja concorrendo por preço",
+    title: "Você concorre só por preço",
     text: "Se a apresentação não sustenta o valor, o único argumento que sobra é desconto. Apresente melhor, venda pelo preço certo."
   }
 ];
@@ -1623,9 +1623,6 @@ onBeforeUnmount(() => {
   font-size: 17px;
   font-weight: 700;
   line-height: 1.3;
-}
-.lp-pain h3::first-letter {
-  text-transform: uppercase;
 }
 .lp-pain p {
   margin-top: 6px !important;
