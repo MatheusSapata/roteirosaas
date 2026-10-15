@@ -17,10 +17,8 @@ export interface ImageProviderSummary {
 export interface ImageApiKeysResponse {
   items: ImageApiKey[];
   summary: {
-    searches: number;
     photos: number;
     photo_uses: number;
-    search_reuses: number;
     curated_photos: number;
     pixabay: ImageProviderSummary;
     unsplash: ImageProviderSummary;

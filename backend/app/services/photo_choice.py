@@ -1,9 +1,12 @@
-"""A IA escolhe a foto de cada seção olhando as candidatas.
+"""A IA escolhe a foto de cada seção olhando as candidatas, e refina a busca quando não acha.
 
 O banco de fotos devolve várias opções por busca, e a descrição delas (tags do Pixabay, texto do
 Pexels) quase nunca diz se a foto é mesmo do lugar. Aqui a IA recebe a miniatura e a descrição de
 cada candidata e escolhe, para cada vaga, as que mostram o que a seção pede. Sem chave da IA,
 sem tempo ou com erro, quem decide é a ordem do ranking (rank_images), como antes.
+
+Quando uma vaga fica sem fotos (ou com poucas) ou quando a IA recusa todas as candidatas,
+refine_queries pede à IA buscas novas, da mais refinada para a mais ampla, e a busca tenta de novo.
 """
 from __future__ import annotations
 
@@ -42,6 +45,21 @@ Não repita a mesma foto em duas vagas. Devolva lista vazia para a vaga só se t
 Responda só com JSON, sem texto antes ou depois, no formato {"V1": ["V1-3", "V1-1"], "V2": ["V2-2"]}."""
 
 
+REFINE_INSTRUCTIONS = """Você ajuda a achar fotos nos bancos gratuitos (Pixabay, Unsplash e Pexels) para as
+seções de uma página de venda de viagem. Para cada VAGA vêm: o que a seção mostra, as buscas já feitas e
+o que aconteceu (nenhuma foto, poucas fotos ou fotos que não serviam).
+Sugira até 3 buscas novas para a vaga, em inglês, de 2 a 5 palavras, nesta ordem:
+1. mais refinada: o lugar exato com o elemento que a seção pede (ex.: "Lago Negro Gramado", "Snowland indoor snow park");
+2. intermediária: a cidade ou região com o tipo de cena (ex.: "Gramado Brazil winter street");
+3. mais ampla: só a cena ou a sensação, sem o nome do lugar (ex.: "family indoor ski slope").
+Quando as fotos não serviam, mude o ângulo (outro elemento do lugar, outra palavra) em vez de repetir a
+busca com palavras parecidas. Não repita busca já feita. Sem nome de agência, preço, datas ou palavras
+como "foto" e "imagem".
+Responda só com JSON, sem texto antes ou depois, no formato {"V1": ["...", "..."], "V2": ["..."]}."""
+# Buscas novas por vaga, a cada rodada de ajuste.
+MAX_REFINED_QUERIES = 3
+
+
 @dataclass
 class PhotoSlot:
     """Uma vaga de foto: a seção (ou card) e quantas fotos ela leva."""
@@ -50,6 +68,9 @@ class PhotoSlot:
     context: str
     count: int = 1
     candidates: list[StockImage] = field(default_factory=list)
+    # Buscas já feitas para a vaga e candidatas que a IA recusou (para a próxima busca mudar).
+    tried: list[str] = field(default_factory=list)
+    rejected: list[StockImage] = field(default_factory=list)
 
 
 def describe(image: StockImage) -> str:
@@ -159,3 +180,70 @@ def choose_photos(
     else:
         logger.info("photo_choice slots=%s thumbs=%s", {key: len(value) for key, value in chosen.items()}, len(thumbs))
     return chosen
+
+
+def _refine_outcome(slot: PhotoSlot) -> str:
+    if slot.rejected:
+        seen = " | ".join(describe(image) for image in slot.rejected[:4])
+        return f"a escolha recusou todas as fotos (não mostravam o que a seção pede): {seen}"
+    if not slot.candidates:
+        return "nenhuma foto encontrada"
+    return f"só {len(slot.candidates)} foto(s), poucas opções"
+
+
+def _parse_queries(text: str, slots: list[PhotoSlot]) -> dict[str, list[str]]:
+    match = re.search(r"\{.*\}", text or "", re.S)
+    if not match:
+        return {}
+    try:
+        payload = json.loads(match.group(0))
+    except json.JSONDecodeError:
+        return {}
+    if not isinstance(payload, dict):
+        return {}
+    suggestions: dict[str, list[str]] = {}
+    for slot in slots:
+        tried = {" ".join(query.lower().split()) for query in slot.tried}
+        queries = []
+        for query in payload.get(slot.key) or []:
+            if not isinstance(query, str):
+                continue
+            clean = " ".join(query.replace('"', " ").split())[:100]
+            if clean and clean.lower() not in tried and clean not in queries:
+                queries.append(clean)
+        if queries:
+            suggestions[slot.key] = queries[:MAX_REFINED_QUERIES]
+    return suggestions
+
+
+def refine_queries(db: Session, slots: list[PhotoSlot], *, timeout: float) -> dict[str, list[str]]:
+    """Buscas novas por vaga, da mais refinada para a mais ampla ({} sem a IA ou sem tempo)."""
+    settings = get_settings()
+    if not settings.gpt_key or not slots or timeout < 2:
+        return {}
+    try:
+        from openai import OpenAI
+
+        from app.services.ai_assistant import _model_kwargs
+        from app.services.construtor_prompt import get_active_gpt_model
+    except ImportError:  # pragma: no cover - dependência ausente
+        return {}
+    lines = [
+        f"VAGA {slot.key}: {slot.context}. Buscas feitas: {'; '.join(dict.fromkeys(slot.tried)) or 'nenhuma'}. "
+        f"Resultado: {_refine_outcome(slot)}."
+        for slot in slots
+    ]
+    model = get_active_gpt_model(db, create_if_missing=False)
+    try:
+        response = OpenAI(api_key=settings.gpt_key, timeout=timeout, max_retries=0).responses.create(
+            model=model,
+            instructions=REFINE_INSTRUCTIONS,
+            input="\n".join(lines),
+            **_model_kwargs(model),
+        )
+    except Exception as exc:  # noqa: BLE001 - sem a IA, fica a busca genérica do tipo da seção
+        logger.warning("photo_refine_failed error=%s", exc)
+        return {}
+    suggestions = _parse_queries(getattr(response, "output_text", "") or "", slots)
+    logger.info("photo_refine slots=%s", suggestions)
+    return suggestions

@@ -9,7 +9,7 @@ import httpx
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.models.stock_image import StockImage, StockImageSearch
+from app.models.stock_image import StockImage
 from app.services import photo_choice, stock_images
 from app.services.ai_assistant import build_page_base_config_from_reply
 from app.services.ai_assistant_context import _sections_summary
@@ -22,10 +22,13 @@ def reply_with(*blocks: str) -> str:
 def _photo_db(monkeypatch):
     engine = create_engine("sqlite://")
     StockImage.__table__.create(engine)
-    StockImageSearch.__table__.create(engine)
     db = sessionmaker(bind=engine)()
+    calls: list[str] = []
 
     def fake_pixabay(client, key, query, record=None):
+        calls.append(query)
+        if "nada" in query:
+            return []
         return [
             {"provider": "pixabay", "provider_id": f"{query}-{n}", "download_url": f"https://img/{query}/{n}.jpg",
              "preview_url": f"https://img/{query}/{n}_640.jpg", "page_url": "p", "photographer": "Ana",
@@ -38,6 +41,10 @@ def _photo_db(monkeypatch):
     key = stock_images.ImageKey(provider="pixabay", plain_key="k")
     monkeypatch.setattr(stock_images, "available_image_keys", lambda db, provider: [key] if provider == "pixabay" else [])
     monkeypatch.setattr(stock_images, "has_any_image_key", lambda db: True)
+    # Sem download de verdade nem pedido de buscas novas à IA (testados à parte).
+    monkeypatch.setattr(stock_images, "prepare_download", lambda client, url: None)
+    monkeypatch.setattr(stock_images, "refine_queries", lambda db, slots, *, timeout: {})
+    db.calls = calls
     return db
 
 
@@ -210,3 +217,95 @@ def test_itinerary_photo_swap_puts_one_new_photo_per_day(monkeypatch):
     assert all(day["image"].startswith("/uploads/") for day in itinerary["days"])
     assert len({day["image"] for day in itinerary["days"]}) == 3
     assert itinerary["aiSetKeys"] == []
+
+
+def test_refused_photos_get_new_searches_from_the_ai(monkeypatch):
+    db = _photo_db(monkeypatch)
+    rounds = []
+    asked = []
+
+    def fake_choice(db, client, slots, *, timeout):
+        rounds.append([slot.key for slot in slots])
+        if len(rounds) == 1:
+            return {slot.key: [] for slot in slots}  # nenhuma mostra o hotel
+        [story] = slots
+        return {story.key: story.candidates[:2]}
+
+    def fake_refine(db, slots, *, timeout):
+        asked.extend((slot.key, list(slot.tried), [image.provider_id for image in slot.rejected]) for slot in slots)
+        return {slot.key: ["Gramado boutique hotel lobby", "Gramado Brazil hotel"] for slot in slots if slot.rejected}
+
+    monkeypatch.setattr(stock_images, "choose_photos", fake_choice)
+    monkeypatch.setattr(stock_images, "refine_queries", fake_refine)
+    config, _ = build_page_base_config_from_reply(reply_with(
+        "🟩 SEÇÃO: TEXTO E IMAGENS\nTítulo: Hotel\nTexto: Hotel no centro.\nBusca de imagem: Gramado hotel Brazil",
+    ))
+    [story] = config["sections"]
+    stock_images.fill_section_photos(db, config["sections"])
+    # A IA recusou todas: pediu buscas novas contando o que já tinha buscado e recusado.
+    key, tried, rejected = asked[-1]
+    assert tried == ["Gramado hotel Brazil"] and len(rejected) == 4 and all(pid.startswith("Gramado hotel Brazil") for pid in rejected)
+    # Destino brasileiro: a busca nova também ganha "Brazil".
+    assert "Gramado boutique hotel lobby Brazil" in db.calls and rounds == [["V1"], ["V1"]]
+    # A segunda escolha valeu (as duas da busca nova) e o carrossel completou com o ranking delas.
+    assert story["images"][:2] == [
+        "/uploads/Gramado boutique hotel lobby Brazil-0.webp", "/uploads/Gramado boutique hotel lobby Brazil-1.webp",
+    ]
+    assert story["aiStockPhoto"] is True and len(story["images"]) == 3
+
+
+def test_slot_without_results_asks_the_ai_for_broader_searches(monkeypatch):
+    db = _photo_db(monkeypatch)
+    monkeypatch.setattr(stock_images, "choose_photos", lambda *args, **kwargs: None)
+    asked = []
+
+    def fake_refine(db, slots, *, timeout):
+        asked.extend(slot.key for slot in slots)
+        return {slot.key: ["Snowland indoor snow park", "Gramado snow"] for slot in slots}
+
+    monkeypatch.setattr(stock_images, "refine_queries", fake_refine)
+    config, _ = build_page_base_config_from_reply(reply_with(
+        "🟩 SEÇÃO: BANNER INICIAL\nTítulo: Snowland\nBusca de imagem: nada Snowland Gramado",
+    ))
+    stock_images.fill_section_photos(db, config["sections"])
+    hero = config["sections"][0]
+    # A busca da IA não achou nada: a IA sugeriu buscas novas (destino brasileiro ganha "Brazil").
+    assert asked == ["V1"] and "Gramado snow Brazil" in db.calls
+    assert hero["backgroundImage"] == "/uploads/Snowland indoor snow park-0.webp"
+
+
+def test_same_search_in_two_sections_goes_once_to_the_bank_and_never_comes_from_storage(monkeypatch):
+    db = _photo_db(monkeypatch)
+    monkeypatch.setattr(stock_images, "choose_photos", lambda *args, **kwargs: None)
+    config, _ = build_page_base_config_from_reply(reply_with(
+        "🟩 SEÇÃO: BANNER INICIAL\nTítulo: Gramado\nBusca de imagem: Gramado Brazil",
+        "🟩 SEÇÃO: FOTO EM DESTAQUE\nBusca de imagem: Gramado Brazil",
+    ))
+    stock_images.fill_section_photos(db, config["sections"])
+    assert db.calls.count("Gramado Brazil") == 1
+    # Na próxima página a mesma busca vai ao banco de novo (não há busca guardada).
+    stock_images.search_stock_images(db, None, "Gramado Brazil")
+    assert db.calls.count("Gramado Brazil") == 2
+
+
+def test_refine_queries_reads_the_answer_and_skips_repeated_searches(monkeypatch):
+    slot = photo_choice.PhotoSlot(key="V1", context="Banner Inicial · busca: Snowland", count=1)
+    slot.tried = ["Snowland Gramado Brazil"]
+    sent = {}
+
+    class FakeResponses:
+        def create(self, **kwargs):
+            sent.update(kwargs)
+            return SimpleNamespace(output_text='{"V1": ["snowland gramado brazil", "Snowland indoor ski slope", "family snow park", "x", "y"]}')
+
+    import openai
+
+    monkeypatch.setattr(openai, "OpenAI", lambda **kwargs: SimpleNamespace(responses=FakeResponses()))
+    monkeypatch.setattr(photo_choice, "get_settings", lambda: SimpleNamespace(gpt_key="k"))
+    from app.services import construtor_prompt
+
+    monkeypatch.setattr(construtor_prompt, "get_active_gpt_model", lambda db, create_if_missing=False: "gpt-4o-mini")
+    suggestions = photo_choice.refine_queries(None, [slot], timeout=5)
+    # A busca já feita não volta, e no máximo 3 por vaga.
+    assert suggestions == {"V1": ["Snowland indoor ski slope", "family snow park", "x"]}
+    assert "Buscas feitas: Snowland Gramado Brazil" in sent["input"] and "nenhuma foto encontrada" in sent["input"]

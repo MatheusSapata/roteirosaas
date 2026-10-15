@@ -3,6 +3,7 @@ import PublicPageView from "../views/public/PublicPageView.vue";
 import { useAuthStore } from "../store/useAuthStore";
 import { canAccessPermission, PermissionKey } from "../utils/permissions";
 import { resolveCurrentLanguage, setCurrentLanguage } from "../utils/i18n";
+import { isStaleBuildError, reloadForNewBuild } from "../utils/staleBuild";
 
 // Só a página pública (o que o visitante abre) vai no arquivo principal; as telas do painel
 // e do login são baixadas quando alguém entra nelas.
@@ -424,6 +425,11 @@ const routes: RouteRecordRaw[] = isCustomDomainHost ? customDomainRoutes : platf
 const router = createRouter({
   history: createWebHistory(),
   routes
+});
+
+// Aba aberta antes de um deploy: a tela pedida não existe mais no servidor; recarrega já no destino.
+router.onError((error, to) => {
+  if (isStaleBuildError(error)) reloadForNewBuild(to?.fullPath);
 });
 
 const resolveFirstAllowedAdminRoute = (auth: ReturnType<typeof useAuthStore>) => {
