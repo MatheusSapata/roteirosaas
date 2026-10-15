@@ -29,6 +29,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.models.media import MediaAsset
+from app.services.agency_photos import AGENCY_PROVIDER, AgencyPhotos, load_agency_photos, section_photos
 from app.models.stock_image import StockImage
 from app.models.external_api_key import ExternalApiKey
 from app.services.image_api_keys import (
@@ -512,7 +513,10 @@ def _with_utm(link: str | None) -> str:
 
 def credit_for(image: StockImage, url: str) -> dict[str, str] | None:
     """Crédito mostrado na página: "Foto: Nome (Unsplash)", com links pedidos pelo banco.
-    Foto cadastrada à mão sem autor nem fonte não leva crédito."""
+    Foto cadastrada à mão sem autor nem fonte não leva crédito. Foto da própria agência leva o
+    crédito que já tinha na outra página (foto de banco) ou nenhum (foto dela)."""
+    if image.provider == AGENCY_PROVIDER:
+        return dict(image.credit) if getattr(image, "credit", None) else None
     if image.provider == MANUAL_PROVIDER:
         if not (image.photographer or image.source_name):
             return None
@@ -582,6 +586,11 @@ class _Picker:
         urls = [url for url in dict.fromkeys(exclude_urls) if isinstance(url, str) and url.startswith(("http", "/"))][:200]
         # Fotos que já estão na página: "troca a foto" não devolve a mesma.
         self.excluded: set[int] = set()
+        self.excluded_urls: set[str] = set(urls)
+        # Endereços já colocados (a foto da agência pode ser a mesma de um banco) e, das fotos da
+        # própria agência, de onde cada uma veio (para o editor avisar).
+        self.used_urls: set[str] = set()
+        self.origins: dict[str, str] = {}
         if urls:
             rows = db.query(StockImage.id).filter(or_(StockImage.stored_url.in_(urls), StockImage.download_url.in_(urls))).all()
             self.excluded = {image_id for (image_id,) in rows}
@@ -624,6 +633,20 @@ class _Picker:
                 seen.add(image.id)
                 slot.candidates.append(image)
                 room -= 1
+
+    def add_agency(self, slot: _Slot, agency: AgencyPhotos) -> None:
+        """Fotos da própria agência (outras páginas e PDFs) que combinam com a vaga entram na frente
+        das dos bancos."""
+        if not agency.photos:
+            return
+        text = " ".join([slot.context, *slot.queries])
+        taken = {image.id for image in slot.candidates}
+        found = [
+            photo
+            for photo in agency.match(text, skip_urls=self.excluded_urls | self.used_urls, limit=max(3, slot.count))
+            if photo.id not in taken
+        ]
+        slot.candidates[:0] = found
 
     def refine(self, bank: _BankSearch, slots: list[_Slot]) -> None:
         """Vagas sem fotos (ou com poucas): a IA sugere buscas novas, da mais refinada para a mais
@@ -674,6 +697,8 @@ class _Picker:
         self.prepared.update({image_id: prepared for image_id, prepared in results if prepared})
 
     def _url_for(self, image: StockImage) -> str | None:
+        if image.provider == AGENCY_PROVIDER:
+            return image.stored_url  # já está guardada (página ou PDF da agência)
         prepared = self.prepared.pop(image.id, None)
         if prepared and _needs_download(image):
             return store_prepared(self.db, image, prepared)
@@ -687,15 +712,19 @@ class _Picker:
             if image.id in self.used:
                 continue
             url = self._url_for(image)
-            if not url:
+            if not url or url in self.used_urls:
                 continue
             self.used.add(image.id)
+            self.used_urls.add(url)
             image.uses = (image.uses or 0) + 1
             urls.append(url)
             credit = credit_for(image, url)
             if credit:
                 self.credits[url] = credit
-            self._add_to_library(url, image)
+            if image.provider == AGENCY_PROVIDER:
+                self.origins[url] = image.origin  # já é da agência: não volta para a biblioteca
+            else:
+                self._add_to_library(url, image)
         if urls and slot.assign:
             slot.assign(urls, self.credits_for(urls))
         return len(urls)
@@ -800,13 +829,17 @@ def fill_section_photos(
     *,
     exclude_urls: Iterable[str] = (),
     ai_choice: bool = True,
+    exclude_page_id: int | None = None,
 ) -> int:
-    """Troca as imagens provisórias das seções da IA por fotos dos bancos.
+    """Troca as imagens provisórias das seções da IA por fotos da própria agência e dos bancos.
 
-    Para cada vaga junta candidatas da "Busca de imagem" (o lugar e, em seguida, a sensação); com
+    Para cada vaga junta candidatas: as fotos da agência que combinam (das outras páginas dela e
+    dos PDFs que ela mandou) e as da "Busca de imagem" (o lugar e, em seguida, a sensação); com
     poucas, a IA sugere buscas novas e, por último, entra a busca genérica do tipo. A IA olha as
     candidatas e escolhe (recusou todas: outra rodada de buscas); sem a IA, vale o ranking.
-    exclude_urls: fotos que já estão na página (a troca não devolve a mesma). Devolve quantas
+    exclude_urls: fotos que já estão na página (a troca não devolve a mesma); exclude_page_id: a
+    página que está sendo editada (as fotos dela não contam como "de outra página"). A seção com
+    foto da agência ganha "aiPhotoOrigins" ({foto: de onde veio}), para o editor avisar. Devolve quantas
     fotos foram colocadas."""
     has_queries = any(
         section.get("aiImageQuery") is not None
@@ -814,18 +847,26 @@ def fill_section_photos(
         or (section.get("type") == "links" and not section.get("aiReplaces"))
         for section in sections
     )
-    if not has_queries or not stock_search_enabled(db):
+    if not has_queries:
+        clear_photo_queries(sections)
+        return 0
+    agency = load_agency_photos(db, agency_id, exclude_page_id=exclude_page_id)
+    if not stock_search_enabled(db) and not agency.photos:
         clear_photo_queries(sections)
         return 0
     filled = 0
     with httpx.Client(timeout=REQUEST_TIMEOUT, follow_redirects=True) as client:
         picker = _Picker(db, client, agency_id, exclude_urls)
+        # Fotos que a resposta já trouxe (ex.: do PDF enviado, em "Imagem:") não se repetem nas vagas.
+        picker.used_urls.update(url for section in sections for url, _, _ in section_photos(section))
         slots = _photo_slots(sections)
         bank = _BankSearch(db, client)
-        # 1) As buscas da IA de todas as vagas ao mesmo tempo (o lugar e a sensação).
+        # 1) As buscas da IA de todas as vagas ao mesmo tempo (o lugar e a sensação); as fotos da
+        #    própria agência que combinam vão na frente.
         bank.run((query, slot.count) for slot in slots for query in slot.queries)
         for slot in slots:
             picker.gather(slot, bank, slot.queries)
+            picker.add_agency(slot, agency)
         # 2) Vaga sem fotos ou com poucas: a IA sugere buscas mais refinadas (ou mais amplas).
         if ai_choice:
             picker.refine(bank, [slot for slot in slots if picker.needs_more(slot)])
@@ -865,5 +906,10 @@ def fill_section_photos(
                 break
             filled += picker.place(slot, ordered)
         clear_photo_queries(sections)
+        if picker.origins:
+            for section in sections:
+                origins = {url: picker.origins[url] for url, _, _ in section_photos(section) if url in picker.origins}
+                if origins:
+                    section["aiPhotoOrigins"] = origins
     db.commit()
     return filled

@@ -41,6 +41,8 @@ Escolha, em ordem de preferência, as fotos que melhor mostram o que a vaga pede
 Descarte: foto de outro lugar ou país quando o lugar foi citado, foto com texto, logotipo, marca
 d'água ou moldura, colagem, ilustração ou desenho, print de tela, foto escura, borrada ou em pé
 com o assunto cortado, close de pessoa posando. A foto vai num espaço largo: prefira fotos deitadas.
+Fotos marcadas [da própria agência] ela já usou em outras páginas ou vieram do material que ela mandou:
+quando mostram o lugar e o tema da vaga, prefira-as às dos bancos; foto da agência de outro lugar, não.
 Não repita a mesma foto em duas vagas. Devolva lista vazia para a vaga só se todas forem inadequadas.
 Responda só com JSON, sem texto antes ou depois, no formato {"V1": ["V1-3", "V1-1"], "V2": ["V2-2"]}."""
 
@@ -79,7 +81,7 @@ def describe(image: StockImage) -> str:
     shape = ""
     if image.width and image.height:
         shape = " (em pé)" if image.height > image.width else ""
-    source = "escolhida pela equipe" if image.provider == "manual" else image.provider.title()
+    source = {"manual": "escolhida pela equipe", "agencia": "da própria agência"}.get(image.provider) or image.provider.title()
     return f"{text}{shape} [{source}]"
 
 

@@ -42,6 +42,8 @@ from app.services.ai_assistant import (
 from app.models.media import MediaAsset
 from app.services.ai_assistant_context import build_agency_context
 from app.services.image_optimizer import optimize_image
+from app.services.agency_photos import mark_pdf_photos
+from app.services.pdf_photos import MAX_PDF_PHOTOS, PDF_SOURCE, extract_pdf_photos, is_pdf
 from app.services.media_storage import media_storage
 from app.services.stock_images import clear_photo_queries, fill_section_photos
 from app.services.ai_assistant_usage import (
@@ -58,6 +60,8 @@ logger = logging.getLogger(__name__)
 
 class AiAssistantChatResponse(BaseModel):
     reply: str
+    # Aviso do sistema junto da resposta (ex.: fotos extraídas de um PDF enviado).
+    notice: str | None = None
 
 
 class AiAssistantTranscriptionResponse(BaseModel):
@@ -123,8 +127,9 @@ async def _prepare_chat(
     attachments: list[UploadFile] | None,
     page_sections: str = "",
     include_images: bool = True,
-) -> tuple[Page, list[AiAssistantConversationMessage], AiAssistantUsage, int | None, list[ChatAttachment], str]:
-    """Valida a conversa e a permissão, confere o limite do plano e grava as mensagens novas do usuário."""
+) -> tuple[Page, list[AiAssistantConversationMessage], AiAssistantUsage, int | None, list[ChatAttachment], str, str]:
+    """Valida a conversa e a permissão, confere o limite do plano e grava as mensagens novas do usuário.
+    O último item é o aviso do sistema para mostrar junto da resposta ("" quando não há)."""
     try:
         conversation_payload = json.loads(conversation or "[]")
         if not isinstance(conversation_payload, list):
@@ -167,6 +172,9 @@ async def _prepare_chat(
             ChatAttachment(filename=upload.filename or "arquivo", content_type=upload.content_type, data=data)
         )
     sent_photos = await _save_chat_photos(db, page.agency_id, attachment_payload)
+    # Fotos de dentro de um PDF (folheto, roteiro da operadora). Com "Inserir imagens" desligado,
+    # a IA não põe fotos novas na página: nada é extraído.
+    pdf_photos, notice = await _save_pdf_photos(db, page.agency_id, attachment_payload) if include_images else ([], "")
     try:
         sections_payload = json.loads(page_sections) if page_sections else None
     except json.JSONDecodeError:
@@ -184,7 +192,16 @@ async def _prepare_chat(
         ]
         lines.extend(f"- {name}: {url}" for name, url in sent_photos)
         context = f"{context}\n" + "\n".join(lines)
-    return page, parsed_conversation, usage_record, usage_limit, attachment_payload, context
+    if pdf_photos:
+        lines = [
+            "FOTOS EXTRAÍDAS DO PDF ENVIADO (já estão na biblioteca de mídia da agência). O usuário mandou o "
+            "material para montar a página: use cada foto na seção que combina com o que aparece na página do "
+            'PDF de onde ela saiu, escrevendo "Imagem: endereço" com o endereço abaixo (sem "Busca de imagem"). '
+            'Onde nenhuma combinar, use "Busca de imagem". Não repita a mesma foto em duas seções:'
+        ]
+        lines.extend(f"- {name}: {url}" for name, url in pdf_photos)
+        context = f"{context}\n" + "\n".join(lines)
+    return page, parsed_conversation, usage_record, usage_limit, attachment_payload, context, notice
 
 
 def _photo_days_for_itinerary_swaps(sections: list[dict], itinerary_days: dict[str, int]) -> None:
@@ -202,31 +219,110 @@ def _photo_days_for_itinerary_swaps(sections: list[dict], itinerary_days: dict[s
 MAX_CHAT_PHOTO_BYTES = 15 * 1024 * 1024
 
 
+async def _store_photo(data: bytes, filename: str, content_type: str | None) -> str | None:
+    """Guarda a foto (versões leves em WebP, como no envio do editor) e devolve o endereço."""
+    try:
+        variants = await anyio.to_thread.run_sync(optimize_image, data)
+        if variants:
+            return await anyio.to_thread.run_sync(media_storage.save_image_variants, variants)
+        return await anyio.to_thread.run_sync(partial(media_storage.save, data, filename, content_type))
+    except Exception:  # pragma: no cover - sem a cópia, a foto só serve de referência para a IA
+        logger.exception("ai_assistant_chat_photo_save_failed")
+        return None
+
+
 async def _save_chat_photos(db: Session, agency_id: int, attachments: list[ChatAttachment]) -> list[tuple[str, str]]:
-    """Fotos enviadas no chat vão para a biblioteca da agência (versões leves em WebP, como no
-    envio do editor). Devolve (nome, endereço) de cada uma, na ordem em que foram enviadas."""
+    """Fotos enviadas no chat vão para a biblioteca da agência. Devolve (nome, endereço) de cada
+    uma, na ordem em que foram enviadas."""
     saved: list[tuple[str, str]] = []
     for attachment in attachments:
         if (attachment.content_type or "").lower() not in CHAT_IMAGE_TYPES or not attachment.data:
             continue
         if len(attachment.data) > MAX_CHAT_PHOTO_BYTES:
             continue
-        try:
-            variants = await anyio.to_thread.run_sync(optimize_image, attachment.data)
-            if variants:
-                url = await anyio.to_thread.run_sync(media_storage.save_image_variants, variants)
-            else:
-                url = await anyio.to_thread.run_sync(
-                    partial(media_storage.save, attachment.data, attachment.filename or "imagem", attachment.content_type)
-                )
-        except Exception:  # pragma: no cover - sem a cópia, a foto só serve de referência para a IA
-            logger.exception("ai_assistant_chat_photo_save_failed")
+        url = await _store_photo(attachment.data, attachment.filename or "imagem", attachment.content_type)
+        if not url:
             continue
         db.add(MediaAsset(agency_id=agency_id, url=url, type="image", original_file_name=attachment.filename))
         saved.append((attachment.filename or f"imagem {len(saved) + 1}", url))
     if saved:
         db.commit()
     return saved
+
+
+def _short_text(text: str, limit: int) -> str:
+    text = " ".join((text or "").split())
+    return text if len(text) <= limit else text[: limit - 1].rsplit(" ", 1)[0] + "…"
+
+
+def _pdf_photos_notice(count: int, names: list[str]) -> str:
+    files = " e ".join(f'"{name}"' for name in names)
+    label = "do PDF" if len(names) == 1 else "dos PDFs"
+    if not count:
+        return (
+            f"Não encontrei fotos para aproveitar dentro {label} {files}: ele pode ser escaneado ou ter as "
+            "imagens presas à página. Onde faltar foto, uso as dos bancos de imagens."
+        )
+    photos = "1 foto" if count == 1 else f"{count} fotos"
+    return (
+        f"Extraí {photos} {label} {files} e guardei na biblioteca de mídia da sua empresa, sem compartilhar "
+        "com outros clientes. O uso dessas imagens é de sua responsabilidade, como já indica o aviso no "
+        "rodapé da página."
+    )
+
+
+async def _save_pdf_photos(db: Session, agency_id: int, attachments: list[ChatAttachment]) -> tuple[list[tuple[str, str]], str]:
+    """Fotos de dentro dos PDFs enviados no chat. Vão só para a biblioteca de mídia desta agência,
+    nunca para o banco comum de fotos (stock_images), que serve a todos os clientes.
+    Devolve (descrição para a IA, endereço) de cada foto e o aviso do chat."""
+    pdfs = [item for item in attachments if item.data and is_pdf(item.content_type, item.filename)]
+    if not pdfs:
+        return [], ""
+    saved: list[tuple[str, str]] = []
+    names: list[str] = []
+    for attachment in pdfs:
+        name = attachment.filename or "arquivo.pdf"
+        names.append(name)
+        remaining = MAX_PDF_PHOTOS - len(saved)
+        if remaining <= 0:
+            continue
+        try:
+            photos = await anyio.to_thread.run_sync(partial(extract_pdf_photos, attachment.data, limit=remaining))
+        except Exception:  # pragma: no cover - PDF estranho: a IA ainda lê o texto
+            logger.exception("ai_assistant_pdf_photos_failed")
+            continue
+        per_page: dict[int, int] = {}
+        stem = name[:-4] if name.lower().endswith(".pdf") else name
+        for photo in photos:
+            number = per_page[photo.page] = per_page.get(photo.page, 0) + 1
+            file_name = f"{stem} - página {photo.page} - foto {number}"[:255]
+            keywords = f"{stem} {photo.page_text}".strip()[:1000]
+            # O mesmo PDF enviado de novo usa as fotos já guardadas (a biblioteca não enche de cópias).
+            existing = (
+                db.query(MediaAsset.url)
+                .filter(
+                    MediaAsset.agency_id == agency_id,
+                    MediaAsset.source == PDF_SOURCE,
+                    MediaAsset.original_file_name == file_name,
+                    MediaAsset.keywords == keywords,
+                )
+                .first()
+            )
+            url = existing[0] if existing else await _store_photo(photo.data, f"{stem}-pagina-{photo.page}", photo.content_type)
+            if not url:
+                continue
+            if not existing:
+                db.add(
+                    MediaAsset(
+                        agency_id=agency_id, url=url, type="image", original_file_name=file_name, keywords=keywords, source=PDF_SOURCE
+                    )
+                )
+            excerpt = _short_text(photo.page_text, 90)
+            where = f'página {photo.page}' + (f' ("{excerpt}")' if excerpt else "")
+            saved.append((f"{name}, {where}, foto {number} ({photo.orientation})", url))
+    if saved:
+        db.commit()
+    return saved, _pdf_photos_notice(len(saved), names)
 
 
 def _usage_headers(usage_record: AiAssistantUsage, usage_limit: int | None) -> dict[str, str]:
@@ -261,7 +357,7 @@ async def chat_with_assistant(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> AiAssistantChatResponse:
-    page, parsed_conversation, usage_record, usage_limit, attachment_payload, context = await _prepare_chat(
+    page, parsed_conversation, usage_record, usage_limit, attachment_payload, context, notice = await _prepare_chat(
         db, current_user, page_id, conversation, attachments, page_sections, include_images
     )
     reply = await anyio.to_thread.run_sync(
@@ -278,7 +374,7 @@ async def chat_with_assistant(
     db.commit()
     for key, value in _usage_headers(usage_record, usage_limit).items():
         response.headers[key] = value
-    return AiAssistantChatResponse(reply=reply)
+    return AiAssistantChatResponse(reply=reply, notice=notice or None)
 
 
 @router.post("/chat-stream")
@@ -293,7 +389,7 @@ async def chat_with_assistant_stream(
 ) -> StreamingResponse:
     """Mesma conversa do /chat, em linhas JSON (NDJSON) enviadas enquanto a IA escreve:
     etapas, trechos do texto e, no fim, a resposta completa com o uso do mês."""
-    page, parsed_conversation, usage_record, usage_limit, attachment_payload, context = await _prepare_chat(
+    page, parsed_conversation, usage_record, usage_limit, attachment_payload, context, notice = await _prepare_chat(
         db, current_user, page_id, conversation, attachments, page_sections, include_images
     )
     model = get_active_gpt_model(db, create_if_missing=True)
@@ -305,6 +401,8 @@ async def chat_with_assistant_stream(
 
     def events():
         yield line({"type": "status", "step": "reading", "attachments": len(attachment_payload)})
+        if notice:
+            yield line({"type": "notice", "text": notice})
         try:
             for event in stream_ai_assistant_reply(messages, attachment_payload, model_override=model, context=context):
                 if event["type"] != "done":
@@ -424,13 +522,14 @@ def create_page_base(
     current_config = normalize_config(page.config_json)
     new_config, suggested_title = build_page_base_config_from_reply(payload.reply, current_config)
     try:
-        fill_section_photos(db, new_config["sections"], page.agency_id)
+        fill_section_photos(db, new_config["sections"], page.agency_id, exclude_page_id=page.id)
     except Exception:  # pragma: no cover - sem foto, a seção fica com a imagem provisória
         logger.exception("ai_assistant_stock_photos_failed")
         db.rollback()
     for section in new_config["sections"]:
         section.pop("aiReplaces", None)
         section.pop("aiStockPhoto", None)
+        section.pop("aiPhotoOrigins", None)
         section.pop("aiSetKeys", None)
         flights = section.pop("aiFlights", None)
         if flights and section.get("type") == "flight_details" and section.get("sectionId"):
@@ -480,7 +579,10 @@ def preview_page_base(
     # ser que o usuário tenha desligado "Inserir imagens".
     if payload.include_images:
         try:
-            fill_section_photos(db, config["sections"], page.agency_id, exclude_urls=payload.current_photos)
+            fill_section_photos(
+                db, config["sections"], page.agency_id, exclude_urls=payload.current_photos, exclude_page_id=page.id
+            )
+            mark_pdf_photos(db, page.agency_id, config["sections"])
         except Exception:  # pragma: no cover - sem foto, a seção fica com a imagem provisória
             logger.exception("ai_assistant_stock_photos_failed")
             db.rollback()
