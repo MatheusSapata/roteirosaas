@@ -21,7 +21,7 @@ from app.services.cakto import CaktoAPIError, CaktoIntegrationService
 from app.services.checkout import find_pix_automatic_authorization_id, handle_asaas_checkout_webhook
 from app.services.company_status import mark_subscription_overdue
 from app.services.ntfy import SubscriptionPushScenario, publish_subscription_notification
-from app.services.legacy_renewal import legacy_renewal_info
+from app.services.legacy_renewal import legacy_renewal_info, legacy_upgrade_available
 from app.services.plans import effective_plan
 from app.services.trial import end_trial
 from app.services.trial import republish_all_user_pages
@@ -199,6 +199,8 @@ class BillingInfo(BaseModel):
     # panel: renova pela tela; external: gerida pelo local onde foi contratada; support: fale com o suporte.
     legacy_renewal_mode: Optional[Literal["panel", "external", "support"]] = None
     legacy_managed_externally: bool = False
+    # Profissional ou Agência antigo que renova pela tela: também pode fazer upgrade para o plano único.
+    legacy_upgrade_available: bool = False
 
 
 class BillingInvoiceOut(BaseModel):
@@ -376,6 +378,7 @@ def _build_billing_info(user: User) -> BillingInfo:
         legacy_renewal_amount=legacy.amount,
         legacy_renewal_mode=legacy.mode,
         legacy_managed_externally=legacy.managed_externally,
+        legacy_upgrade_available=legacy_upgrade_available(sub),
     )
 
 
