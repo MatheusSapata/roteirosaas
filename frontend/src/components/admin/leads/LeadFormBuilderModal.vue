@@ -132,9 +132,10 @@
               <div v-if="!hasWhatsAppPlanAccess" class="fmn-plan-gate">
                 <h3 class="fmn-plan-gate-title">Recurso indisponível no seu plano</h3>
                 <p class="fmn-plan-gate-text">
-                  A Notificação inteligente via WhatsApp não está incluída no seu plano atual. Assine o Roteiro Online para liberar.
+                  <template v-if="legacyLimitedPlan">A Notificação inteligente via WhatsApp não está incluída no seu plano atual.</template>
+                  <template v-else>A Notificação inteligente via WhatsApp não está incluída no seu plano atual. Assine o Roteiro Online para liberar.</template>
                 </p>
-                <button type="button" class="btn btn-p" @click="goToPlans">Fazer upgrade</button>
+                <button type="button" class="btn btn-p" @click="goToPlans">{{ legacyLimitedPlan ? "Ver assinatura" : "Fazer upgrade" }}</button>
               </div>
               <template v-else>
               <div class="fmn-master-switch">
@@ -322,6 +323,7 @@ import { useRouter } from "vue-router";
 import type { LeadFieldType, LeadForm, LeadFormField, LeadFormPayload, ViajeChatCustomFieldMapping } from "../../../types/leads";
 import { useLeadCaptureStore } from "../../../store/useLeadCaptureStore";
 import { useAuthStore } from "../../../store/useAuthStore";
+import { isLegacyLimitedPlan } from "../../../utils/planLabels";
 import LeadFormPreview from "./LeadFormPreview.vue";
 import api from "../../../services/api";
 import { useAgencyStore } from "../../../store/useAgencyStore";
@@ -370,6 +372,7 @@ const normalizePlanKey = (value: string | null | undefined) => {
   if (key === "essencial" || key === "professional" || key === "trial") return "professional";
   return key;
 };
+const legacyLimitedPlan = computed(() => isLegacyLimitedPlan(auth.user?.plan));
 const hasWhatsAppPlanAccess = computed(() => {
   const trial = normalizePlanKey(auth.user?.trial_plan);
   const base = normalizePlanKey(auth.user?.plan);
