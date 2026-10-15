@@ -141,6 +141,8 @@ export interface CheckoutSession {
   is_upgrade?: boolean;
   /** Renovação do plano antigo pelo valor que o cliente pagava (sem cupom e sem promoção). */
   is_legacy_renewal?: boolean;
+  /** Upgrade de Profissional ou Agência antigo para o plano único (valor cheio, sem cupom e sem promoção). */
+  is_legacy_upgrade?: boolean;
   locked_profile_fields?: Record<string, boolean> | null;
   /** 1ª cobrança promocional desta compra (mensal). */
   first_payment_amount?: string | null;
@@ -299,6 +301,17 @@ export const getLegacyRenewalCheckoutConfig = async () => {
 
 export const createLegacyRenewalCheckoutSession = async () => {
   const response = await api.post<CheckoutSession>("/checkout/public/session/legacy-renewal");
+  return response.data;
+};
+
+/**
+ * Upgrade do plano antigo (Profissional ou Agência) para o plano único. O cliente escolhe só o
+ * ciclo; a oferta e o valor (cheio, sem promoção) são decididos no servidor.
+ */
+export const createLegacyUpgradeCheckoutSession = async (billingCycle: "monthly" | "annual") => {
+  const response = await api.post<CheckoutSession>("/checkout/public/session/legacy-upgrade", {
+    billing_cycle: billingCycle,
+  });
   return response.data;
 };
 

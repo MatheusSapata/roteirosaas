@@ -103,8 +103,8 @@
                   </div>
                 </label>
               </div>
-              <!-- Renovação do plano antigo: o valor é o que o cliente já pagava, sem cupom. -->
-              <label v-if="!isLegacyRenewal" class="checkout-field">
+              <!-- Renovação do plano antigo (valor que o cliente já pagava) e upgrade do plano antigo (valor cheio): sem cupom. -->
+              <label v-if="!isLegacyRenewal && !isLegacyUpgrade" class="checkout-field">
                 <span>Você possui cupom de desconto?</span>
                 <div class="checkout-coupon-wrap">
                   <input v-model="form.coupon_code" placeholder="Digite seu cupom" />
@@ -454,6 +454,7 @@ import {
   LEGACY_RENEWAL_OFFER_KEY,
   createCheckoutSession,
   createLegacyRenewalCheckoutSession,
+  createLegacyUpgradeCheckoutSession,
   createUpgradeCheckoutSession,
   finishCheckoutPassword,
   getCheckoutConfig,
@@ -485,8 +486,17 @@ const auth = useAuthStore();
 const offerKey = computed(() => String(route.params.offerKey || route.query.offer || "").trim().toLowerCase());
 // Renovação do plano antigo (/checkout/renovacao-assinatura): plano, ciclo e valor vêm do servidor.
 const isLegacyRenewal = computed(() => offerKey.value === LEGACY_RENEWAL_OFFER_KEY || Boolean(session.value?.is_legacy_renewal));
+// Upgrade do plano antigo (Profissional ou Agência) para o plano único: o servidor escolhe a oferta
+// do ciclo e cobra o valor cheio, sem cupom e sem promoção.
+const isLegacyUpgrade = computed(
+  () => String(route.query.legacy_upgrade || "") === "1" || Boolean(session.value?.is_legacy_upgrade)
+);
 const isUpgradeFlow = computed(
-  () => String(route.query.upgrade || "") === "1" || Boolean(session.value?.is_upgrade) || isLegacyRenewal.value
+  () =>
+    String(route.query.upgrade || "") === "1" ||
+    Boolean(session.value?.is_upgrade) ||
+    isLegacyRenewal.value ||
+    isLegacyUpgrade.value
 );
 const config = ref<CheckoutPublicConfig | null>(null);
 const session = ref<CheckoutSession | null>(null);
@@ -1048,7 +1058,7 @@ const submitDetails = async () => {
 };
 
 const applyCoupon = async () => {
-  if (!config.value || isLegacyRenewal.value) return;
+  if (!config.value || isLegacyRenewal.value || isLegacyUpgrade.value) return;
   const coupon = form.coupon_code.trim();
   if (!coupon) return;
   submitting.value = true;
@@ -1485,7 +1495,9 @@ onMounted(async () => {
     try {
       session.value = isLegacyRenewal.value
         ? await createLegacyRenewalCheckoutSession()
-        : await createUpgradeCheckoutSession(config.value.offer.key, form.coupon_code || null);
+        : isLegacyUpgrade.value
+          ? await createLegacyUpgradeCheckoutSession(config.value.offer.billing_cycle === "annual" ? "annual" : "monthly")
+          : await createUpgradeCheckoutSession(config.value.offer.key, form.coupon_code || null);
       fillFormFromSession(session.value);
       lockUpgradePrefilledFields(session.value);
       router.replace({ query: { ...route.query, token: session.value.token, upgrade: "1" } }).catch(() => {});
