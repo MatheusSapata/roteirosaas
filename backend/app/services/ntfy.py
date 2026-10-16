@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo
 import httpx
 
 from app.core.config import get_settings
-from app.services.webhook_notifications import send_notification
+from app.services.webhook_notifications import contact_context, notify_safely
 
 BRAZIL_TZ = ZoneInfo("America/Sao_Paulo")
 
@@ -60,6 +60,9 @@ def _format_brl(value: Decimal | float | int | str | None) -> str:
     amount = amount.quantize(Decimal("0.01"))
     text = f"{amount:,.2f}"
     return f"R$ {text.replace(',', 'X').replace('.', ',').replace('X', '.')}"
+
+
+format_brl = _format_brl
 
 
 def _format_timestamp(value: datetime | None = None) -> str:
@@ -190,6 +193,8 @@ def publish_subscription_notification(
     occurred_at: datetime | None = None,
     topic: str | None = None,
     service: NtfyService | None = None,
+    customer_email: str | None = None,
+    customer_phone: str | None = None,
 ) -> None:
     scenario_value = SubscriptionPushScenario(scenario)
     event_key_map = {
@@ -217,4 +222,22 @@ def publish_subscription_notification(
             SubscriptionPushScenario.TEST: "Assinatura de teste",
         }[scenario_value],
     }
-    send_notification(event_key=event_key_map[scenario_value], context=context)
+    # Compra aprovada: um aviso só para assinatura nova, renovação e upgrade (para o Pushover).
+    purchase_kind = {
+        SubscriptionPushScenario.NEW: "Nova assinatura",
+        SubscriptionPushScenario.RENEWED: "Renovação",
+        SubscriptionPushScenario.UPGRADED: "Upgrade",
+    }.get(scenario_value)
+    if purchase_kind:
+        bought_plan = context["upgraded_plan_name"] if scenario_value == SubscriptionPushScenario.UPGRADED else context["plan_name"]
+        notify_safely(
+            event_key="purchase_approved",
+            context={
+                **context,
+                **contact_context(customer_email, customer_phone),
+                "event_label": "Compra aprovada",
+                "purchase_kind": purchase_kind,
+                "plan_name": bought_plan,
+            },
+        )
+    notify_safely(event_key=event_key_map[scenario_value], context=context)

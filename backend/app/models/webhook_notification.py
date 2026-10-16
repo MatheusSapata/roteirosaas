@@ -12,6 +12,10 @@ class WebhookNotificationRule(Base):
     display_name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     enabled = Column(Boolean, nullable=False, default=True, server_default="true")
+    # Manda também pelo ntfy (tópico abaixo). As contas do Pushover escolhem os eventos nelas.
+    ntfy_enabled = Column(Boolean, nullable=False, default=True, server_default="true")
+    # Som do aviso no Pushover ("cashregister" é o cha-ching). Vazio: o som padrão do aparelho.
+    pushover_sound = Column(String(40), nullable=True)
     title_template = Column(String(255), nullable=False)
     body_template = Column(Text, nullable=False)
     icon_tag = Column(String(80), nullable=True)

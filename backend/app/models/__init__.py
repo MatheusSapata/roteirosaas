@@ -32,6 +32,7 @@ from .team_invite import TeamInvite
 from .whatsapp import WhatsAppConnection, WhatsAppConversation, WhatsAppMessage, WhatsAppInboxPermission
 from .checkout import CheckoutSettings, CheckoutSession
 from .webhook_notification import WebhookNotificationRule
+from .pushover_account import PushoverAccount
 from .agency_integration import AgencyIntegration
 from .viajeon_webhook_event import ViajeonWebhookEvent
 

@@ -21,6 +21,7 @@ from app.services.cakto import CaktoAPIError, CaktoIntegrationService
 from app.services.checkout import find_pix_automatic_authorization_id, handle_asaas_checkout_webhook
 from app.services.company_status import mark_subscription_overdue
 from app.services.ntfy import SubscriptionPushScenario, publish_subscription_notification
+from app.services.webhook_notifications import notify_payment_overdue
 from app.services.plans import effective_plan
 from app.services.trial import end_trial
 from app.services.trial import republish_all_user_pages
@@ -523,6 +524,8 @@ def _notify_subscription_push(
             plan_name=subscription.plan or "Assinatura",
             offer_name=offer_name or subscription.external_reference or subscription.asaas_payment_link_id or subscription.asaas_subscription_id,
             cancelled_item=cancelled_item,
+            customer_email=user.email,
+            customer_phone=user.whatsapp,
         )
     except Exception:  # pragma: no cover - alerta não pode quebrar o webhook
         logger.exception("Falha ao enviar notificação ntfy para webhook Asaas.")
@@ -594,6 +597,17 @@ async def webhook(request: Request, db: Session = Depends(get_db)) -> Dict[str, 
                     elif event == "PAYMENT_OVERDUE":
                         # Inadimplente: no ar por 3 dias e cobrando por 30 (o job horário encerra depois).
                         mark_subscription_overdue(subscription, payment.get("dueDate"))
+                        notify_payment_overdue(
+                            user_name=user.name,
+                            plan_name=plan_key,
+                            amount=payment.get("value"),
+                            due_date=payment.get("dueDate"),
+                            payment_method=_humanize_payment_method(payment.get("billingType") or subscription.payment_method_type),
+                            kind="Renovação" if previous_status in {"active", "past_due"} else "Primeira cobrança",
+                            email=user.email,
+                            phone=user.whatsapp,
+                            dedupe_key=str(payment.get("id") or f"{user.id}:{payment.get('dueDate')}"),
+                        )
                     elif event in {"PAYMENT_REFUNDED", "PAYMENT_DELETED"}:
                         subscription.status = "inactive"
                         mark_viajechat_cancelled(
