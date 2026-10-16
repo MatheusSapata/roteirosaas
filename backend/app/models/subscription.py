@@ -38,5 +38,9 @@ class Subscription(Base):
     # horário; para quem já estava inativo antes, é estimado (deactivation_estimated).
     deactivated_at = Column(DateTime(timezone=True), nullable=True)
     deactivation_estimated = Column(Boolean, nullable=False, default=False, server_default="false")
+    # Valor da renovação (por ciclo: mensal = do mês, anual = do ano) de quem já assinava um plano
+    # antigo antes do plano único. Preenchido uma vez por backend/sql/2026-10-15_legacy_renewal_amount.sql
+    # e nunca alterado pelo pagamento. Vazio = não renova pelo valor antigo.
+    legacy_renewal_amount = Column(Numeric(12, 2), nullable=True)
 
     user = relationship("User", foreign_keys=[user_id])

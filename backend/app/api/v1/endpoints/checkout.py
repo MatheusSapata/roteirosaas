@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from datetime import date
+from typing import Literal
 
 from app.api.deps import get_current_active_user, get_current_superuser, get_db
 from app.core.request_ip import get_client_ip
@@ -26,6 +27,11 @@ from app.schemas.checkout import (
     CheckoutTrackEventOut,
     CheckoutTrackingDocumentDetailOut,
     CheckoutTrackingItemOut,
+)
+from app.services.legacy_renewal import (
+    create_legacy_renewal_checkout_session,
+    create_legacy_upgrade_checkout_session,
+    legacy_renewal_offer_for_user,
 )
 from app.services.checkout import (
     coerce_checkout_http_error,
@@ -67,6 +73,11 @@ class CheckoutSessionTokenIn(BaseModel):
 class CheckoutUpgradeSessionCreateIn(BaseModel):
     offer_key: str
     coupon_code: str | None = None
+
+
+class CheckoutLegacyUpgradeSessionCreateIn(BaseModel):
+    # Só o ciclo: a oferta, o valor e o plano são decididos no servidor.
+    billing_cycle: Literal["monthly", "annual"]
 
 
 @admin_router.get("", response_model=CheckoutSettingsOut)
@@ -178,6 +189,48 @@ def create_public_upgrade_checkout_session(
         user=current_user,
         coupon_code=payload.coupon_code,
     )
+    return CheckoutSessionOut.model_validate(serialize_checkout_session(db, session))
+
+
+@router.get("/public/legacy-renewal/config", response_model=CheckoutConfigResponse)
+def get_legacy_renewal_checkout_config(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> CheckoutConfigResponse:
+    """Aparência do checkout e resumo da renovação do plano antigo do próprio cliente."""
+    offer = legacy_renewal_offer_for_user(current_user)
+    settings = get_checkout_settings(db)
+    checkout = resolve_offer_checkout(settings, offer)
+    return CheckoutConfigResponse(
+        theme_mode=checkout.theme_mode,
+        layout=checkout.layout,
+        desktop_image_url=checkout.desktop_image_url,
+        mobile_banner_url=checkout.mobile_banner_url,
+        offer=offer,
+        pixels=[],
+    )
+
+
+@router.post("/public/session/legacy-renewal", response_model=CheckoutSessionOut, status_code=status.HTTP_201_CREATED)
+def create_public_legacy_renewal_checkout_session(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> CheckoutSessionOut:
+    """Renovação do plano antigo: plano, ciclo e valor vêm da assinatura no banco; o cliente não
+    envia valor, oferta nem cupom."""
+    session = create_legacy_renewal_checkout_session(db, current_user)
+    return CheckoutSessionOut.model_validate(serialize_checkout_session(db, session))
+
+
+@router.post("/public/session/legacy-upgrade", response_model=CheckoutSessionOut, status_code=status.HTTP_201_CREATED)
+def create_public_legacy_upgrade_checkout_session(
+    payload: CheckoutLegacyUpgradeSessionCreateIn,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> CheckoutSessionOut:
+    """Upgrade de Profissional ou Agência antigo (que renova pela tela) para o plano único: a oferta
+    ativa do ciclo escolhido, no valor cheio, sem cupom e sem a promoção da 1ª mensalidade."""
+    session = create_legacy_upgrade_checkout_session(db, current_user, payload.billing_cycle)
     return CheckoutSessionOut.model_validate(serialize_checkout_session(db, session))
 
 

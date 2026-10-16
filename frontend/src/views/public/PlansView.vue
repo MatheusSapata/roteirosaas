@@ -3,7 +3,7 @@
     <div class="pv-wrap">
       <header class="pv-head">
         <h1 class="pv-title">{{ t(copy.title) }}</h1>
-        <p class="pv-sub">{{ t(copy.subtitle) }}</p>
+        <p class="pv-sub">{{ legacyUpgrade ? t(copy.legacyUpgradeSubtitle) : legacyMode ? t(copy.legacySubtitle) : t(copy.subtitle) }}</p>
       </header>
 
       <div v-if="trialBlocked" class="pv-alert is-danger">
@@ -33,13 +33,94 @@
         </button>
       </div>
 
-      <!-- Plano antigo (Profissional ou Agência): continua valendo; aqui ele vê o que ganha assinando. -->
-      <div v-if="isLegacyPlan" class="pv-alert is-info">
+      <!-- Plano antigo (Profissional ou Agência) sem valor de renovação: continua como antes do plano único. -->
+      <div v-if="isLegacyPlan && !legacyMode" class="pv-alert is-info">
         <p class="pv-alert-title">{{ t(copy.legacyTitle) }} {{ getPlanLabel(activePlan) }}</p>
         <p>{{ t(copy.legacyText) }}</p>
       </div>
 
-      <section id="planos" class="pv-offer">
+      <!-- Cliente dos planos antigos: só o plano dele, o valor que já paga e a validade. Sem o plano novo. -->
+      <section v-if="legacyMode" id="planos" class="pv-legacy">
+        <div class="pv-price-box">
+          <span class="pv-current" :class="{ 'is-off': isSubscriptionInactive }">
+            <span class="pv-dot" aria-hidden="true"></span>{{ isSubscriptionInactive ? t(copy.legacyInactive) : t(copy.yourSubscription) }}
+          </span>
+          <p class="pv-legacy-plan">{{ t(copy.planPrefix) }} {{ getPlanLabel(billingInfo?.plan) }}</p>
+          <div v-if="billingInfo?.legacy_renewal_amount" class="pv-price">
+            <span class="cur">R$</span><span class="val">{{ priceNumber(billingInfo.legacy_renewal_amount) }}</span>
+            <span class="per">{{ currentCycle === "annual" ? t(copy.perYear) : t(copy.perMonth) }}</span>
+          </div>
+          <p class="pv-eq">{{ cycleLabel(currentCycle) }}<template v-if="legacyValidityText"> · {{ legacyValidityText }}</template></p>
+
+          <template v-if="legacyMode === 'panel'">
+            <button type="button" class="pv-btn" :disabled="loadingKey === 'legacy'" @click="goToLegacyRenewal">
+              <span>{{ loadingKey === "legacy" ? t(copy.redirecting) : legacyCtaLabel }}</span>
+              <ArrowRight v-if="loadingKey !== 'legacy'" :size="18" aria-hidden="true" />
+            </button>
+            <p class="pv-hint">{{ isSubscriptionInactive ? t(copy.legacySameValueInactive) : t(copy.legacySameValueActive) }}</p>
+          </template>
+          <p v-else-if="legacyMode === 'external'" class="pv-eq">{{ t(copy.legacyExternal) }}</p>
+          <p v-else class="pv-eq">{{ t(copy.legacySupport) }}</p>
+
+          <p v-if="errorMessage" class="pv-msg is-error">{{ errorMessage }}</p>
+          <p v-if="successMessage" class="pv-msg is-success">{{ successMessage }}</p>
+        </div>
+
+        <!-- Profissional ou Agência que renova pela tela: também pode fazer upgrade para o plano único,
+             no valor cheio da oferta (sem a promoção da 1ª mensalidade). O servidor confirma e cobra. -->
+        <div v-if="legacyUpgrade" class="pv-price-box pv-upgrade">
+          <span class="pv-upgrade-eyebrow">{{ t(copy.upgradeTitle) }}</span>
+          <p class="pv-legacy-plan">{{ t(copy.planPrefix) }} Roteiro Online</p>
+          <p class="pv-eq">{{ t(copy.upgradeText) }}</p>
+          <div v-if="salesPlan.monthly && salesPlan.annual" class="pv-cycle" role="tablist" :aria-label="t(copy.howToPay)">
+            <button type="button" role="tab" :aria-selected="cycle === 'monthly'" :class="{ on: cycle === 'monthly' }" @click="cycle = 'monthly'">
+              {{ cycleLabel("monthly") }}
+            </button>
+            <button type="button" role="tab" :aria-selected="cycle === 'annual'" :class="{ on: cycle === 'annual' }" @click="cycle = 'annual'">
+              {{ cycleLabel("annual") }}<span v-if="math && math.savingsPercent > 0" class="pv-off">-{{ math.savingsPercent }}%</span>
+            </button>
+          </div>
+
+          <template v-if="currentOffer">
+            <p v-if="cycle === 'annual' && math && math.savings > 0" class="pv-anchor">
+              {{ t(copy.from) }} <s>{{ formatBRL(math.twelveMonths) }}</s> {{ t(copy.for) }}
+            </p>
+            <div v-if="annualInstallment" class="pv-price">
+              <span class="cur">{{ annualInstallment.count }}x de R$</span><span class="val">{{ formatBRL(annualInstallment.value, { cents: "always" }).replace(/^R\$\s*/, "") }}</span>
+            </div>
+            <div v-else class="pv-price">
+              <span class="cur">R$</span><span class="val">{{ priceNumber(currentOffer.amount) }}</span>
+              <span class="per">{{ cycle === "annual" ? t(copy.perYear) : t(copy.perMonth) }}</span>
+            </div>
+            <p v-if="annualInstallment" class="pv-eq">
+              {{ t(copy.or) }} <b>{{ formatBRL(currentOffer.amount) }} {{ t(copy.upfront) }}</b>
+            </p>
+            <p v-else-if="cycle === 'annual' && math" class="pv-eq">
+              {{ t(copy.equals) }} <b>{{ formatBRL(math.perMonth, { cents: "always" }) }} {{ t(copy.aMonth) }}</b>
+            </p>
+            <p v-else class="pv-eq">{{ t(copy.monthlyNote) }}</p>
+            <p v-if="cycle === 'annual' && math && math.savings > 0" class="pv-save">
+              {{ t(copy.save) }} {{ formatBRL(math.savings) }} · {{ t(copy.lessThan) }} {{ math.lessThanMonths }} {{ t(copy.monthsOfMonthly) }}
+            </p>
+
+            <div class="pv-upgrade-incl">
+              <p class="pv-incl-title">{{ t(copy.includedTitle) }}</p>
+              <ul>
+                <li v-for="item in included" :key="item"><Check :size="15" aria-hidden="true" />{{ item }}</li>
+              </ul>
+            </div>
+
+            <button type="button" class="pv-btn" :disabled="loadingKey === 'legacy-upgrade'" @click="goToLegacyUpgrade">
+              <span>{{ loadingKey === "legacy-upgrade" ? t(copy.redirecting) : t(copy.upgradeCta) }}</span>
+              <ArrowRight v-if="loadingKey !== 'legacy-upgrade'" :size="18" aria-hidden="true" />
+            </button>
+            <p v-if="hasRemainingValidity" class="pv-hint">{{ t(copy.upgradeNoCredit) }}</p>
+          </template>
+          <p v-else-if="!salesPlanLoading" class="pv-eq">{{ t(copy.unavailable) }}</p>
+        </div>
+      </section>
+
+      <section v-else id="planos" class="pv-offer">
         <div class="pv-incl">
           <p class="pv-incl-title">{{ t(copy.includedTitle) }}</p>
           <ul>
@@ -111,7 +192,7 @@
 import { ArrowRight, Check, ShieldCheck } from "lucide-vue-next";
 import { computed, onMounted, ref } from "vue";
 import api from "../../services/api";
-import { getPublicSalesPlan, type SalesPlan } from "../../services/checkout";
+import { LEGACY_RENEWAL_OFFER_KEY, getPublicSalesPlan, type SalesPlan } from "../../services/checkout";
 import { useAuthStore } from "../../store/useAuthStore";
 import { getPlanLabel } from "../../utils/planLabels";
 import { formatBRL, salesPlanMath } from "../../utils/salesPlan";
@@ -121,7 +202,10 @@ import type { LocalizedString, SupportedLanguage } from "../../utils/i18n";
 /**
  * Assinatura do Roteiro Online dentro do painel: plano único (interno: Escala), pago por mês
  * ou por ano. Os valores e as ofertas vêm de Admin Master › Ofertas e checkout (as mesmas da
- * página de vendas). Clientes dos planos antigos continuam neles até assinarem.
+ * página de vendas). Clientes dos planos antigos (Profissional, Agência e Escala de antes do plano
+ * único) veem o plano deles e renovam pelo mesmo valor (billing/me: legacy_renewal_*). Profissional e
+ * Agência que renovam pela tela também veem o upgrade para o plano único, no valor cheio
+ * (billing/me: legacy_upgrade_available). O Escala antigo só renova.
  */
 const currentLanguage = getCurrentLanguage();
 const t = createLocalizer(currentLanguage);
@@ -175,6 +259,36 @@ const copy = {
   redirecting: L("Redirecionando...", "Redirigiendo..."),
   unavailable: L("A assinatura não está disponível no momento. Fale com o suporte.", "La suscripción no está disponible por el momento. Habla con soporte."),
   guarantee: L("7 dias de garantia: não gostou, devolvemos 100%.", "7 días de garantía: si no te gusta, devolvemos el 100%."),
+  legacySubtitle: L("Seu plano, o valor da sua assinatura e a validade.", "Tu plan, el valor de tu suscripción y la vigencia."),
+  legacyInactive: L("Assinatura inativa", "Suscripción inactiva"),
+  planPrefix: L("Plano", "Plan"),
+  validUntil: L("válida até", "vigente hasta"),
+  nextRenewal: L("próxima renovação em", "próxima renovación el"),
+  expiredOn: L("venceu em", "venció el"),
+  legacySameValueActive: L(
+    "O valor é o mesmo que você já paga. Renovando agora, a nova validade conta a partir de hoje.",
+    "El valor es el mismo que ya pagas. Si renuevas ahora, la nueva vigencia cuenta desde hoy."
+  ),
+  legacySameValueInactive: L("O valor é o mesmo que você pagava.", "El valor es el mismo que pagabas."),
+  legacyExternal: L(
+    "A renovação da sua assinatura é gerida pelo local onde ela foi contratada.",
+    "La renovación de tu suscripción se gestiona en el lugar donde fue contratada."
+  ),
+  legacySupport: L(
+    "Para renovar sua assinatura, fale com o suporte.",
+    "Para renovar tu suscripción, habla con soporte."
+  ),
+  legacyUpgradeSubtitle: L(
+    "Renove pelo mesmo valor ou faça upgrade para o plano Roteiro Online.",
+    "Renueva por el mismo valor o mejora al plan Roteiro Online."
+  ),
+  upgradeTitle: L("Fazer upgrade", "Mejorar plan"),
+  upgradeText: L("Tudo incluso, pago por mês ou por ano.", "Todo incluido, con pago mensual o anual."),
+  upgradeCta: L("Fazer upgrade", "Mejorar plan"),
+  upgradeNoCredit: L(
+    "Os dias que ainda restam no seu plano não viram desconto: a nova validade conta a partir do pagamento.",
+    "Los días que aún quedan en tu plan no se descuentan: la nueva vigencia cuenta desde el pago."
+  ),
   checkoutError: L("Não foi possível iniciar o checkout. Tente novamente.", "No fue posible iniciar el checkout. Intenta nuevamente.")
 };
 
@@ -200,6 +314,13 @@ interface BillingInfo {
   billing_cycle?: string;
   scheduled_downgrade_plan?: string | null;
   scheduled_downgrade_at?: string | null;
+  // Plano antigo (antes do plano único): valor e forma de renovar decididos no servidor.
+  legacy?: boolean;
+  legacy_renewal_amount?: string | null;
+  legacy_renewal_mode?: "panel" | "external" | "support" | null;
+  legacy_managed_externally?: boolean;
+  // Profissional ou Agência antigo que renova pela tela: também pode fazer upgrade para o plano único.
+  legacy_upgrade_available?: boolean;
 }
 
 const authStore = useAuthStore();
@@ -249,7 +370,7 @@ const annualInstallment = computed(() => {
 const promoAmount = computed(() => {
   const offer = currentOffer.value;
   if (!offer || offer.billing_cycle !== "monthly" || !offer.first_payment_amount) return "";
-  if (isLegacyPlan.value || isScale.value) return "";
+  if (isLegacyPlan.value || isScale.value || billingInfo.value?.legacy) return "";
   return offer.first_payment_amount;
 });
 const cycleLabel = (value: BillingCycle) => (value === "annual" ? t(copy.annual) : t(copy.monthly));
@@ -273,6 +394,55 @@ const checkoutBaseOrigin = computed(() => {
   if (typeof window === "undefined") return "";
   return window.location.origin;
 });
+
+// Plano antigo: renova no plano e no valor que o cliente já paga (o servidor monta a cobrança).
+const legacyMode = computed(() => (billingInfo.value?.legacy ? billingInfo.value.legacy_renewal_mode || "support" : null));
+const legacyCtaLabel = computed(() => (isSubscriptionInactive.value ? t(copy.reactivate) : t(copy.renew)));
+const legacyValidityText = computed(() => {
+  const raw = billingInfo.value?.valid_until;
+  if (!raw) return "";
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return "";
+  const formatted = date.toLocaleDateString(dateLocale);
+  if (date.getTime() < Date.now()) return `${t(copy.expiredOn)} ${formatted}`;
+  const status = String(billingInfo.value?.status || "").trim().toLowerCase();
+  if (status === "active" && legacyMode.value === "panel") return `${t(copy.nextRenewal)} ${formatted}`;
+  return `${t(copy.validUntil)} ${formatted}`;
+});
+
+const goToLegacyRenewal = () => {
+  loadingKey.value = "legacy";
+  errorMessage.value = null;
+  try {
+    window.location.href = `${checkoutBaseOrigin.value}/checkout/${LEGACY_RENEWAL_OFFER_KEY}?upgrade=1`;
+  } catch (err) {
+    console.error(err);
+    errorMessage.value = t(copy.checkoutError);
+    loadingKey.value = null;
+  }
+};
+
+// Upgrade do plano antigo para o plano único (valor cheio; o servidor confere quem pode e escolhe a oferta do ciclo).
+const legacyUpgrade = computed(() => legacyMode.value === "panel" && Boolean(billingInfo.value?.legacy_upgrade_available));
+const hasRemainingValidity = computed(() => {
+  const raw = billingInfo.value?.valid_until;
+  const time = raw ? new Date(raw).getTime() : Number.NaN;
+  return !Number.isNaN(time) && time > Date.now();
+});
+
+const goToLegacyUpgrade = () => {
+  const offer = currentOffer.value;
+  if (!offer) return;
+  loadingKey.value = "legacy-upgrade";
+  errorMessage.value = null;
+  try {
+    window.location.href = `${checkoutBaseOrigin.value}/checkout/${encodeURIComponent(offer.key)}?upgrade=1&legacy_upgrade=1`;
+  } catch (err) {
+    console.error(err);
+    errorMessage.value = t(copy.checkoutError);
+    loadingKey.value = null;
+  }
+};
 
 const goToCheckout = () => {
   const offer = currentOffer.value;
@@ -373,6 +543,36 @@ onMounted(async () => {
   background: var(--status-info);
   color: var(--status-info-foreground);
 }
+.pv-legacy {
+  max-width: 460px;
+  margin: 0 auto;
+}
+.pv-legacy-plan {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+}
+.pv-upgrade {
+  margin-top: 16px;
+}
+.pv-upgrade-eyebrow {
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.pv-upgrade-incl {
+  width: 100%;
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  text-align: left;
+}
+.pv-current.is-off {
+  background: var(--status-warning);
+  color: var(--status-warning-foreground);
+}
 .pv-offer {
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
@@ -393,7 +593,8 @@ onMounted(async () => {
   font-size: 17px;
   font-weight: 700;
 }
-.pv-incl ul {
+.pv-incl ul,
+.pv-upgrade-incl ul {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px 16px;
@@ -401,14 +602,16 @@ onMounted(async () => {
   padding: 0;
   list-style: none;
 }
-.pv-incl li {
+.pv-incl li,
+.pv-upgrade-incl li {
   display: flex;
   align-items: flex-start;
   gap: 8px;
   font-size: 14px;
   line-height: 1.4;
 }
-.pv-incl li svg {
+.pv-incl li svg,
+.pv-upgrade-incl li svg {
   margin-top: 2px;
   padding: 2px;
   border-radius: 50%;
@@ -575,7 +778,8 @@ onMounted(async () => {
   }
 }
 @media (max-width: 520px) {
-  .pv-incl ul {
+  .pv-incl ul,
+  .pv-upgrade-incl ul {
     grid-template-columns: 1fr;
   }
 }

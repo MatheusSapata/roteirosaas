@@ -613,7 +613,7 @@
               <button type="button" class="esv-link" @click="goLeads">{{ viewCopy.leadSection.manageButton }}</button>
             </EdGroup>
             <EdGroup v-else :title="viewCopy.leadSection.blockedTitle">
-              <p class="ved-hint">{{ viewCopy.leadSection.blockedDescription }}</p>
+              <p class="ved-hint">{{ leadBlockedDescription }}</p>
               <button type="button" class="esv-btn is-primary" @click="goPlans">{{ viewCopy.actions.viewPlans }}</button>
             </EdGroup>
           </template>
@@ -887,7 +887,7 @@
     >
       <h3 class="text-xl font-semibold text-slate-900 dark:text-white">{{ viewCopy.leadSection.blockedTitle }}</h3>
       <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">
-        {{ viewCopy.leadSection.blockedDescription }}
+        {{ leadBlockedDescription }}
       </p>
       <button
         type="button"
@@ -1737,6 +1737,7 @@ import {
   type AiAssistantUsageResponse
 } from "../../services/aiAssistant";
 import { useAuthStore } from "../../store/useAuthStore";
+import { isLegacyLimitedPlan } from "../../utils/planLabels";
 import { useAgencyStore } from "../../store/useAgencyStore";
 import { useLeadCaptureStore } from "../../store/useLeadCaptureStore";
 import type {
@@ -1899,6 +1900,9 @@ watch(pageSlug, () => markUnsavedChanges());
 watch(pageShortDescription, () => markUnsavedChanges());
 
 const auth = useAuthStore();
+const leadBlockedDescription = computed(() =>
+  isLegacyLimitedPlan(auth.user?.plan) ? viewCopy.leadSection.blockedDescriptionLegacy : viewCopy.leadSection.blockedDescription
+);
 const agencyStore = useAgencyStore();
 const leadCaptureStore = useLeadCaptureStore();
 const publicSiteBaseUrl = (
@@ -2066,6 +2070,11 @@ const viewCopy = {
     blockedDescription: t({
       pt: "Este recurso não está incluído no seu plano atual. Assine o Roteiro Online para ativar o formulário obrigatório de leads.",
       es: "Este recurso no está incluido en tu plan actual. Suscríbete a Roteiro Online para activar el formulario obligatorio de leads."
+    }),
+    // Planos antigos (Profissional e Agência): sem oferecer o plano novo.
+    blockedDescriptionLegacy: t({
+      pt: "Este recurso não está incluído no seu plano atual.",
+      es: "Este recurso no está incluido en tu plan actual."
     })
   },
   preview: {

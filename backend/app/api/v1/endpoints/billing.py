@@ -22,6 +22,7 @@ from app.services.checkout import find_pix_automatic_authorization_id, handle_as
 from app.services.company_status import mark_subscription_overdue
 from app.services.ntfy import SubscriptionPushScenario, publish_subscription_notification
 from app.services.webhook_notifications import notify_payment_overdue
+from app.services.legacy_renewal import legacy_renewal_info, legacy_upgrade_available
 from app.services.plans import effective_plan
 from app.services.trial import end_trial
 from app.services.trial import republish_all_user_pages
@@ -192,6 +193,15 @@ class BillingInfo(BaseModel):
     card_last4: Optional[str] = None
     scheduled_downgrade_plan: Optional[str] = None
     scheduled_downgrade_at: Optional[datetime] = None
+    # Plano antigo (antes do plano único): a tela mostra só o plano do cliente, sem o plano novo.
+    legacy: bool = False
+    # Valor da renovação por ciclo (mensal = do mês, anual = do ano), decidido no servidor.
+    legacy_renewal_amount: Optional[Decimal] = None
+    # panel: renova pela tela; external: gerida pelo local onde foi contratada; support: fale com o suporte.
+    legacy_renewal_mode: Optional[Literal["panel", "external", "support"]] = None
+    legacy_managed_externally: bool = False
+    # Profissional ou Agência antigo que renova pela tela: também pode fazer upgrade para o plano único.
+    legacy_upgrade_available: bool = False
 
 
 class BillingInvoiceOut(BaseModel):
@@ -351,6 +361,7 @@ def _increase_total_revenue(db: Session, amount: Decimal) -> None:
 
 def _build_billing_info(user: User) -> BillingInfo:
     sub = user.subscription
+    legacy = legacy_renewal_info(sub)
     return BillingInfo(
         plan=effective_plan(user),
         status=sub.status if sub else "inactive",
@@ -364,6 +375,11 @@ def _build_billing_info(user: User) -> BillingInfo:
         card_last4=sub.card_last4 if sub else None,
         scheduled_downgrade_plan=(sub.external_reference.split("scheduled_downgrade:", 1)[1] if sub and sub.external_reference and sub.external_reference.startswith("scheduled_downgrade:") else None),
         scheduled_downgrade_at=sub.valid_until if sub and sub.external_reference and sub.external_reference.startswith("scheduled_downgrade:") else None,
+        legacy=legacy.legacy,
+        legacy_renewal_amount=legacy.amount,
+        legacy_renewal_mode=legacy.mode,
+        legacy_managed_externally=legacy.managed_externally,
+        legacy_upgrade_available=legacy_upgrade_available(sub),
     )
 
 
