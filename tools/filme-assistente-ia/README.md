@@ -14,6 +14,26 @@ quadro no Chromium + ffmpeg).
 - `captura/`: os scripts que levantam a demonstração e capturam o editor real (usam `tools/help-media`).
 - `ferramentas/`: síntese da trilha e dos efeitos, preparo dos assets, autoteste de seek.
 
+## Versão vertical (anúncio responsivo 9:16 / 4:5)
+
+Vídeo de 29,6 s, 1080x1920, com todo o conteúdo dentro da faixa 4:5 central (y 285 a 1635), gancho
+de WhatsApp ("Você vende viagem?"), locução contínua e CTA **Saiba mais agora** no fim.
+
+- `final-vertical.mp4`: 9:16 com som. `final-vertical-4x5.mp4`: o corte 1080x1350 do mesmo render.
+- `index-vertical.html`: o filme vertical editável. `NOTE-vertical.md`: cenas, o que é real, gates.
+- `audio-v/`: locução (`vo.mp3`, uma tomada), trilha (`music.flac`), mixagem final (`mix.flac`) e
+  **só trilha + efeitos, sem voz** (`trilha-e-efeitos.flac`).
+- `assets/v/`: recortes da tela dividida (gerados por `ferramentas/prep_vertical.py`).
+
+```bash
+python3 $SKILL/scripts/mix.py --duration 29.6 --out audio-v/mix.wav --vo audio-v/vo.mp3@0.25 \
+  --music audio-v/music.flac --music-gain -8 --events audio-v/events.json --duck --duck-db 9 --tp -2.4
+node $SKILL/scripts/render.mjs index-vertical.html final-vertical.mp4 --audio audio-v/mix.wav \
+  --shutter 180 --subframes 8 --grain 0.03 --grain-seed 7
+ffmpeg -i final-vertical.mp4 -vf crop=1080:1350:0:285 -c:a copy final-vertical-4x5.mp4
+```
+Os emojis do chat usam a fonte Noto Color Emoji do sistema (`fonts-noto-color-emoji`).
+
 ## Renderizar de novo
 
 Precisa de Node 22+, ffmpeg e Chromium, e da pasta da skill motionmaxxing (`$SKILL`).

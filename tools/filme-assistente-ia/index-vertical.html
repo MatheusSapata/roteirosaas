@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Conte a viagem · vertical · Roteiro Online</title>
+<meta name="viewport" content="width=1080, height=1920">
+<link rel="stylesheet" href="./runtime/fonts.css">
+<style>
+/* VERTICAL 1080x1920 for Reels/Stories, built so the 4:5 centre crop (1080x1350, y 285-1635) holds every
+   piece of information. Outside that band there is only world (chat header, input bar, ground, plates).
+   Sora (display) + Inter (UI). ONE accent: mint #1de9a0 = "da marca / pronto" (claim half, CTA). */
+:root {
+  --night: #07130e;
+  --edbg: #edf1ee;
+  --mint: #1de9a0;
+  --ink: #0b1712;
+  --font: "Sora", "Inter", sans-serif;
+  --ui: "Inter", "Noto Color Emoji", sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; background: #000; }
+#main { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; overflow: hidden; background: var(--edbg); font-family: var(--font); }
+img { display: block; }
+
+/* ---------- HOOK: the agency's real-life chat (rebuilt messaging UI, generic, no brand) ---------- */
+#hook { position: absolute; inset: 0; transform-origin: 540px 1100px; background-color: #efeae2; font-family: var(--ui); color: #111b21; overflow: hidden;
+  background-image: radial-gradient(circle at 18px 22px, rgba(84, 72, 52, .045) 3px, transparent 4px),
+                    radial-gradient(circle at 52px 58px, rgba(84, 72, 52, .035) 5px, transparent 6px);
+  background-size: 72px 72px, 96px 96px; }
+#chatList { position: absolute; left: 0; top: 0; width: 1080px; padding-top: 0; }
+.day { width: max-content; margin: 0 auto 30px; padding: 10px 28px; border-radius: 16px; background: rgba(255,255,255,.92); color: #54656f; font: 500 28px/1.2 var(--ui); box-shadow: 0 1px .5px rgba(11,20,26,.13); }
+.msg { position: relative; width: max-content; max-width: 880px; margin: 0 36px 20px; padding: 20px 30px 14px; border-radius: 28px; font: 400 37px/1.38 var(--ui); box-shadow: 0 1px .5px rgba(11,20,26,.13); white-space: pre-line; }
+.msg.out { margin-left: auto; background: #d9fdd3; border-top-right-radius: 8px; }
+.msg.in { background: #fff; border-top-left-radius: 8px; }
+.msg b { font-weight: 700; }
+.meta { display: block; margin-top: 4px; text-align: right; color: #667781; font: 400 25px/1.2 var(--ui); white-space: nowrap; }
+.meta svg { display: inline-block; vertical-align: -3px; margin-left: 6px; }
+.doc { display: flex; align-items: center; gap: 22px; width: 760px; padding: 22px 24px; border-radius: 18px; background: rgba(11, 20, 26, .05); white-space: normal; }
+.doc .ic { flex: none; display: flex; align-items: center; justify-content: center; width: 74px; height: 88px; border-radius: 10px; background: #e2493a; color: #fff; font: 700 22px/1 var(--ui); }
+.doc b { display: block; font: 600 33px/1.25 var(--ui); }
+.doc small { display: block; margin-top: 4px; color: #667781; font: 400 26px/1.25 var(--ui); }
+#chatHead { position: absolute; left: 0; top: 0; width: 1080px; height: 214px; background: #fff; box-shadow: 0 1px 0 rgba(11,20,26,.08);
+  display: flex; align-items: flex-end; padding: 0 34px 26px; gap: 22px; }
+#chatHead .av { width: 96px; height: 96px; border-radius: 50%; background: linear-gradient(140deg, #9db8ad, #5f8577); color: #fff; display: flex; align-items: center; justify-content: center; font: 600 36px/1 var(--ui); }
+#chatHead .nm { flex: 1; }
+#chatHead .nm b { display: block; font: 600 40px/1.2 var(--ui); }
+#chatHead .nm small { display: block; color: #667781; font: 400 29px/1.3 var(--ui); }
+#chatFoot { position: absolute; left: 0; top: 1756px; width: 1080px; height: 164px; background: #f0f2f5; }
+#chatFoot .pill { position: absolute; left: 28px; top: 28px; width: 864px; height: 104px; border-radius: 52px; background: #fff; display: flex; align-items: center; padding: 0 36px; gap: 22px; color: #8696a0; font: 400 37px/1 var(--ui); }
+#chatFoot .mic { position: absolute; left: 920px; top: 28px; width: 104px; height: 104px; border-radius: 50%; background: #00a884; display: flex; align-items: center; justify-content: center; }
+#hk { position: absolute; inset: 0; pointer-events: none; }
+#hkScrim { position: absolute; left: 0; top: 214px; width: 1080px; height: 600px;
+  background: linear-gradient(rgba(239,234,226,.97) 0%, rgba(239,234,226,.96) 58%, rgba(239,234,226,0) 100%); }
+.hl { position: absolute; left: 0; width: 1080px; text-align: center; white-space: pre; font: 700 84px/96px var(--font); letter-spacing: -0.035em; color: var(--ink); }
+
+/* ---------- ACT 1 (S1-S2): the real editor, one camera ---------- */
+#act1 { position: absolute; inset: 0; background: var(--edbg); }
+#cam1 { position: absolute; left: 0; top: 0; width: 1440px; height: 900px; transform-origin: 0 0; }
+#cam1 .st { position: absolute; left: 0; top: 0; width: 1440px; height: 900px; }
+.layer { position: absolute; overflow: hidden; }
+.layer img { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+#typeL { left: 1004px; top: 600px; width: 428px; height: 300px; }
+#streamL { left: 1004px; top: 0; width: 428px; height: 900px; }
+#prevClip { left: 182px; top: 170px; width: 808px; height: 700px; border-radius: 0 0 14px 14px; }
+#prevClip img { height: auto; width: 808px; }
+.caret { position: absolute; width: 1.6px; height: 17px; background: #0f172a; border-radius: 1px; }
+.hole { position: absolute; }
+.btnov { position: absolute; background-repeat: no-repeat; background-size: 1440px 900px; }
+#sendHole { left: 1366px; top: 798px; width: 46px; height: 46px; background: #fff; border-radius: 50%; }
+#sendBtn { left: 1368px; top: 800px; width: 42px; height: 42px; border-radius: 50%; background-image: url(assets/type/t097.webp); background-size: 428px 300px; background-position: -364px -200px; }
+#insHole { left: 1039px; top: 644px; width: 154px; height: 42px; background: #f4f7f5; border-radius: 22px; }
+#insBtn { left: 1041px; top: 646.5px; width: 150px; height: 38px; border-radius: 19px; background-image: url(assets/ed/a04-structure-hover.webp); background-position: -1041px -646.5px; }
+/* the cursor is the navigation arrow cut out of the official logo; tip at the element origin */
+.cur { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+.curP { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.curP img { position: absolute; width: 27px; height: 27px; left: -25.4px; top: -1.1px;
+  filter: drop-shadow(0 0 0.7px #04301c) drop-shadow(0 0 0.7px #04301c) drop-shadow(1px 2px 2.5px rgba(4, 30, 18, .38)); }
+.light { position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(120% 70% at 12% -6%, rgba(255,255,255,.16), rgba(255,255,255,0) 55%),
+              radial-gradient(90% 60% at 106% 108%, rgba(8,40,26,.12), rgba(8,40,26,0) 60%); }
+#h2 { position: absolute; inset: 0; pointer-events: none; }
+
+/* the page itself, full bleed (the preview's own pixels, 808 css wide -> 1080 px) */
+#pageV { position: absolute; inset: 0; background: #f9fbfa; overflow: hidden; }
+#pageImg { position: absolute; left: 0; top: 0; width: 1080px; height: auto; }
+
+/* ---------- S3: edit here, see it there (two views of the same real states, stacked) ---------- */
+#split { position: absolute; inset: 0; background: var(--edbg); overflow: hidden; }
+#split .bg { position: absolute; left: -540px; top: -80px; width: 2160px; height: 2080px; object-fit: cover; opacity: .55; }
+#splitIn { position: absolute; inset: 0; filter: blur(var(--b, 0px)); }
+.pan { position: absolute; left: 36px; width: 1008px; overflow: hidden; border-radius: 34px; background: #fff;
+  box-shadow: 0 0 0 1px rgba(8, 40, 26, .07), 0 40px 70px -40px rgba(8, 40, 26, .45); }
+#pA { top: 380px; height: 580px; }
+#pB { top: 990px; height: 570px; }
+.pcam { position: absolute; left: 0; top: 0; width: 1440px; height: 900px; transform-origin: 0 0; }
+.pcam .ca { position: absolute; left: 150px; top: 150px; width: 450px; height: 570px; }
+.pcam .cb { position: absolute; left: 590px; top: 150px; width: 560px; height: 390px; }
+#dim2 { position: absolute; inset: 0; background: var(--night); opacity: 0; }
+#claim { position: absolute; inset: 0; pointer-events: none; }
+#claim .ln { position: absolute; left: 0; width: 1080px; text-align: center; white-space: pre; font: 600 100px/114px var(--font); letter-spacing: -0.035em; color: #f4faf7; }
+#claim .l1 { top: 840px; }
+#claim .l2 { top: 960px; color: var(--mint); }
+
+/* ---------- ACT 2 (S4-S5): the client's side, night ---------- */
+#act2 { position: absolute; inset: 0; background: var(--night); }
+.plate { position: absolute; left: -6%; top: -6%; width: 112%; height: 112%; object-fit: cover; opacity: .92; }
+#vign { position: absolute; inset: 0; background: radial-gradient(85% 62% at 50% 50%, rgba(7,19,14,.06) 30%, rgba(7,19,14,.8) 100%); }
+#phoneCam { position: absolute; left: 0; top: 0; width: 414px; height: 868px; transform-origin: 0 0; }
+/* the editor's own phone frame (.ed-phone in PageEditorView.vue), same rules */
+.ed-phone { position: absolute; left: 0; top: 0; display: flex; width: 414px; height: 868px; flex-direction: column; border-radius: 60px; background: #0b100e; padding: 12px;
+  box-shadow: inset 0 0 0 2px #2c3430, 0 60px 120px -40px rgba(0, 0, 0, 0.7), 0 30px 60px -28px rgba(6, 12, 9, 0.55); }
+.ed-phone::before, .ed-phone::after { content: ""; position: absolute; width: 4px; border-radius: 3px; background: #1d2421; }
+.ed-phone::before { left: -4px; top: 170px; height: 64px; box-shadow: 0 84px 0 #1d2421; }
+.ed-phone::after { right: -4px; top: 210px; height: 96px; }
+.ed-phone-status { position: relative; display: flex; flex: none; height: 50px; align-items: center; justify-content: space-between; border-radius: 48px 48px 0 0; background: #fff; padding: 4px 30px 0 40px; color: #0b100e; font: 600 16px/1 -apple-system, "SF Pro Text", "Inter", sans-serif; }
+.ed-phone-island { position: absolute; top: 11px; left: 50%; width: 122px; height: 35px; margin-left: -61px; border-radius: 999px; background: #0b100e; }
+.ed-phone-icons { display: flex; align-items: center; gap: 6px; }
+.ed-phone-icons svg { fill: currentColor; }
+.ed-screen { position: relative; flex: 1; overflow: hidden; border-radius: 0 0 48px 48px; background: #fff; }
+.ed-screen .pg { position: absolute; left: 0; top: 0; width: 390px; }
+.ed-phone-home { position: absolute; bottom: 20px; left: 50%; z-index: 2; width: 140px; height: 5px; margin-left: -70px; border-radius: 999px; background: rgba(11, 16, 14, 0.82); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.55); }
+/* the LP's own floating card (.lp-float in SalesLandingView.vue) */
+#notifWrap { position: absolute; left: 0; top: 404px; width: 1080px; display: flex; justify-content: center; transform-origin: 540px 0; }
+#notif { display: flex; align-items: center; gap: 10px; padding: 10px 16px 10px 10px; border-radius: 14px; background: #fff; color: var(--ink);
+  box-shadow: 0 18px 40px -16px rgba(0, 0, 0, 0.55); font-family: "Inter", sans-serif; white-space: nowrap; }
+#notif b { display: block; font-size: 13px; line-height: 1.2; }
+#notif small { display: block; color: #55665e; font-size: 11.5px; line-height: 1.3; }
+#notif .ico { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; background: #22c55e; color: #fff; }
+/* lockup: the official white logo with its arrow cut out, the arrow itself, and the LP's own night button */
+#logoWrap { position: absolute; inset: 0; transform-origin: 540px 960px; }
+#logoBase { position: absolute; left: 220px; top: 742px; width: 640px; height: 206.67px; filter: blur(var(--b, 0px)); }
+#arrowFly { position: absolute; left: 0; top: 0; width: 0; height: 0; }
+#arrowFly img { position: absolute; width: 55.67px; height: 55.67px; left: -52.31px; top: -2.33px; }
+#ctaWrap { position: absolute; left: 0; top: 1022px; width: 1080px; display: flex; justify-content: center; }
+#cta { position: relative; display: inline-flex; align-items: center; gap: 22px; height: 150px; padding: 0 70px; border-radius: 36px; overflow: hidden;
+  background: var(--mint); color: #05170f; font: 700 52px/1 var(--font); letter-spacing: -0.02em; white-space: nowrap;
+  box-shadow: 0 34px 64px -30px rgba(18, 185, 129, .85); }
+#cta .sheen { position: absolute; left: 0; top: -20px; width: 150px; height: 190px; transform: skewX(-18deg);
+  background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,.6), rgba(255,255,255,0)); }
+</style>
+</head>
+<body>
+<div id="main">
+  <i id="dummy" style="position:absolute;left:-10px;top:-10px;width:1px;height:1px"></i>
+
+  <!-- ============ HOOK: the textão the agent sends today ============ -->
+  <div id="hook" data-ui="chat">
+    <div id="chatList">
+      <div class="day">Hoje</div>
+      <div class="msg in" id="m1">Boa tarde! Vi o post da viagem pra Gramado. Como funciona? 🙂<span class="meta">14:30</span></div>
+      <div class="msg out" id="m2"><b>❄️ GRAMADO E CANELA · 4 DIAS ❄️</b>
+🗓️ Saída 10/07 (quinta) às 5h, em frente à agência 🚌
+
+📍 <b>DIA 1 · Chegada e Rua Coberta</b>
+Chegada prevista às 14h e check-in no hotel. À noite, passeio livre pela Rua Coberta e pelo centro de Gramado 🍫
+
+📍 <b>DIA 2 · City tour</b>
+Lago Negro, Catedral de Pedra, Mini Mundo (entrada não inclusa) e Cascata do Caracol 🌲
+
+📍 <b>DIA 3 · Snowland ⛄</b>
+Dia inteiro no parque de neve. Ingresso incluso! Roupa térmica disponível no local.
+
+📍 <b>DIA 4 · Café colonial e retorno</b>
+Café colonial de despedida ☕ e retorno. Chegada prevista às 22h.
+
+✅ <b>INCLUI:</b>
+▪️ 3 noites em hotel com café da manhã
+▪️ Ônibus executivo
+▪️ City tour com guia
+▪️ Ingresso Snowland
+▪️ Seguro viagem
+
+❌ <b>NÃO INCLUI:</b> almoços, jantares e passeios opcionais
+
+💰 <b>VALORES:</b>
+R$ 1.290 por pessoa em até 10x sem juros 💳
+Criança até 11 anos: R$ 890 no quarto dos pais
+
+⚠️ VAGAS LIMITADAS!! Garanta já o seu lugar 🙏🙏
+Qualquer dúvida estou à disposição 😊<span class="meta">14:32 <svg width="34" height="20" viewBox="0 0 17 10"><path d="M11.6.6 5.3 7.4 3 5.1l-.9.9 3.2 3.2L12.5 1.5zm3.9 0L9.2 7.4l-.7-.7-.9.9 1.6 1.6L16.4 1.5z" fill="#53bdeb"/></svg></span></div>
+      <div class="msg out" id="m3"><div class="doc"><span class="ic">PDF</span><span><b>roteiro-gramado-FINAL-v3.pdf</b><small>12 páginas · PDF · 4,8 MB</small></span></div><span class="meta">14:33 <svg width="34" height="20" viewBox="0 0 17 10"><path d="M11.6.6 5.3 7.4 3 5.1l-.9.9 3.2 3.2L12.5 1.5zm3.9 0L9.2 7.4l-.7-.7-.9.9 1.6 1.6L16.4 1.5z" fill="#53bdeb"/></svg></span></div>
+      <div class="msg in" id="m4">Oi! Quanto fica? 😅<span class="meta">14:51</span></div>
+    </div>
+    <div id="chatHead">
+      <svg width="34" height="60" viewBox="0 0 17 30" style="margin-bottom:18px"><path d="M15 2 3 15l12 13" fill="none" stroke="#54656f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="av">LS</span>
+      <span class="nm"><b>Luciana Souza</b><small>online</small></span>
+      <svg width="58" height="58" viewBox="0 0 24 24" style="margin-bottom:18px" fill="none" stroke="#54656f" stroke-width="1.7" stroke-linejoin="round"><rect x="2.5" y="6" width="13" height="12" rx="2.5"/><path d="m15.5 10.5 6-3.5v10l-6-3.5z"/></svg>
+      <svg width="54" height="54" viewBox="0 0 24 24" style="margin:0 8px 20px 18px" fill="none" stroke="#54656f" stroke-width="1.7" stroke-linejoin="round"><path d="M5 3.5h3.2l1.6 4.3-2.1 1.5a12 12 0 0 0 7 7l1.5-2.1 4.3 1.6V19a1.8 1.8 0 0 1-1.9 1.8A16.5 16.5 0 0 1 3.2 5.4 1.8 1.8 0 0 1 5 3.5z"/></svg>
+    </div>
+    <div id="chatFoot">
+      <div class="pill"><svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="#8696a0" stroke-width="1.6"><circle cx="12" cy="12" r="9.5"/><path d="M8 14.5a5 5 0 0 0 8 0" stroke-linecap="round"/><circle cx="9" cy="9.8" r="1" fill="#8696a0" stroke="none"/><circle cx="15" cy="9.8" r="1" fill="#8696a0" stroke="none"/></svg>Mensagem</div>
+      <div class="mic"><svg width="44" height="44" viewBox="0 0 24 24" fill="#fff"><rect x="8.5" y="2.5" width="7" height="12" rx="3.5"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/><path d="M12 18v3.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+    </div>
+  </div>
+  <div id="hk">
+    <div id="hkScrim"></div>
+    <div class="hl" id="hA" style="top:396px">Você vende viagem?</div>
+    <div class="hl" id="hB1" style="top:348px">Ainda manda roteiro</div>
+    <div class="hl" id="hB2" style="top:444px">em textão?</div>
+  </div>
+
+  <!-- ============ ACT 1 (S1-S2): the real editor, light ============ -->
+  <div id="act1">
+    <div id="cam1">
+      <img class="st" id="a01b" src="assets/ed/a01b-blank-ai-tall.webp" alt="">
+      <div class="layer" id="typeL"></div>
+      <div class="hole" id="sendHole"></div><div class="btnov" id="sendBtn"></div>
+      <div class="layer" id="streamL"></div>
+      <img class="st" id="a03" src="assets/ed/a03-structure.webp" alt="">
+      <img class="st" id="a04" src="assets/ed/a04-structure-hover.webp" alt="">
+      <div class="hole" id="insHole"></div><div class="btnov" id="insBtn"></div>
+      <img class="st" id="a05" src="assets/ed/a05-applied-t0.webp" alt="">
+      <img class="st" id="a07" src="assets/ed/a07-saved.webp" alt="">
+      <div class="layer" id="prevClip"><img id="tall" src="assets/ed/preview-tall.webp" alt=""></div>
+      <div class="cur" id="cursor"><div class="curP" id="cursorPress"><img src="assets/logo/arrow-green.png" alt=""></div></div>
+    </div>
+    <div class="light"></div>
+    <div id="h2">
+      <div class="hl" id="h2a" style="top:478px">Conte a viagem</div>
+      <div class="hl" id="h2b" style="top:574px">do seu jeito.</div>
+    </div>
+  </div>
+  <div id="pageV"><img id="pageImg" src="assets/ed/preview-tall.webp" alt=""></div>
+
+  <!-- ============ S3: edit (top) / see it on the page (bottom) ============ -->
+  <div id="split">
+    <img class="bg" id="sbg1" src="assets/v/split-bg.webp" alt="">
+    <img class="bg" id="sbg2" src="assets/v/split-bg-c.webp" alt="">
+    <div class="light"></div>
+    <div id="splitIn">
+      <div class="pan" id="pA"><div class="pcam" id="camA">
+        <div class="cur" id="cursorA"><div class="curP" id="cursorAP"><img src="assets/logo/arrow-green.png" alt=""></div></div>
+      </div></div>
+      <div class="pan" id="pB"><div class="pcam" id="camB"></div></div>
+    </div>
+    <div id="dim2"></div>
+    <div id="claim"><div class="ln l1" id="cl1">Mais fácil que</div><div class="ln l2" id="cl2">editar no Canva!</div></div>
+  </div>
+
+  <!-- ============ ACT 2 (S4-S5): the client's side, night ============ -->
+  <div id="act2">
+    <img class="plate" id="pl-gramado" src="assets/plate/gramado-cartao.webp" alt="">
+    <img class="plate" id="pl-gim" src="assets/plate/gramado-imersivo.webp" alt="">
+    <img class="plate" id="pl-foz" src="assets/plate/foz.webp" alt="">
+    <img class="plate" id="pl-italia" src="assets/plate/italia.webp" alt="">
+    <img class="plate" id="pl-abrolhos" src="assets/plate/abrolhos.webp" alt="">
+    <div id="vign"></div>
+    <div id="phoneCam">
+      <div class="ed-phone" id="phone">
+        <div class="ed-phone-status">
+          <span class="ed-phone-time">9:41</span>
+          <span class="ed-phone-island"></span>
+          <span class="ed-phone-icons">
+            <svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1" /><rect x="5" y="5.5" width="3" height="6.5" rx="1" /><rect x="10" y="3" width="3" height="9" rx="1" /><rect x="15" y="0" width="3" height="12" rx="1" /></svg>
+            <svg width="16" height="12" viewBox="0 0 16 12"><path d="M8 2.2c2.4 0 4.6.9 6.3 2.5l1.2-1.3C13.5 1.5 10.9.4 8 .4S2.5 1.5.5 3.4l1.2 1.3C3.4 3.1 5.6 2.2 8 2.2Zm0 3.6c1.4 0 2.7.5 3.7 1.4l1.2-1.3C11.6 4.7 9.9 4 8 4s-3.6.7-4.9 1.9l1.200 1.3c1-.9 2.3-1.4 3.7-1.4Zm0 3.6c-.5 0-1 .2-1.4.5L8 11.6l1.4-1.7c-.4-.3-.9-.5-1.4-.5Z" /></svg>
+            <svg width="27" height="13" viewBox="0 0 27 13"><rect x="0.5" y="0.5" width="22" height="12" rx="3.5" fill="none" stroke="currentColor" opacity="0.4" /><rect x="2" y="2" width="19" height="9" rx="2" /><path d="M24.5 4.5v4c.8-.3 1.5-1.1 1.5-2s-.7-1.700-1.5-2Z" opacity="0.45" /></svg>
+          </span>
+        </div>
+        <div class="ed-screen">
+          <img class="pg" id="pg-gramado" src="assets/phone/gramado-cartao.webp" alt="">
+          <img class="pg" id="pg-gim" src="assets/phone/gramado-imersivo.webp" alt="">
+          <img class="pg" id="pg-foz" src="assets/phone/foz.webp" alt="">
+          <img class="pg" id="pg-italia" src="assets/phone/italia.webp" alt="">
+          <img class="pg" id="pg-abrolhos" src="assets/phone/abrolhos.webp" alt="">
+        </div>
+        <span class="ed-phone-home"></span>
+      </div>
+    </div>
+    <div id="notifWrap"><div id="notif">
+      <span class="ico"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg></span>
+      <span><b>Novo contato</b><small>“Quero reservar 2 lugares”</small></span>
+    </div></div>
+    <div id="logoWrap">
+      <img id="logoBase" src="assets/logo/logo-white-noarrow.png" alt="Roteiro Online">
+      <div id="arrowFly"><img src="assets/logo/arrow-white.png" alt=""></div>
+      <div id="ctaWrap"><div id="cta"><span>Saiba mais agora</span>
+        <svg width="50" height="50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        <i class="sheen" id="sheen"></i></div></div>
+    </div>
+  </div>
+</div>
+
+<script src="./runtime/vendor/gsap.min.js"></script>
+<script src="./runtime/motion.js"></script>
+<script>
+/* SEEK CONTRACT: every frame is a pure function of t. Authored only through M.* calls.
+   Frame map (30 fps), cut to the voice (audio-v/vo.mp3 placed at +0.25 s):
+   HOOK 0-118 | S1 typing 118-197 | S2 assistant 197-263 | HERO page 263-292 | page scroll 284-388 |
+   S3 price + layout 388-552 | S4 any trip, on the phone 552-700 | S5 client + lockup + CTA 700-888 */
+const FPS = 30, DUR = 29.6;
+const M = window.__M = Motion.film({ fps: FPS, duration: DUR, width: 1080, height: 1920, clock: 'smooth' });
+const $ = s => document.querySelector(s);
+/* camera helper: put editor point (cx, cy) at the frame centre with scale s */
+const C = (cx, cy, s) => ({ scale: s, x: 540 - s * cx, y: 960 - s * cy });
+const lerpC = (a, b, k) => ({ scale: a.scale + (b.scale - a.scale) * k, x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k });
+
+/* =============== HOOK (0-118): "Você vende viagem e ainda manda o roteiro em textão no WhatsApp?" =============== */
+// measured layout (fonts loaded): chatList heights, see window.__measure()
+const L = window.__L = { m4Top: 2521, m4H: 119, listEnd: 2661 };
+const Y0 = 640;                                   // list top on frame 0: first message just under the headline
+const YEND = 1610 - (L.m4Top - 20);                // after the scroll: the PDF bubble ends at y 1610 (band bottom - 25)
+const YREP = YEND - (L.m4H + 20);                  // the reply pushes the list up by its own height
+M.kf('#chatList', 'y', [[0, Y0], [12, Y0 - 70, 'cruise'], [34, Y0 - 70 - (Y0 - 70 - YEND) * 0.42, 'softLand'],
+  [36, Y0 - 70 - (Y0 - 70 - YEND) * 0.43, 'cruise'], [58, Y0 - 70 - (Y0 - 70 - YEND) * 0.83, 'softLand'],
+  [60, Y0 - 70 - (Y0 - 70 - YEND) * 0.84, 'cruise'], [80, YEND, 'softLand'], [101, YEND - 16, 'cruise'], [109, YREP - 16, 'snapSettle'], [117, YREP - 24, 'cruise']]);
+M.enter('#m4', { at: 101, frames: 10, ease: 'snapSettle', from: { y: 40, scale: .94, opacity: 0 } });
+M.mark(101, 'pop', 'Oi! Quanto fica?');
+M.words('#hA', { at: 8, mech: 'rise', dist: 40, gaps: [10, 9], frames: 12 });
+M.exit('#hA', { at: 40, frames: 5, ease: 'accelExit', to: { y: -26, opacity: 0 }, hide: true });
+M.words('#hB1', { at: 46, mech: 'rise', dist: 40, gaps: [9, 10], frames: 12 });
+M.words('#hB2', { at: 79, mech: 'rise', dist: 40, gaps: [3], frames: 12 });
+M.kf('#hk', 'scale', [[46, 1], [117, 1.03, 'cruise']]);
+M.kf('#hook', 'scale', [[0, 1], [117, 1.045, 'cruise']]);
+M.hide('#hook', 118); M.hide('#hk', 118);
+M.mark(118, 'cut', 'hook -> assistente');
+
+/* =============== S1 (118-197): "Agora é só contar a viagem do seu jeito, numa frase." =============== */
+M.show('#act1', 118);
+const PROMPT = 'Gramado e Canela, 4 dias, saída 10/07. Hotel com café, city tour e Snowland. R$ 1.290 em até 10x.';
+const CARET = [[1091.0,792.0],[1101.5,792.0],[1106.7,792.0],[1114.6,792.0],[1126.8,792.0],[1134.7,792.0],[1143.3,792.0],[1151.7,792.0],[1155.6,792.0],[1163.8,792.0],[1167.7,792.0],[1177.9,792.0],[1185.8,792.0],[1194.1,792.0],[1202.2,792.0],[1205.6,792.0],[1213.5,792.0],[1217.5,792.0],[1221.5,792.0],[1230.5,792.0],[1234.4,792.0],[1243.0,792.0],[1246.4,792.0],[1254.3,792.0],[1261.7,792.0],[1265.7,792.0],[1269.6,792.0],[1277.0,792.0],[1284.9,792.0],[1288.3,792.0],[1296.8,792.0],[1304.7,792.0],[1308.6,792.0],[1314.3,792.0],[1323.2,792.0],[1328.2,792.0],[1337.0,792.0],[1344.7,792.0],[1129.3,810.9],[1133.3,810.9],[1143.7,810.9],[1152.1,810.9],[1156.7,810.9],[1164.7,810.9],[1168.1,810.9],[1172.0,810.9],[1180.0,810.9],[1188.4,810.9],[1200.7,810.9],[1204.6,810.9],[1212.6,810.9],[1220.6,810.9],[1225.8,810.9],[1233.5,810.9],[1237.6,810.9],[1241.5,810.9],[1249.5,810.9],[1252.9,810.9],[1257.5,810.9],[1265.6,810.9],[1269.6,810.9],[1274.1,810.9],[1282.4,810.9],[1290.7,810.9],[1295.9,810.9],[1299.9,810.9],[1308.0,810.9],[1312.0,810.9],[1321.0,810.9],[1329.2,810.9],[1337.6,810.9],[1127.9,829.8],[1131.2,829.8],[1139.1,829.8],[1147.4,829.8],[1156.0,829.8],[1160.0,829.8],[1163.9,829.8],[1172.9,829.8],[1181.9,829.8],[1185.9,829.8],[1191.5,829.8],[1195.6,829.8],[1204.1,829.8],[1212.8,829.8],[1221.6,829.8],[1225.6,829.8],[1233.7,829.8],[1246.0,829.8],[1249.9,829.8],[1257.8,829.8],[1262.4,829.8],[1270.4,829.8],[1274.3,829.8],[1280.0,829.8],[1288.9,829.8],[1296.5,829.8],[1300.5,829.8]];
+const TYPE0 = 123, CPS = 46;
+let ev = M.cadence(PROMPT, { style: 'prompt', seed: 4, cps: CPS }).map(e => [e[0] + TYPE0, e[1]]);
+const TYPE_END = ev[ev.length - 1][0];
+window.__typeEv = ev;
+const PRESS1 = TYPE_END + 5, S2 = PRESS1 + 3;
+const typeL = $('#typeL');
+const used = [0, ...new Set(ev.map(e => e[1]))];
+used.forEach(n => { const im = document.createElement('img'); im.id = 't' + n; im.src = 'assets/type/t' + String(n).padStart(3, '0') + '.webp'; typeL.appendChild(im); });
+M.show('#t0', 118, ev[0][0]);
+ev.forEach((e, i) => M.show('#t' + e[1], e[0], i + 1 < ev.length ? ev[i + 1][0] : S2));
+M.show('#a01b', 118, 244);
+const caretAt = (id, x, y, parent, before) => { const d = document.createElement('div'); d.className = 'caret'; d.id = id;
+  d.style.left = x + 'px'; d.style.top = y + 'px'; $(parent).insertBefore(d, before ? $(before) : null); return '#' + id; };
+M.show(caretAt('crPre', CARET[0][0], CARET[0][1] + 1, '#cam1', '#sendHole'), 118, 121);
+ev.forEach((e, i) => {
+  const p = CARET[Math.min(e[1], CARET.length - 1)], id = caretAt('cr' + i, p[0], p[1] + 1, '#cam1', '#sendHole');
+  M.show(id, e[0], i + 1 < ev.length ? ev[i + 1][0] : PRESS1 + 1);
+});
+M.show('#sendHole', ev[0][0], S2); M.show('#sendBtn', ev[0][0], S2);
+M.words('#h2a', { at: 136, mech: 'rise', dist: 36, gaps: [9, 3], frames: 12 });
+M.words('#h2b', { at: 161, mech: 'rise', dist: 36, gaps: [4, 6], frames: 12 });
+M.kf(M.wrap('#h2'), 'y', [[136, 14], [186, -16, 'cruise']]);
+M.exit('#h2', { at: PRESS1 - 6, frames: 5, ease: 'accelExit', to: { y: -30, opacity: 0 }, hide: true });
+
+/* =============== S2 (197-263): "O Roteiro Online monta a página inteira:" (the real assistant streams) =============== */
+const STREAM = [[0, 0], [1, 3], [3, 7], [6, 11], [8, 15], [10, 19], [12, 23], [15, 27], [17, 31], [19, 35], [20, 39], [21, 43]];
+const A03 = S2 + 47, A04 = 250, PRESS2 = 258, HERO = 262;
+const streamL = $('#streamL');
+STREAM.forEach(([n]) => { const im = document.createElement('img'); im.id = 's' + n; im.src = 'assets/stream/s' + String(n).padStart(3, '0') + '.webp'; streamL.appendChild(im); });
+STREAM.forEach(([n, f], i) => M.show('#s' + n, S2 + f, i + 1 < STREAM.length ? S2 + STREAM[i + 1][1] : A03));
+M.show('#a03', A03, A04); M.show('#a04', A04, HERO);
+M.show('#insHole', A04, HERO); M.show('#insBtn', A04, HERO);
+M.show('#a05', HERO, 280); M.show('#a07', 280, 293);
+M.show('#prevClip', 280, 293);
+M.mark(HERO, 'hero', 'a página aparece');
+
+/* =============== HERO + page scroll (262-388): "banner, roteiro dia a dia, o que está incluso, preços e dúvidas." ===============
+   The editor's preview (808 css) fills the frame width at s = 1080/808. The page starts scrolling inside the editor, then the
+   chrome dissolves and the page itself fills the frame: the same pixels, aligned (c = page css y at the frame centre). */
+const SP = 1080 / 808, K3 = C(586, 520, SP);
+const pageY = c => 960 - SP * c;
+M.kf('#tall', 'y', [[280, 0], [282, 0], [292, -250, 'gentleIn']]);
+M.show('#pageV', 284, 388);
+M.kf('#pageV', 'opacity', [[284, 0], [292, 1, 'softInOut']]);
+const PAGE = [[282, 350], [292, 600, 'gentleIn'], [302, 870, 'softLand'], [316, 884, 'cruise'], [328, 1530, 'softLand'], [346, 1546, 'cruise'],
+  [356, 1915, 'softLand'], [366, 1924, 'cruise'], [375, 1985, 'softLand'], [388, 1992, 'cruise']];
+M.kf('#pageImg', 'y', PAGE.map(([f, c, e]) => e ? [f, pageY(c), e] : [f, pageY(c)]));
+M.hide('#act1', 293);
+
+/* the act-1 camera */
+const K1a = C(1218, 672, 2.62), K1b = C(1228, 700, 2.95);
+const K2a = C(1218, 400, 2.6), K2b = C(1218, 452, 2.6), K2c = C(1216, 456, 2.63);
+M.camera('#cam1', [
+  [118, K1a], [PRESS1, K1b, 'glide'],
+  [S2, K1b], [S2 + 14, K2a, 'softInOut'], [A03, K2b, 'cruise'], [HERO - 1, K2c, 'cruise'],
+  [HERO, K2c], [HERO + 1, lerpC(K2c, K3, 0.62), 'cruise'], [HERO + 13, K3, 'softLand'], [292, K3],
+], { origin: '0px 0px' });
+
+/* the cursor: the logo's arrow */
+const T = TYPE_END;
+M.cursor('#cursor', { ease: 'glide', hideAt: HERO + 1, keys: [
+  [T - 22, 1030, 960, 2.4, 8], [T - 14, 1250, 880, 1.6, 4], [T - 6, 1366, 832, 1.1, 1], [T, 1389, 821, 1, 0], [S2, 1389, 821, 1, 0],
+  [237, 1050, 790, 1.5, 6], [238, 1050, 790, 1.5, 6], [246, 1100, 700, 1.12, 2], [252, 1112, 666, 1, 0], [HERO, 1112, 666, 1, 0],
+] });
+M.hide('#cursor', 118); M.show('#cursor', T - 22, S2); M.show('#cursor', 238, HERO + 1);
+M.press('#cursorPress', '#sendBtn', { at: PRESS1, cursorDepth: .8, targetDepth: .84, lag: 1, frames: 3, release: false, label: 'enviar' });
+M.press('#cursorPress', '#insBtn', { at: PRESS2, cursorDepth: .8, targetDepth: .86, lag: 1, frames: 3, release: true, label: 'Inserir no fim' });
+
+/* =============== S3 (388-552): "Mudou o preço? Clica e digita. Quer outro visual? Um clique, sem refazer arte nenhuma." =============== */
+const S3 = 388, LAY = 457, CUT4 = 552;
+M.show('#split', S3, CUT4);
+M.show('#sbg1', S3, LAY); M.show('#sbg2', LAY, CUT4);
+M.kf('#split .bg', 'scale', [[S3, 1.08], [CUT4, 1.0, 'cruise']]);
+M.kf('#splitIn', 'y', [[S3, 18], [CUT4 - 1, -22, 'cruise']]);
+const STATES = [['b01', 'b01-ofertas', S3, 421], ['b02', 'b02-price-selected', 421, 434], ['b1', 'b03-price-1', 434, 439], ['b11', 'b03-price-11', 439, 444],
+  ['b119', 'b03-price-119', 444, 449], ['b1190', 'b03-price-1190', 449, LAY], ['c00', 'c00-banner-aparencia', LAY, 474], ['c01', 'c01-hover-Cartao', 474, 490], ['c02', 'c02-layout-Cartao', 490, CUT4]];
+STATES.forEach(([id, file, a, b]) => {
+  [['A', 'ca', '#camA', '#cursorA'], ['B', 'cb', '#camB', null]].forEach(([P, cls, cam, before]) => {
+    const im = document.createElement('img'); im.className = cls; im.id = P + id; im.src = 'assets/v/' + P + '-' + file + '.webp';
+    $(cam).insertBefore(im, before ? $(before) : null); M.show('#' + P + id, a, b);
+  });
+});
+[[434, 225.5], [439, 232.8], [444, 240.3], [449, 248.6]].forEach(([f, x], i, a) => {
+  const id = caretAt('cp' + i, x, 564.5, '#camA', '#cursorA');
+  if (i + 1 < a.length) M.show(id, f, a[i + 1][0]); else { M.show(id, f, 452); M.show(id, 455, LAY); }
+});
+const CA = (cx, cy, s) => ({ scale: s, x: 504 - s * cx, y: 290 - s * cy });
+const CB = (cx, cy, s) => ({ scale: s, x: 504 - s * cx, y: 285 - s * cy });
+M.camera('#camA', [[S3, CA(374, 499.5, 2.77)], [418, CA(368, 508, 2.86), 'cruise'], [LAY - 1, CA(330, 540, 3.15), 'glide'], [LAY, CA(373.5, 357, 2.55)], [CUT4 - 1, CA(373.5, 360, 2.62), 'cruise']], { origin: '0px 0px' });
+M.camera('#camB', [[S3, CB(871, 392, 2.0)], [418, CB(871, 390, 2.04), 'cruise'], [LAY - 1, CB(870, 386, 2.12), 'glide'], [LAY, CB(870, 307.5, 1.88)], [CUT4 - 1, CB(870, 307.5, 1.95), 'cruise']], { origin: '0px 0px' });
+M.enter('#pA', { at: S3, frames: 12, ease: 'softLand', from: { y: 70, opacity: 0 } });
+M.enter('#pB', { at: S3 + 3, frames: 12, ease: 'softLand', from: { y: 90, opacity: 0 } });
+M.cursor('#cursorA', { ease: 'glide', keys: [
+  [394, 480, 680, 1.6, 6], [404, 330, 592, 1.12, 2], [412, 300, 578, 1, 0], [LAY - 1, 300, 578, 1, 0],
+  [LAY + 5, 560, 470, 1.4, 5], [LAY + 15, 480, 428, 1.05, 1], [LAY + 20, 470, 420, 1, 0], [CUT4 - 1, 470, 420, 1, 0],
+] });
+M.hide('#cursorA', S3); M.show('#cursorA', 394, LAY); M.show('#cursorA', LAY + 5, CUT4);
+M.press('#cursorAP', '#dummy', { at: 418, cursorDepth: .82, targetDepth: 1, lag: 0, frames: 2, release: true, label: 'campo preço' });
+M.press('#cursorAP', '#dummy', { at: 487, cursorDepth: .8, targetDepth: 1, lag: 0, frames: 3, release: true, label: 'Cartão' });
+// the claim, over the defocused panels (proof first, then the line)
+M.kf('#splitIn', '--b', [[S3, 0], [500, 0], [514, 9, 'glide'], [CUT4 - 1, 10, 'cruise']], { fmt: v => v + 'px' });
+M.kf('#dim2', 'opacity', [[S3, 0], [500, 0], [514, .52, 'glide'], [CUT4 - 1, .58, 'cruise']]);
+M.show('#claim', 502, CUT4);
+M.words('#cl1', { at: 503, mech: 'rise', dist: 60, gaps: [5, 5], frames: 14 });
+M.words('#cl2', { at: 516, mech: 'rise', dist: 60, gaps: [5, 6], frames: 14 });
+M.kf('#claim', 'scale', [[502, 1], [CUT4 - 1, 1.06, 'cruise']]);
+M.mark(CUT4, 'cut', 'claim -> celular');
+
+/* =============== S4 (552-700): "Serve pra excursão, pacote, ecoturismo ou grupo internacional, e abre lindo no celular do cliente." =============== */
+M.show('#act2', CUT4);
+const PH = (s, cy) => ({ scale: s, x: 540 - 207 * s, y: cy - 434 * s });
+M.camera('#phoneCam', [[CUT4, PH(1.36, 1640)], [566, PH(1.45, 960), 'softLand'], [648, PH(1.48, 960), 'cruise'], [700, PH(1.53, 962), 'cruise'],
+  [784, PH(1.62, 970), 'cruise'], [800, PH(1.42, 1960), 'accelExit']], { origin: '0px 0px' });
+M.kf('#phone', 'rotation', [[566, 0], [700, -1.2, 'softInOut'], [784, -0.4, 'softInOut']]);
+M.hide('#phoneCam', 800);
+const PG = [['foz', 'foz', CUT4, 571], ['gim', 'gim', 571, 588], ['abrolhos', 'abrolhos', 588, 612], ['italia', 'italia', 612, 648], ['gramado', 'gramado', 648, 800]];
+PG.forEach(([pg, pl, a, b]) => { M.show('#pg-' + pg, a, b); M.show('#pl-' + pl, a, b); });
+M.show('#pl-gramado', 648, Math.round(DUR * FPS));
+M.kf('#pg-foz', 'y', [[CUT4, 0], [571, -40, 'cruise']]);
+M.kf('#pg-gim', 'y', [[571, 0], [588, -30, 'cruise']]);
+M.kf('#pg-abrolhos', 'y', [[588, 0], [612, -36, 'cruise']]);
+M.kf('#pg-italia', 'y', [[612, 0], [648, -46, 'cruise']]);
+M.kf('#pg-gramado', 'y', [[648, 0], [662, -10, 'cruise'], [678, -380, 'softLand'], [700, -394, 'cruise'], [716, -720, 'softLand'], [736, -730, 'cruise'], [750, -884, 'softLand'], [784, -892, 'cruise']]);
+M.kf('.plate', 'scale', [[CUT4, 1.18], [800, 1.06, 'cruise']]);
+M.kf('#pl-gramado', 'opacity', [[648, .9], [784, .9], [812, .42, 'softInOut']]);
+M.mark(612, 'tap', 'italia');
+
+/* =============== S5 (700-888): "Porque seu cliente não compra o que não consegue imaginar. Roteiro Online. Saiba mais agora." =============== */
+M.kf('#notifWrap', 'scale', [[762, 2.4]]);
+M.enter('#notif', { at: 762, frames: 14, ease: 'snapSettle', from: { y: -46, scale: 1.18 } });
+M.exit('#notif', { at: 786, frames: 10, ease: 'accelExit', to: { y: -24, opacity: 0 }, hide: true });
+M.mark(762, 'pop', 'Quero reservar 2 lugares');
+M.enter('#logoBase', { at: 790, frames: 22, ease: 'snapSettle', from: { scale: 1.5, blur: 10 } });
+M.mark(790, 'logo', 'roteiro online');
+// arrow tip target: the arrow box in the logo (k = 640/1920) + the tip offset inside the 55.67 px box
+const TX = 220 + 154 / 3 + 52.31, TY = 742 + 199 / 3 + 2.33;
+M.cursor('#arrowFly', { ease: 'glide', keys: [[796, 300, 1500, 3.0, 10], [804, 420, 1150, 2.0, 6], [812, TX - 16, TY + 30, 1.2, 2], [818, TX, TY, 1, 0]] });
+M.mark(818, 'snap', 'arrow docks in the pin');
+M.enter('#cta', { at: 824, frames: 14, ease: 'snapSettle', from: { y: 60, scale: .9, opacity: 0 } });
+M.mark(836, 'cta', 'Saiba mais agora');
+M.kf('#sheen', 'x', [[842, -260], [860, 820, 'softInOut']]);
+M.kf('#logoWrap', 'scale', [[818, 1], [858, .985, 'cruise']]);
+
+window.__measure = () => { const a = $('#m4'); return { m4Top: a.offsetTop, m4H: a.offsetHeight, listEnd: $('#chatList').offsetHeight,
+  m2H: $('#m2').offsetHeight, m3Top: $('#m3').offsetTop }; };
+window.__ready = Motion.loaded().then(() => { if (/selftest/.test(location.search)) Motion.selfTest(M, { samples: 24 }); });
+</script>
+</body>
+</html>
