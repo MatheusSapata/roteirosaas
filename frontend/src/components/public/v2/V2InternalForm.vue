@@ -1,12 +1,13 @@
 <template>
   <V2Reveal>
-    <PublicInternalFormSection :section="themed" />
+    <PublicInternalFormSection v-bind="$attrs" :section="themed" />
   </V2Reveal>
 </template>
 
 <script setup lang="ts">
 import V2Reveal from "./V2Reveal.vue";
-// Raiz = componente atual: props extras (pageId, platformHost…) e eventos passam direto.
+// A raiz é a animação de entrada: as props extras (pageId, platformHost…) e os eventos (submitted,
+// que dispara o Lead do Pixel) vão direto para o componente de dentro, e não para a <div> dela.
 import { computed } from "vue";
 import type { InternalFormSection } from "../../../types/page";
 import PublicInternalFormSection from "../PublicInternalFormSection.vue";
@@ -14,6 +15,8 @@ import { usePageDesignContext } from "./designContext";
 import { computeSectionTone } from "./useSectionTone";
 import { useThemedTone } from "./useThemedSection";
 import "./v2.css";
+
+defineOptions({ inheritAttrs: false });
 
 const props = defineProps<{ section: InternalFormSection }>();
 const design = usePageDesignContext();

@@ -1,26 +1,34 @@
 <template>
-  <section class="viajeon-checkout-section px-4 py-14 md:px-8 md:py-20" :style="sectionStyle">
-    <div class="mx-auto max-w-6xl">
-      <header class="mx-auto max-w-3xl text-center">
-        <h2 class="text-3xl font-extrabold md:text-4xl">{{ localized(section.title) || checkout?.name || "Escolha seu pacote" }}</h2>
-        <p class="mt-3 text-base opacity-75 md:text-lg">{{ localized(section.subtitle) || checkout?.subtitle }}</p>
+  <!-- O layout segue a largura da seção (container queries), e não a da tela: fica igual na página
+       publicada e na prévia de celular do editor. -->
+  <section class="viajeon-checkout-section" :class="{ 'is-v2': v2 }" :style="sectionStyle">
+    <div class="vc-wrap">
+      <header class="vc-head">
+        <h2 class="vc-title">{{ localized(section.title) || checkout?.name || "Escolha seu pacote" }}</h2>
+        <p v-if="subtitle" class="vc-lead">{{ subtitle }}</p>
       </header>
 
-      <div v-if="loading" class="state-card mt-10">Carregando pacotes disponíveis...</div>
-      <div v-else-if="errorMessage" class="state-card error mt-10">{{ errorMessage }}</div>
-      <div v-else-if="!packages.length" class="state-card mt-10">Nenhum pacote está disponível neste momento.</div>
+      <div v-if="loading" class="state-card">Carregando pacotes disponíveis...</div>
+      <div v-else-if="errorMessage" class="state-card error">{{ errorMessage }}</div>
+      <div v-else-if="!packages.length" class="state-card">Nenhum pacote está disponível neste momento.</div>
 
-      <div v-else class="checkout-layout mt-10">
+      <div v-else class="checkout-layout">
         <div class="package-list">
-          <article v-for="item in packages" :key="item.id" class="package-card" :style="cardStyle">
-            <div class="min-w-0 flex-1">
-              <h3 class="text-lg font-bold">{{ item.name }}</h3>
-              <p v-if="item.description" class="mt-1 text-sm opacity-70">{{ item.description }}</p>
-              <p class="mt-4 text-xl font-extrabold" :style="{ color: accentColor }">{{ formatMoney(item.price) }}</p>
+          <article
+            v-for="item in packages"
+            :key="item.id"
+            class="package-card"
+            :class="{ 'is-picked': quantity(item.id) > 0 }"
+            :style="cardStyle"
+          >
+            <div class="package-info">
+              <h3>{{ item.name }}</h3>
+              <p v-if="item.description">{{ item.description }}</p>
             </div>
-            <div class="quantity-control" :style="{ borderColor: accentColor }">
+            <p class="package-price">{{ formatMoney(item.price) }}</p>
+            <div class="quantity-control">
               <button type="button" :aria-label="`Remover ${item.name}`" :disabled="quantity(item.id) === 0" @click="decrement(item)">−</button>
-              <span>{{ quantity(item.id) }}</span>
+              <span aria-live="polite">{{ quantity(item.id) }}</span>
               <button type="button" :aria-label="`Adicionar ${item.name}`" :disabled="quantity(item.id) >= item.max_quantity" @click="increment(item)">+</button>
             </div>
           </article>
@@ -30,26 +38,28 @@
           <div class="summary-items">
             <p v-if="!selectedPackages.length" class="summary-empty">Nenhum pacote selecionado.</p>
             <div v-for="item in selectedPackages" :key="item.id" class="summary-item">
-              <div class="min-w-0">
+              <div>
                 <strong>{{ item.name }}</strong>
                 <span>{{ item.quantity }} {{ item.quantity === 1 ? "pacote" : "pacotes" }}</span>
               </div>
-              <strong>{{ formatMoney(item.subtotal) }}</strong>
+              <strong class="summary-subtotal">{{ formatMoney(item.subtotal) }}</strong>
             </div>
           </div>
-          <div>
-            <span class="text-sm opacity-65">Total selecionado</span>
-            <strong class="mt-1 block text-3xl font-extrabold" :style="{ color: accentColor }">{{ formatMoney(total) }}</strong>
+          <div class="summary-footer">
+            <div class="summary-total">
+              <span>Total selecionado</span>
+              <strong>{{ formatMoney(total) }}</strong>
+            </div>
+            <button
+              type="button"
+              class="checkout-button"
+              :style="buttonStyle"
+              :disabled="submitting || selectedItems.length === 0"
+              @click="continueToCheckout"
+            >
+              {{ submitting ? "Preparando checkout..." : localized(section.buttonLabel) || "Continuar para o checkout" }}
+            </button>
           </div>
-          <button
-            type="button"
-            class="checkout-button"
-            :style="buttonStyle"
-            :disabled="submitting || selectedItems.length === 0"
-            @click="continueToCheckout"
-          >
-            {{ submitting ? "Preparando checkout..." : localized(section.buttonLabel) || "Continuar para o checkout" }}
-          </button>
           <V2Payments v-if="section.showPayments" :ids="section.paymentMethods" :note="section.paymentNote" align="left" />
         </aside>
       </div>
@@ -70,6 +80,8 @@ const props = defineProps<{
   section: ViajeonCheckoutSection;
   pageId?: number | null;
   platformHost?: boolean;
+  /** Visual novo: fontes e título no padrão das outras seções v2. */
+  v2?: boolean;
 }>();
 const route = useRoute();
 const language = getCurrentLanguage();
@@ -83,7 +95,8 @@ const packages = computed(() => (checkout.value?.packages || []).filter(item => 
 const accentColor = computed(() => props.section.accentColor || props.section.buttonColor || "#12B981");
 const sectionStyle = computed(() => ({
   backgroundColor: props.section.backgroundColor || "#F8FAFC",
-  color: props.section.textColor || "#0F172A"
+  color: props.section.textColor || "#0F172A",
+  "--vc-accent": accentColor.value
 }));
 const cardStyle = computed(() => ({
   backgroundColor: props.section.cardBackgroundColor || "#FFFFFF",
@@ -94,6 +107,7 @@ const buttonStyle = computed(() => ({
   color: props.section.buttonTextColor || "#FFFFFF"
 }));
 const localized = (value: any) => getLocalizedValue(value, language);
+const subtitle = computed(() => localized(props.section.subtitle) || checkout.value?.subtitle || "");
 const quantity = (id: string) => quantities[id] || 0;
 const selectedItems = computed(() => packages.value
   .filter(item => quantity(item.id) > 0)
@@ -201,22 +215,60 @@ onMounted(loadCheckout);
 </script>
 
 <style scoped>
-.checkout-layout { display:grid; grid-template-columns:minmax(0,1.6fr) minmax(280px,.8fr); align-items:start; gap:24px; }
-.package-list { display:grid; gap:16px; }
-.package-card { display:flex; align-items:center; gap:20px; border:1px solid color-mix(in srgb,currentColor 12%,transparent); border-radius:18px; padding:20px; box-shadow:0 8px 28px rgba(15,23,42,.06); }
-.quantity-control { display:grid; grid-template-columns:36px 40px 36px; align-items:center; flex:0 0 auto; overflow:hidden; border:1px solid; border-radius:12px; }
-.quantity-control button { height:38px; font-size:20px; font-weight:700; background:transparent; color:inherit; }
+.viajeon-checkout-section { container-type:inline-size; }
+.vc-wrap { max-width:1152px; margin:0 auto; padding:clamp(48px,7cqi,80px) clamp(16px,4cqi,32px); }
+.vc-head { max-width:768px; margin:0 auto clamp(28px,4cqi,40px); text-align:center; }
+.vc-title { margin:0; font-size:clamp(26px,4cqi,36px); font-weight:800; line-height:1.15; text-wrap:balance; overflow-wrap:anywhere; }
+.vc-lead { margin:12px 0 0; font-size:clamp(15px,1.8cqi,18px); line-height:1.5; opacity:.75; }
+/* Visual novo: mesmas fontes e título das outras seções v2. */
+.is-v2 { font-family:Figtree,system-ui,sans-serif; }
+.is-v2 .vc-title { font-family:"Bricolage Grotesque",Figtree,sans-serif; font-weight:650; font-size:clamp(28px,4.2cqi,48px); line-height:1.05; letter-spacing:-.025em; }
+.is-v2 :is(.package-price,.summary-total strong) { font-family:"Bricolage Grotesque",Figtree,sans-serif; letter-spacing:-.02em; }
+
+/* Celular e tablet: uma coluna, resumo depois dos pacotes. Computador: resumo fixo ao lado. */
+.checkout-layout { display:grid; grid-template-columns:minmax(0,1fr); gap:16px; }
+.package-list { display:grid; gap:12px; }
+.package-card { display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"info qty" "price qty"; align-items:center; column-gap:20px; row-gap:8px; border:1px solid color-mix(in srgb,currentColor 12%,transparent); border-radius:18px; padding:18px 20px; box-shadow:0 8px 28px rgba(15,23,42,.06); transition:border-color .15s,box-shadow .15s; }
+.package-card.is-picked { border-color:var(--vc-accent); box-shadow:0 0 0 1px var(--vc-accent),0 8px 28px rgba(15,23,42,.06); }
+.package-info { grid-area:info; min-width:0; }
+.package-info h3 { margin:0; font-size:17px; font-weight:700; line-height:1.3; overflow-wrap:anywhere; }
+.package-info p { margin:4px 0 0; font-size:14px; line-height:1.45; opacity:.7; }
+.package-price { grid-area:price; margin:0; color:var(--vc-accent); font-size:20px; font-weight:800; line-height:1.2; white-space:nowrap; }
+.quantity-control { grid-area:qty; display:grid; grid-template-columns:40px 36px 40px; align-items:center; overflow:hidden; border:1px solid var(--vc-accent); border-radius:12px; }
+.quantity-control button { height:40px; font-size:20px; font-weight:700; background:transparent; color:inherit; touch-action:manipulation; }
 .quantity-control button:disabled { opacity:.28; cursor:not-allowed; }
-.quantity-control span { text-align:center; font-weight:800; }
-.checkout-summary { position:sticky; top:24px; display:grid; gap:28px; border:1px solid color-mix(in srgb,currentColor 12%,transparent); border-radius:18px; padding:24px; box-shadow:0 8px 28px rgba(15,23,42,.06); }
-.summary-items { display:grid; gap:12px; border-block:1px solid color-mix(in srgb,currentColor 12%,transparent); padding-block:16px; }
-.summary-item { display:flex; align-items:center; justify-content:space-between; gap:16px; font-size:14px; }
-.summary-item > div { display:grid; gap:2px; }
-.summary-item span, .summary-empty { font-size:12px; opacity:.65; }
-.checkout-button { width:100%; min-height:48px; border-radius:13px; padding:12px 24px; font-size:15px; font-weight:800; transition:filter .15s,transform .15s; }
+.quantity-control span { text-align:center; font-weight:800; font-variant-numeric:tabular-nums; }
+.checkout-summary { display:grid; gap:20px; border:1px solid color-mix(in srgb,currentColor 12%,transparent); border-radius:18px; padding:22px; box-shadow:0 8px 28px rgba(15,23,42,.06); }
+.summary-items { display:grid; gap:12px; border-bottom:1px solid color-mix(in srgb,currentColor 12%,transparent); padding-bottom:16px; }
+.summary-item { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; font-size:14px; }
+.summary-item > div { display:grid; gap:2px; min-width:0; overflow-wrap:anywhere; }
+.summary-subtotal { white-space:nowrap; }
+.summary-item span, .summary-empty { margin:0; font-size:12px; opacity:.65; }
+.summary-footer { display:grid; gap:16px; }
+.summary-total span { display:block; font-size:14px; opacity:.65; }
+.summary-total strong { display:block; margin-top:2px; color:var(--vc-accent); font-size:clamp(26px,3.4cqi,32px); font-weight:800; line-height:1.1; white-space:nowrap; }
+.checkout-button { width:100%; min-height:52px; border-radius:13px; padding:12px 24px; font-size:15px; font-weight:800; line-height:1.25; transition:filter .15s,transform .15s; }
 .checkout-button:not(:disabled):hover { filter:brightness(1.05); transform:translateY(-1px); }
 .checkout-button:disabled { cursor:not-allowed; opacity:.45; }
 .state-card { border:1px solid color-mix(in srgb,currentColor 14%,transparent); border-radius:16px; padding:22px; text-align:center; opacity:.75; }
 .state-card.error { color:#dc2626; opacity:1; }
-@media(max-width:767px){ .checkout-layout{grid-template-columns:1fr}.checkout-summary{position:static}.package-card{align-items:flex-start;flex-direction:column}.quantity-control{align-self:stretch;grid-template-columns:1fr 54px 1fr} }
+
+/* Tablet: total e botão dividem a linha. */
+@container (min-width:600px) and (max-width:879px) {
+  .summary-footer { grid-template-columns:minmax(0,1fr) minmax(240px,auto); align-items:center; gap:20px; }
+}
+@container (min-width:880px) {
+  .checkout-layout { grid-template-columns:minmax(0,1.6fr) minmax(300px,.8fr); align-items:start; gap:24px; }
+  /* Abaixo do menu fixo do topo, quando a página tem um. */
+  .checkout-summary { position:sticky; top:88px; }
+}
+/* Celular: nome e descrição em cima; preço e quantidade lado a lado, com botões maiores para o dedo. */
+@container (max-width:520px) {
+  .package-card { grid-template-areas:"info info" "price qty"; row-gap:14px; padding:16px; }
+  .package-price { font-size:clamp(17px,5cqi,20px); }
+  .quantity-control { grid-template-columns:44px 34px 44px; }
+  .quantity-control button { height:44px; }
+  .checkout-summary { padding:18px; }
+  .checkout-button { padding:12px 16px; }
+}
 </style>

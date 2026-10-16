@@ -1323,6 +1323,7 @@
                     class="editor-ai-sidebar-bubble"
                     :class="message.role === 'user' ? 'is-user' : 'is-assistant'"
                   >
+                    <p v-if="message.notice" class="ai-notice" role="note">{{ message.notice }}</p>
                     <template v-if="newEditor && message.role === 'assistant' && hasAiStructure(message.content)">
                       <div v-if="aiIntroText(message.content)" class="editor-ai-sidebar-response-text">{{ aiIntroText(message.content) }}</div>
                       <div class="ai-v2-structure">
@@ -1345,7 +1346,7 @@
                           </template>
                           <template v-else>
                             <img v-for="url in aiPhotoStrip(message.content)!.photos.slice(0, 5)" :key="url" :src="resolveMediaUrl(url)" alt="" loading="lazy" />
-                            <span>{{ aiPhotoStrip(message.content)!.photos.length === 1 ? "1 foto pronta" : `${aiPhotoStrip(message.content)!.photos.length} fotos prontas` }}</span>
+                            <span :title="aiPhotoStrip(message.content)!.origins || undefined">{{ aiPhotoStrip(message.content)!.label }}</span>
                           </template>
                         </div>
                         <div class="ai-v2-actions">
@@ -2632,7 +2633,8 @@ const setupViewportWatcher = () => {
 
 const aiAssistantUrl = "https://chatgpt.com/g/g-6a0f578cbca48191b3073e3aa3556c5d-construtor-roteiro-online";
 // "live": resposta chegando agora; "seconds": quanto tempo a IA levou (só nesta sessão).
-type AiChatMessage = { role: "user" | "assistant"; content: string; live?: boolean; seconds?: number };
+// notice: aviso do sistema junto da resposta (ex.: fotos extraídas do PDF; não volta para a IA).
+type AiChatMessage = { role: "user" | "assistant"; content: string; live?: boolean; seconds?: number; notice?: string };
 const aiAssistantMessages = ref<AiChatMessage[]>([]);
 // Estrutura sendo escrita não aparece como texto cru: o andamento mostra as seções chegando.
 const aiLooksLikeStructure = (content: string) => /ESTRUTURA SUGERIDA|SE[CÇ][AÃ]O\s*:/i.test(content);
@@ -2897,8 +2899,12 @@ const resolveAiMenuLinks = (pageSections: PageSection[]): PageSection[] => {
 };
 const stripAiMarkers = (pageSections: PageSection[]) =>
   pageSections.map(section => {
-    if (!("aiSetKeys" in section) && !("aiFlights" in section)) return section;
-    const { aiSetKeys: _keys, aiFlights: _flights, ...clean } = section as PageSection & { aiSetKeys?: string[]; aiFlights?: unknown[] };
+    if (!("aiSetKeys" in section) && !("aiFlights" in section) && !("aiPhotoOrigins" in section)) return section;
+    const { aiSetKeys: _keys, aiFlights: _flights, aiPhotoOrigins: _origins, ...clean } = section as PageSection & {
+      aiSetKeys?: string[];
+      aiFlights?: unknown[];
+      aiPhotoOrigins?: Record<string, string>;
+    };
     return clean as PageSection;
   });
 // Trechos de voo da sugestão: o servidor grava na seção (com código, dados da API; sem, manuais)
@@ -3102,12 +3108,26 @@ const aiItineraryDays = () => {
 };
 // Fotos do plano: assim que a IA entrega a estrutura, as seções (com as fotos dos bancos) já são
 // montadas em segundo plano. Inserir/Substituir/Trocar usam o que estiver pronto, sem buscar de novo.
-type AiPreparedStructure = { key: string; promise: Promise<PageSection[]>; photos: string[] | null; failed: boolean };
+type AiPreparedStructure = {
+  key: string;
+  promise: Promise<PageSection[]>;
+  photos: string[] | null;
+  // Fotos que já eram da agência (outras páginas dela ou PDF enviado): foto → de onde veio.
+  origins: Record<string, string>;
+  failed: boolean;
+};
 // Uma por resposta e por "Inserir imagens" (ligar e desligar não busca as fotos de novo).
 const aiPrepared = reactive(new Map<string, AiPreparedStructure>());
 const AI_PREPARED_MAX = 6;
 const aiPreparedId = (reply: string, includeImages: boolean) => `${includeImages ? "1" : "0"}:${reply}`;
 const aiStockPhotos = (generated: PageSection[]) => aiPagePhotos(generated.filter(section => (section as any).aiStockPhoto));
+const aiAgencyPhotoOrigins = (generated: PageSection[]) =>
+  Object.assign({}, ...generated.map(section => ((section as any).aiPhotoOrigins || {}) as Record<string, string>)) as Record<string, string>;
+// 'página "Jalapão 6 dias"' e 'PDF "roteiro"' → "da página "Jalapão 6 dias" e do PDF "roteiro"".
+const aiOriginsText = (origins: Record<string, string>) => {
+  const labels = [...new Set(Object.values(origins))].map(origin => (origin.startsWith("PDF") ? `do ${origin}` : `da ${origin}`));
+  return labels.length > 1 ? `${labels.slice(0, -1).join(", ")} e ${labels[labels.length - 1]}` : labels[0] || "";
+};
 const prepareAiStructure = (reply: string, force = false) => {
   const includeImages = aiIncludeImages.value;
   const itineraryDays = aiItineraryDays();
@@ -3117,9 +3137,12 @@ const prepareAiStructure = (reply: string, force = false) => {
   const current = aiPrepared.get(id);
   if (current && !force && current.key === key && !current.failed) return current;
   const promise = previewAiAssistantPageBase(pageId, reply, { includeImages, currentPhotos: aiPagePhotos(sections.value), itineraryDays });
-  const entry = reactive({ key, promise, photos: null, failed: false }) as AiPreparedStructure;
+  const entry = reactive({ key, promise, photos: null, origins: {}, failed: false }) as AiPreparedStructure;
   promise.then(
-    generated => { entry.photos = aiStockPhotos(generated); },
+    generated => {
+      entry.origins = aiAgencyPhotoOrigins(generated);
+      entry.photos = aiStockPhotos(generated);
+    },
     () => { entry.failed = true; }
   );
   aiPrepared.delete(id);
@@ -3131,8 +3154,15 @@ const prepareAiStructure = (reply: string, force = false) => {
 const aiPhotoStrip = (reply: string) => {
   const entry = aiIncludeImages.value ? aiPrepared.get(aiPreparedId(reply, true)) : undefined;
   if (!entry || entry.failed) return null;
-  if (!entry.photos) return { pending: true, photos: [] as string[] };
-  return entry.photos.length ? { pending: false, photos: entry.photos } : null;
+  if (!entry.photos) return { pending: true, photos: [] as string[], label: "", origins: "" };
+  if (!entry.photos.length) return null;
+  const count = entry.photos.length;
+  const ownOrigins = entry.photos.filter(url => url in entry.origins).map(url => entry.origins[url]);
+  const own = ownOrigins.length;
+  const fromPdf = ownOrigins.filter(origin => origin.startsWith("PDF")).length;
+  const where = fromPdf === own ? "do seu PDF" : fromPdf ? "do seu material" : "das suas outras páginas";
+  const label = `${count === 1 ? "1 foto pronta" : `${count} fotos prontas`}${own ? ` · ${own} ${where}` : ""}`;
+  return { pending: false, photos: entry.photos, label, origins: own ? `Fotos que já eram da agência: ${aiOriginsText(entry.origins)}` : "" };
 };
 watch(aiIncludeImages, () => {
   const last = aiLastAssistant.value;
@@ -3166,7 +3196,11 @@ const applyAiStructure = async (reply: string, mode: "insert" | "replace" | "swa
         ? { ...section, logoUrl: agencyLogo }
         : section
     ).map(prepareAiSection).map(section => {
-      const { aiReplaces: _replaced, aiStockPhoto: _stock, ...clean } = section as PageSection & { aiReplaces?: string; aiStockPhoto?: boolean };
+      const { aiReplaces: _replaced, aiStockPhoto: _stock, aiPhotoOrigins: _origins, ...clean } = section as PageSection & {
+        aiReplaces?: string;
+        aiStockPhoto?: boolean;
+        aiPhotoOrigins?: Record<string, string>;
+      };
       return clean as PageSection;
     }));
     let nextSections = additions;
@@ -3305,6 +3339,10 @@ const applyAiStructure = async (reply: string, mode: "insert" | "replace" | "swa
         : `"Inserir imagens" está desligado: ${photoMisses.join(", ")} ficou com a foto atual.`);
     }
     if (headerMadeSolid) notes.push("O menu ficou sólido: transparente e desfocado precisam de Banner Inicial.");
+    // Fotos que já eram da agência: avisa de onde vieram (outras páginas dela ou o PDF enviado).
+    const ownPhotos = aiAgencyPhotoOrigins(generated);
+    const ownCount = Object.keys(ownPhotos).length;
+    if (ownCount) notes.push(`${ownCount === 1 ? "1 foto veio" : `${ownCount} fotos vieram`} ${aiOriginsText(ownPhotos)}.`);
     showAiToast(notes.join(" "));
   } catch (err: any) {
     const detail = err?.response?.data?.detail;
@@ -3672,10 +3710,11 @@ const sendAiAssistantMessage = async () => {
 
   let succeeded = false;
   try {
-    let result: { reply: string; usage?: AiAssistantUsageResponse };
+    let result: { reply: string; usage?: AiAssistantUsageResponse; notice?: string };
     try {
       result = await streamAiAssistantConversation(pageId, conversationSnapshot, attachmentsSnapshot, event => {
         if (event.type === "status") aiLive.step = event.step;
+        else if (event.type === "notice") aiAssistantMessages.value[assistantIndex].notice = event.text;
         else if (event.type === "delta") setContent(aiLive.content + event.text);
         else if (event.type === "replace") setContent(event.text);
       }, pageSectionsSnapshot, aiIncludeImages.value);
@@ -3687,6 +3726,7 @@ const sendAiAssistantMessage = async () => {
       aiLive.step = "thinking";
       setContent("");
       result = await sendAiAssistantConversation(pageId, conversationSnapshot, attachmentsSnapshot, pageSectionsSnapshot, aiIncludeImages.value);
+      if (result.notice) aiAssistantMessages.value[assistantIndex].notice = result.notice;
     }
     if (result.usage) {
       aiAssistantUsage.value = result.usage;
@@ -8425,6 +8465,7 @@ onMounted(async () => {
 .ai-v2-structure li { display: flex; align-items: center; gap: 10px; padding: 6px 8px; font-size: 13px; }
 .ai-v2-structure li b { width: 16px; flex-shrink: 0; text-align: right; color: var(--muted-foreground); font-size: 12px; }
 .ai-v2-structure li.is-more button { padding-left: 26px; font-size: 13px; font-weight: 700; color: var(--primary); }
+.ai-notice { margin: 0 0 10px; padding: 10px 12px; border-radius: 12px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border); font-size: 12.5px; line-height: 1.45; color: var(--foreground); }
 .ai-v2-photos { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 36px; font-size: 12px; font-weight: 600; color: var(--muted-foreground); }
 .ai-v2-photos img { width: 34px; height: 34px; flex-shrink: 0; border-radius: 8px; object-fit: cover; background: var(--card); box-shadow: inset 0 0 0 1px var(--border); }
 .ai-v2-photos span:last-child { margin-left: 2px; }

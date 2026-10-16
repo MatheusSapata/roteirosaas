@@ -26,6 +26,15 @@ SECTION_EDITOR_NAMES = {
     "inclusions": "Resumo do pacote", "redirect": "Redirecionamento",
 }
 SECTION_TITLE_KEYS = ("title", "label", "caption", "headingLabel", "badge")
+# Jeito de escrever: banners e chamadas das páginas mais recentes. História: seção "Sobre" de
+# qualquer página (Artigo ou Texto e Imagens com título de quem somos / nossa história).
+VOICE_PAGES = 6
+VOICE_SAMPLES = 6
+HISTORY_TITLE = re.compile(
+    r"quem somos|sobre n[óo]s|sobre a (ag[êe]ncia|empresa|equipe)|nossa (hist[óo]ria|equipe|trajet[óo]ria)"
+    r"|conhe[çc]a a (ag[êe]ncia|empresa|equipe)|a ag[êe]ncia",
+    re.I,
+)
 
 
 def _plain(value: Any) -> str:
@@ -116,6 +125,49 @@ def _sections_summary(sections: list[dict[str, Any]]) -> list[str]:
     return lines
 
 
+def _agency_voice(pages: list[Page], agency_name: str = "") -> list[str]:
+    """Trechos das outras páginas da agência: como ela escreve e a história dela."""
+    samples: list[str] = []
+    history = ""
+    name = _plain(agency_name).lower()
+    for position, page in enumerate(pages):
+        config = page.config_json if isinstance(page.config_json, dict) else {}
+        for section in config.get("sections") or []:
+            if not isinstance(section, dict) or section.get("enabled") is False:
+                continue
+            kind = section.get("type")
+            title = _plain(section.get("title"))
+            if kind in ("biography", "story"):
+                heading = f"{title} {_plain(section.get('badge'))} {_plain(section.get('label'))}"
+                body = _plain(section.get("text") if kind == "biography" else section.get("subtitle"))
+                about = HISTORY_TITLE.search(heading) or (len(name) >= 4 and name in heading.lower())
+                if about and len(body) > len(history):
+                    history = f"{title}: {body}" if title else body
+            if position >= VOICE_PAGES or len(samples) >= VOICE_SAMPLES:
+                continue
+            if kind == "hero" and title:
+                subtitle = _plain(section.get("subtitle"))
+                samples.append(_short(f"{title} — {subtitle}" if subtitle else title, 170))
+            elif kind == "cta" and _plain(section.get("label")):
+                description = _plain(section.get("description"))
+                label = _plain(section.get("label"))
+                samples.append(_short(f"{label} — {description}" if description else label, 170))
+    lines: list[str] = []
+    if samples:
+        lines.append(
+            "COMO A AGÊNCIA ESCREVE (trechos das outras páginas dela): siga o mesmo tom, o tratamento "
+            "(você, vocês, a gente...), o jeito de chamar para a ação e o uso de emojis. Não copie frases "
+            "inteiras nem preços, datas ou detalhes de outras viagens:"
+        )
+        lines.extend(f'- "{sample}"' for sample in dict.fromkeys(samples))
+    if history:
+        lines.append(
+            "HISTÓRIA DA AGÊNCIA (da seção sobre a agência em outra página; use em seções sobre a agência, "
+            f"com as mesmas informações, sem inventar fatos novos): {_short(history, 700)}"
+        )
+    return lines
+
+
 def build_agency_context(
     db: Session, page: Page, page_sections: list[dict[str, Any]] | None = None, *, include_images: bool = True
 ) -> str:
@@ -181,6 +233,7 @@ def build_agency_context(
             '"Página: identificador" no card da VITRINE DE VIAGENS; o identificador é o que vem antes dos dois-pontos):'
         )
         lines.extend(_page_summary(other) for other in others)
+        lines.extend(_agency_voice(others, agency.name))
     else:
         lines.append("Outras páginas da agência: nenhuma.")
     return "\n".join(lines)

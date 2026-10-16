@@ -34,10 +34,10 @@ from app.services.asaas import AsaasAPIError, AsaasClient, build_default_split_p
 from app.services.card_installments import InstallmentOption, installment_options, option_for
 from app.services.company_status import mark_subscription_overdue
 from app.services.legacy_renewal import is_legacy_renewal_session, legacy_renewal_info
-from app.services.ntfy import SubscriptionPushScenario, publish_subscription_notification
+from app.services.ntfy import SubscriptionPushScenario, format_brl, publish_subscription_notification
 from app.services.trial import end_trial
 from app.services.trial import republish_all_user_pages
-from app.services.webhook_notifications import send_notification
+from app.services.webhook_notifications import contact_context, notify_payment_overdue, notify_safely, send_notification
 from app.services.viajechat_checkout_flow import (
     ensure_checkout_contact_at_payment_step,
     mark_signed as mark_viajechat_signed,
@@ -294,9 +294,48 @@ def _notify_checkout_subscription_push(
             previous_plan_name=previous_plan_name,
             upgraded_plan_name=upgraded_plan_name,
             cancelled_item=cancelled_item,
+            customer_email=session.customer_email or user.email,
+            customer_phone=session.customer_phone or user.whatsapp,
         )
     except Exception:  # pragma: no cover - alerta não pode quebrar o checkout
         pass
+
+
+def _notify_checkout_started(session: CheckoutSession) -> None:
+    """Checkout iniciado (dados preenchidos, sem pagar). A mesma pessoa voltando à mesma oferta em
+    até 3 horas não gera outro aviso."""
+    metadata = dict(session.metadata_json or {})
+    first = metadata.get("first_payment_amount")
+    notify_safely(
+        event_key="checkout_started",
+        context={
+            "event_label": "Checkout iniciado",
+            "user_name": session.customer_name or "Não informado",
+            "plan_name": session.product_name or session.offer_key or "Plano",
+            "offer_name": session.offer_key or "",
+            "amount": format_brl(first or session.amount),
+            "payment_method": "",
+            "purchase_kind": "Upgrade" if metadata.get("upgrade_mode") else "Nova compra",
+            **contact_context(session.customer_email, session.customer_phone),
+        },
+        dedupe_key=f"{(session.customer_email or session.customer_document or session.token).lower()}:{session.offer_key}",
+        dedupe_seconds=3 * 3600,
+    )
+
+
+def _notify_checkout_payment_overdue(session: CheckoutSession, payment: dict[str, Any], kind: str) -> None:
+    user = session.user
+    notify_payment_overdue(
+        user_name=session.customer_name or (user.name if user else None),
+        plan_name=session.product_name or session.offer_key,
+        amount=payment.get("value") or session.amount,
+        due_date=payment.get("dueDate"),
+        payment_method=_humanize_payment_method(payment.get("billingType") or session.payment_method),
+        kind=kind,
+        email=session.customer_email or (user.email if user else None),
+        phone=session.customer_phone or (user.whatsapp if user else None),
+        dedupe_key=str(payment.get("id") or f"{session.token}:{payment.get('dueDate')}"),
+    )
 
 
 def _notify_gateway_modified_cakto_to_asaas(user: User) -> None:
@@ -1219,6 +1258,7 @@ def create_checkout_session(
     db.add(session)
     db.commit()
     db.refresh(session)
+    _notify_checkout_started(session)
     return session
 
 
@@ -2399,6 +2439,7 @@ def _mark_checkout_subscription_overdue(session: CheckoutSession, payment: dict[
     if not same_contract or (subscription.status or "").strip().lower() not in {"active", "past_due"}:
         return
     mark_subscription_overdue(subscription, payment.get("dueDate"))
+    _notify_checkout_payment_overdue(session, payment, "Renovação")
 
 
 RENEWAL_PAID_EVENTS = {"PAYMENT_CONFIRMED", "PAYMENT_RECEIVED"}
@@ -2818,6 +2859,9 @@ def handle_asaas_checkout_webhook(db: Session, payload: dict[str, Any]) -> bool:
         if event == "PAYMENT_OVERDUE" and session.paid_at:
             # Renovação de quem já pagava: inadimplente (no ar por 3 dias, cobrança segue por 30).
             _mark_checkout_subscription_overdue(session, payment)
+        elif event == "PAYMENT_OVERDUE":
+            # Pix ou boleto da compra que venceu sem pagamento: a pessoa não concluiu a compra.
+            _notify_checkout_payment_overdue(session, payment, "Primeira cobrança (compra não concluída)")
     elif event in {"PAYMENT_REPROVED_BY_RISK_ANALYSIS", "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_CANCELLED"}:
         session.status = "failed"
     session.updated_at = _utcnow()

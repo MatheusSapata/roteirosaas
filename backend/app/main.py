@@ -58,6 +58,18 @@ if engine.dialect.name == "postgresql":
         connection.execute(text("ALTER TABLE stock_images ADD COLUMN IF NOT EXISTS preview_url VARCHAR(1000)"))
         # Buscas de fotos guardadas (a mesma busca devolvia sempre as mesmas fotos): saíram.
         connection.execute(text("DROP TABLE IF EXISTS stock_image_searches"))
+        connection.execute(text("ALTER TABLE media_assets ADD COLUMN IF NOT EXISTS keywords TEXT"))
+        connection.execute(text("ALTER TABLE media_assets ADD COLUMN IF NOT EXISTS source VARCHAR(30)"))
+        connection.execute(text(
+            "ALTER TABLE webhook_notification_rules ADD COLUMN IF NOT EXISTS ntfy_enabled BOOLEAN NOT NULL DEFAULT TRUE"
+        ))
+        connection.execute(text("ALTER TABLE webhook_notification_rules ADD COLUMN IF NOT EXISTS pushover_sound VARCHAR(40)"))
+        # Dinheiro entrando toca o cha-ching no Pushover. Só preenche o que nunca foi escolhido
+        # (quem escolheu "padrão do aparelho" fica com texto vazio e não é mudado).
+        connection.execute(text(
+            "UPDATE webhook_notification_rules SET pushover_sound = 'cashregister' WHERE pushover_sound IS NULL "
+            "AND event_key IN ('purchase_approved', 'subscription_created', 'subscription_renewed', 'upgrade_realizado')"
+        ))
         connection.execute(text("ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS deactivated_at TIMESTAMP WITH TIME ZONE"))
         connection.execute(text(
             "ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS deactivation_estimated BOOLEAN NOT NULL DEFAULT FALSE"
