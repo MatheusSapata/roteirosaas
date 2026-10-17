@@ -43,6 +43,8 @@ class WebhookNotificationRuleUpdate(BaseModel):
 
 class WebhookNotificationRuleOut(WebhookNotificationRuleBase):
     id: int
+    # Som que toca quando pushover_sound está vazio (receita nova: "viajeonvenda").
+    default_pushover_sound: str | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
@@ -109,3 +111,8 @@ class PushoverAccountOut(BaseModel):
     event_keys: list[str] = Field(default_factory=list)
     last_sent_at: datetime | None = None
     last_error: str | None = None
+
+
+class PushoverSoundOut(BaseModel):
+    value: str
+    label: str

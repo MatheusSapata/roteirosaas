@@ -132,17 +132,26 @@
                   @click="toggleAccountEvent(account, form.event_key)"
                 ></button>
               </div>
-              <div v-if="accounts.length" class="am-field mt-2">
-                <label for="wh-sound">Som no Pushover</label>
-                <select id="wh-sound" v-model="form.pushover_sound" class="am-input">
-                  <option v-for="sound in pushoverSounds" :key="sound.value" :value="sound.value">{{ sound.label }}</option>
-                </select>
+              <div v-if="accounts.length" class="mt-2 grid gap-2" :class="{ 'sm:grid-cols-2': soundChoice === CUSTOM_SOUND }">
+                <div class="am-field">
+                  <label for="wh-sound">Som no Pushover</label>
+                  <select id="wh-sound" v-model="soundChoice" class="am-input">
+                    <option value="">{{ defaultSoundLabel }}</option>
+                    <option v-for="sound in soundOptions" :key="sound.value" :value="sound.value">{{ sound.label }}</option>
+                    <option :value="CUSTOM_SOUND">Outro som (pelo nome)...</option>
+                  </select>
+                </div>
+                <div v-if="soundChoice === CUSTOM_SOUND" class="am-field">
+                  <label for="wh-sound-name">Nome do som no Pushover</label>
+                  <input id="wh-sound-name" v-model.trim="form.pushover_sound" class="am-input am-mono" maxlength="40" placeholder="viajeonvenda" />
+                </div>
               </div>
+              <p v-if="accounts.length && soundHint" class="am-card-sub !mt-1">{{ soundHint }}</p>
               <p v-if="!accounts.length" class="am-card-sub !mt-1">
                 Nenhuma conta do Pushover.
                 <button type="button" class="wh-link" @click="tab = 'pushover'; newAccount()">Cadastrar conta</button>
               </p>
-              <p v-else class="am-card-sub !mt-1">O ntfy salva com o evento; as contas do Pushover mudam na hora.</p>
+              <p v-else class="am-card-sub !mt-1">O ntfy e o som salvam com o evento; as contas do Pushover mudam na hora.</p>
             </div>
             <div class="flex items-center justify-between gap-3 rounded-[14px] border border-border px-4 py-3">
               <div>
@@ -343,7 +352,9 @@ type Rule = {
   description?: string | null;
   enabled: boolean;
   ntfy_enabled: boolean;
+  // Vazio: o padrão do evento (default_pushover_sound) ou, sem ele, o som padrão do app.
   pushover_sound?: string | null;
+  default_pushover_sound?: string | null;
   title_template: string;
   body_template: string;
   icon_tag?: string | null;
@@ -388,9 +399,13 @@ type PushoverAccount = {
 type Delivery = { channel: string; target: string; ok: boolean; error?: string | null };
 type TestResult = { success: boolean; message?: string | null; deliveries: Delivery[] };
 const SALES_EVENTS = ["purchase_approved", "checkout_started", "payment_overdue"];
-// Sons do Pushover (pushover.net/api#sounds). Dinheiro entrando usa o "Caixa registradora" (cha-ching).
-const pushoverSounds = [
-  { value: "", label: "Padrão do aparelho" },
+// Sons do Pushover (pushover.net/api#sounds). Receita nova (compra, renovação, upgrade) toca por
+// padrão o "viajeonvenda", som personalizado da conta dona do aplicativo (toca para todas as contas).
+type PushoverSound = { value: string; label: string };
+const REVENUE_SOUND = "viajeonvenda";
+const CUSTOM_SOUND = "__custom__";
+const pushoverSounds: PushoverSound[] = [
+  { value: REVENUE_SOUND, label: "Venda Viaje On (viajeonvenda)" },
   { value: "cashregister", label: "Caixa registradora (cha-ching)" },
   { value: "pushover", label: "Pushover" },
   { value: "magic", label: "Mágica" },
@@ -407,9 +422,24 @@ const pushoverSounds = [
   { value: "siren", label: "Sirene" },
   { value: "spacealarm", label: "Alarme espacial" },
   { value: "tugboat", label: "Rebocador" },
+  { value: "alien", label: "Alarme alienígena (longo)" },
+  { value: "climb", label: "Subida (longo)" },
+  { value: "persistent", label: "Persistente (longo)" },
+  { value: "echo", label: "Eco do Pushover (longo)" },
+  { value: "updown", label: "Sobe e desce (longo)" },
   { value: "vibrate", label: "Só vibrar" },
   { value: "none", label: "Sem som" }
 ];
+// Sons que tocam para as contas, com os personalizados do aplicativo (vazio: sem conta ou sem resposta).
+const accountSounds = ref<PushoverSound[] | null>(null);
+const soundOptions = computed<PushoverSound[]>(() => {
+  const known = new Set(pushoverSounds.map(sound => sound.value));
+  const extra = (accountSounds.value || [])
+    .filter(sound => !known.has(sound.value))
+    .map(sound => ({ value: sound.value, label: `${sound.label} (personalizado)` }));
+  return [...pushoverSounds, ...extra];
+});
+const soundLabel = (value: string) => soundOptions.value.find(sound => sound.value === value)?.label || value;
 
 const tab = ref<"events" | "pushover">("events");
 const accounts = ref<PushoverAccount[]>([]);
@@ -439,6 +469,7 @@ const emptyForm = (): Rule => ({
   enabled: true,
   ntfy_enabled: true,
   pushover_sound: "",
+  default_pushover_sound: null,
   title_template: "Assinatura criada - {{plan_name}}",
   body_template: "{{amount}} | {{user_name}} | {{payment_method}}",
   icon_tag: "rocket",
@@ -449,6 +480,29 @@ const emptyForm = (): Rule => ({
 });
 
 const form = reactive<Rule>(emptyForm());
+
+// Som do evento: vazio usa o padrão do evento; "Outro som personalizado" abre o campo do nome.
+const customSoundMode = ref(false);
+const soundChoice = computed({
+  get: () => {
+    const value = form.pushover_sound || "";
+    if (customSoundMode.value || (value && !soundOptions.value.some(sound => sound.value === value))) return CUSTOM_SOUND;
+    return value;
+  },
+  set: (value: string) => {
+    customSoundMode.value = value === CUSTOM_SOUND;
+    form.pushover_sound = value === CUSTOM_SOUND ? "" : value;
+  }
+});
+const defaultSoundLabel = computed(() =>
+  form.default_pushover_sound ? `Padrão: ${soundLabel(form.default_pushover_sound)}` : "Padrão do app Pushover"
+);
+const soundHint = computed(() => {
+  const sound = (form.pushover_sound || "").trim() || form.default_pushover_sound || "";
+  if (!sound || pushoverSounds.some(item => item.value === sound && item.value !== REVENUE_SOUND)) return "";
+  if (accountSounds.value?.some(item => item.value === sound)) return `O som "${sound}" está no Pushover e toca para todas as contas.`;
+  return `"${sound}" é um som personalizado: suba o arquivo com esse nome em pushover.net (Your Custom Sounds), na conta dona do aplicativo (a do token). Ele passa a tocar para todas as contas; sem ele, o aviso toca o som padrão do app.`;
+});
 
 const isBuiltinSelected = computed(() => Boolean(selectedRule.value?.is_builtin));
 const activeRulesCount = computed(() => rules.value.filter(rule => rule.enabled).length);
@@ -475,6 +529,18 @@ const channelSummary = (rule: Pick<Rule, "event_key" | "ntfy_enabled">) => {
 const loadAccounts = async () => {
   const { data } = await api.get<PushoverAccount[]>("/admin-master/webhook-notifications/pushover-accounts");
   accounts.value = data || [];
+  if (accountSounds.value === null && accounts.value.some(account => account.enabled)) void loadAccountSounds();
+};
+
+// Uma vez por visita: só ajuda a listar os sons personalizados da conta.
+const loadAccountSounds = async () => {
+  accountSounds.value = [];
+  try {
+    const { data } = await api.get<PushoverSound[]>("/admin-master/webhook-notifications/pushover-sounds");
+    accountSounds.value = data || [];
+  } catch {
+    accountSounds.value = [];
+  }
 };
 
 const loadData = async () => {
@@ -498,6 +564,8 @@ const resetFormFromRule = (rule: Rule) => {
   form.enabled = rule.enabled;
   form.ntfy_enabled = rule.ntfy_enabled !== false;
   form.pushover_sound = rule.pushover_sound || "";
+  form.default_pushover_sound = rule.default_pushover_sound || null;
+  customSoundMode.value = false;
   form.title_template = rule.title_template;
   form.body_template = rule.body_template;
   form.icon_tag = rule.icon_tag || "";
@@ -517,6 +585,7 @@ const createNewRule = () => {
   selectedRuleId.value = null;
   const next = emptyForm();
   Object.assign(form, next);
+  customSoundMode.value = false;
 };
 
 const saveRule = async () => {
@@ -528,8 +597,8 @@ const saveRule = async () => {
       description: form.description?.trim() || null,
       enabled: form.enabled,
       ntfy_enabled: form.ntfy_enabled,
-      // Texto vazio = som padrão do aparelho (e o servidor não volta a pôr o cha-ching).
-      pushover_sound: form.pushover_sound || "",
+      // Texto vazio = som padrão do evento ("viajeonvenda" nas receitas; nos outros, o do app).
+      pushover_sound: (form.pushover_sound || "").trim(),
       title_template: form.title_template.trim(),
       body_template: form.body_template.trim(),
       icon_tag: form.icon_tag?.trim() || null,

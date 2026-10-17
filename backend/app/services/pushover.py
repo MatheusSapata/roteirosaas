@@ -9,6 +9,7 @@ import httpx
 
 MESSAGES_URL = "https://api.pushover.net/1/messages.json"
 VALIDATE_URL = "https://api.pushover.net/1/users/validate.json"
+SOUNDS_URL = "https://api.pushover.net/1/sounds.json"
 TIMEOUT_SECONDS = 8.0
 MAX_TITLE = 250
 MAX_MESSAGE = 1024
@@ -55,7 +56,7 @@ def send_message(
     if device:
         data["device"] = device
     if sound:
-        data["sound"] = sound  # ex.: "cashregister" (cha-ching); sem: o som padrão do aparelho
+        data["sound"] = sound  # ex.: "viajeonvenda" (personalizado); sem: o som padrão do app
     if url:
         data["url"] = url[:512]
         if url_title:
@@ -79,3 +80,16 @@ def validate_user(*, app_token: str, user_key: str, device: str | None = None) -
         raise PushoverError("Não foi possível falar com o Pushover.") from exc
     if response.status_code >= 400:
         raise PushoverError(_errors(response))
+
+
+def list_sounds(*, app_token: str) -> dict[str, str]:
+    """Sons disponíveis ({nome: rótulo}): os do Pushover e os personalizados da conta dona do
+    aplicativo, que tocam para todas as contas que recebem o aviso."""
+    try:
+        response = httpx.get(SOUNDS_URL, params={"token": app_token}, timeout=TIMEOUT_SECONDS)
+    except httpx.HTTPError as exc:
+        raise PushoverError("Não foi possível falar com o Pushover.") from exc
+    if response.status_code >= 400:
+        raise PushoverError(_errors(response))
+    sounds = response.json().get("sounds") if response.content else None
+    return {str(key): str(label) for key, label in (sounds or {}).items()}

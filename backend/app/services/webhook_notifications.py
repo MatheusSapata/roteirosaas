@@ -55,11 +55,25 @@ DEFAULT_AVAILABLE_FIELDS = [
 # Eventos novos chegam pelo Pushover; no ntfy (tópico das assinaturas) começam desligados.
 SALES_EVENT_KEYS = ("purchase_approved", "checkout_started", "payment_overdue")
 
+# Som de receita nova no Pushover: o som personalizado "viajeonvenda", cadastrado na conta dona do
+# aplicativo (a do token), que toca para todas as contas. Evento sem som escolhido na tela usa este
+# padrão; os outros eventos tocam o som padrão do app.
+REVENUE_SOUND = "viajeonvenda"
+REVENUE_EVENT_KEYS = ("purchase_approved", "subscription_created", "subscription_renewed", "upgrade_realizado")
+
+
+def default_pushover_sound(event_key: str) -> str | None:
+    return REVENUE_SOUND if event_key in REVENUE_EVENT_KEYS else None
+
+
+def pushover_sound_for(rule: WebhookNotificationRule) -> str | None:
+    """O som escolhido na tela; sem escolha, o padrão do evento."""
+    return (rule.pushover_sound or "").strip() or default_pushover_sound(rule.event_key)
+
 
 DEFAULT_WEBHOOK_RULES: list[dict[str, Any]] = [
     {
         "event_key": "subscription_created",
-        "pushover_sound": "cashregister",
         "display_name": "Nova assinatura",
         "description": "Dispara quando a assinatura é criada.",
         "enabled": True,
@@ -73,7 +87,6 @@ DEFAULT_WEBHOOK_RULES: list[dict[str, Any]] = [
     },
     {
         "event_key": "subscription_renewed",
-        "pushover_sound": "cashregister",
         "display_name": "Assinatura renovada",
         "description": "Dispara quando a renovação é confirmada.",
         "enabled": True,
@@ -100,7 +113,6 @@ DEFAULT_WEBHOOK_RULES: list[dict[str, Any]] = [
     },
     {
         "event_key": "upgrade_realizado",
-        "pushover_sound": "cashregister",
         "display_name": "Upgrade realizado",
         "description": "Dispara quando uma assinatura faz upgrade.",
         "enabled": True,
@@ -127,7 +139,6 @@ DEFAULT_WEBHOOK_RULES: list[dict[str, Any]] = [
     },
     {
         "event_key": "purchase_approved",
-        "pushover_sound": "cashregister",
         "display_name": "Compra aprovada",
         "description": "Pagamento aprovado: assinatura nova, renovação ou upgrade (qualquer forma de pagamento).",
         "enabled": True,
@@ -373,27 +384,37 @@ def send_to_pushover_account(
     priority: int,
     context: dict[str, Any] | None = None,
     sound: str | None = None,
-) -> None:
-    """Manda para uma conta e guarda na conta quando foi o último envio (ou o último erro)."""
+) -> str | None:
+    """Manda para uma conta e guarda na conta quando foi o último envio (ou o último erro). Devolve
+    um aviso quando o som escolhido não existe e o aviso saiu com o som padrão."""
     context = context or {}
+    message = {
+        "app_token": decrypt_api_key(account.app_token_encrypted),
+        "user_key": decrypt_api_key(account.user_key_encrypted),
+        "title": title,
+        "message": body,
+        "priority": priority,
+        "device": account.device or None,
+        # Checkout iniciado e cobrança vencida: o aviso abre a conversa com o cliente.
+        "url": context.get("whatsapp_url") or None,
+        "url_title": "Chamar no WhatsApp" if context.get("whatsapp_url") else None,
+    }
+    note = None
     try:
-        pushover.send_message(
-            app_token=decrypt_api_key(account.app_token_encrypted),
-            user_key=decrypt_api_key(account.user_key_encrypted),
-            title=title,
-            message=body,
-            priority=priority,
-            device=account.device or None,
-            # Checkout iniciado e cobrança vencida: o aviso abre a conversa com o cliente.
-            url=context.get("whatsapp_url") or None,
-            url_title="Chamar no WhatsApp" if context.get("whatsapp_url") else None,
-            sound=sound or None,
-        )
+        try:
+            pushover.send_message(**message, sound=sound or None)
+        except pushover.PushoverError as exc:
+            if not sound or "sound" not in str(exc).lower():
+                raise
+            # Som personalizado que o Pushover não achou: o aviso sai com o som padrão do app.
+            pushover.send_message(**message)
+            note = f'O som "{sound}" não está no Pushover da conta dona do aplicativo; o aviso tocou o som padrão.'
     except Exception as exc:
         account.last_error = str(exc)[:500]
         raise
-    account.last_error = None
+    account.last_error = note
     account.last_sent_at = datetime.now(timezone.utc)
+    return note
 
 
 def _deliver(session: Session, rule: WebhookNotificationRule, context: dict[str, Any]) -> list[dict[str, Any]]:
@@ -416,10 +437,10 @@ def _deliver(session: Session, rule: WebhookNotificationRule, context: dict[str,
     push_title = f"{emoji} {title}".strip() if emoji else title
     for account in _accounts_for(session, rule.event_key):
         try:
-            send_to_pushover_account(
-                account, title=push_title, body=body, priority=rule.priority, context=context, sound=rule.pushover_sound
+            note = send_to_pushover_account(
+                account, title=push_title, body=body, priority=rule.priority, context=context, sound=pushover_sound_for(rule)
             )
-            results.append({"channel": "pushover", "target": account.name, "ok": True})
+            results.append({"channel": "pushover", "target": account.name, "ok": True, "error": note})
         except Exception as exc:  # noqa: BLE001
             logger.warning("notification_pushover_failed event=%s account=%s error=%s", rule.event_key, account.id, exc)
             results.append({"channel": "pushover", "target": account.name, "ok": False, "error": str(exc)[:300]})
@@ -552,6 +573,23 @@ def save_pushover_account(db: Session, payload: dict[str, Any], account: Pushove
     db.commit()
     db.refresh(account)
     return account
+
+
+def pushover_sounds(db: Session) -> list[dict[str, str]]:
+    """Sons que tocam para todas as contas ligadas: os do Pushover e os personalizados da conta dona
+    do aplicativo. Contas com tokens diferentes: só os sons que existem em todos. Sem conta ou sem
+    resposta: lista vazia (a tela usa a lista fixa)."""
+    accounts = db.query(PushoverAccount).filter(PushoverAccount.enabled.is_(True)).order_by(PushoverAccount.id).all()
+    tokens = list(dict.fromkeys(decrypt_api_key(account.app_token_encrypted) for account in accounts))
+    common: dict[str, str] | None = None
+    for token in tokens:
+        try:
+            sounds = pushover.list_sounds(app_token=token)
+        except Exception as exc:  # noqa: BLE001 - só uma ajuda para a tela
+            logger.info("pushover_sounds_unavailable error=%s", exc)
+            return []
+        common = sounds if common is None else {key: label for key, label in common.items() if key in sounds}
+    return [{"value": key, "label": label} for key, label in (common or {}).items()]
 
 
 def test_pushover_account(db: Session, account: PushoverAccount) -> None:
