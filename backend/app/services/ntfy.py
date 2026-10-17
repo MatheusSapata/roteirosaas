@@ -10,6 +10,7 @@ from zoneinfo import ZoneInfo
 import httpx
 
 from app.core.config import get_settings
+from app.services.hub_funnel import send_hub_event
 from app.services.webhook_notifications import contact_context, notify_safely
 
 BRAZIL_TZ = ZoneInfo("America/Sao_Paulo")
@@ -179,6 +180,37 @@ class NtfyService:
             return {"status_code": response.status_code, "body": response.text}
 
 
+def _send_hub_purchase(
+    scenario: "SubscriptionPushScenario",
+    *,
+    email: str | None,
+    name: str | None,
+    phone: str | None,
+    plan: str | None,
+    amount: Any,
+    payment_method: str | None,
+) -> None:
+    """Assinatura nova ou troca de plano vira o passo `subscription_paid` no funil do Hub."""
+    if scenario not in (SubscriptionPushScenario.NEW, SubscriptionPushScenario.UPGRADED):
+        return
+    try:
+        value = float(amount) if amount is not None else None
+    except (TypeError, ValueError):
+        value = None
+    send_hub_event(
+        "subscription_paid",
+        email=email,
+        name=name,
+        phone=phone,
+        payload={
+            "plan": plan,
+            "amount": value,
+            "payment_method": payment_method,
+            "upgrade": scenario == SubscriptionPushScenario.UPGRADED,
+        },
+    )
+
+
 def publish_subscription_notification(
     *,
     scenario: SubscriptionPushScenario | str,
@@ -197,6 +229,15 @@ def publish_subscription_notification(
     customer_phone: str | None = None,
 ) -> None:
     scenario_value = SubscriptionPushScenario(scenario)
+    _send_hub_purchase(
+        scenario_value,
+        email=customer_email,
+        name=user_name,
+        phone=customer_phone,
+        plan=upgraded_plan_name if scenario_value == SubscriptionPushScenario.UPGRADED else plan_name,
+        amount=amount,
+        payment_method=payment_method,
+    )
     event_key_map = {
         SubscriptionPushScenario.NEW: "subscription_created",
         SubscriptionPushScenario.RENEWED: "subscription_renewed",

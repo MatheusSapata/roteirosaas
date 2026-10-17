@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, timezone
-from typing import Literal
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -35,6 +35,7 @@ from app.services import auth as auth_service
 from app.services.permissions import final_permissions_for_member
 from app.services.team import ensure_legacy_owner_context, find_pending_invite_by_token, get_agency_plan, is_owner_user
 from app.services.session_monitor import summarize_user_agent
+from app.services.hub_funnel import send_hub_event
 from app.services.trial import start_trial
 from app.services.media_storage import media_storage
 
@@ -49,6 +50,20 @@ class TrialAckPayload(BaseModel):
 
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
+
+
+def _send_signup_to_hub(user: User, utm: Any) -> None:
+    """Cadastro e início do teste grátis no funil do Hub (a origem vem das UTMs do cadastro)."""
+    params = {
+        "utm_source": getattr(utm, "source", None),
+        "utm_medium": getattr(utm, "medium", None),
+        "utm_campaign": getattr(utm, "campaign", None),
+        "utm_term": getattr(utm, "term", None),
+        "utm_content": getattr(utm, "content", None),
+    }
+    common = {"email": user.email, "name": user.name, "phone": user.whatsapp}
+    send_hub_event("signup", utm=params, external_id=f"ro-signup-{user.id}", **common)
+    send_hub_event("trial_started", payload={"trial_days": 7}, external_id=f"ro-trial-{user.id}", **common)
 
 
 @router.post("/register", response_model=UserOut)
@@ -109,6 +124,7 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)) -> UserOut:
     start_trial(user, "trial", duration_days=7)
     db.commit()
     db.refresh(user)
+    _send_signup_to_hub(user, user_in.utm)
     if (user.status or "").lower() != "pending_agency_setup":
         ensure_legacy_owner_context(db, user)
     return user
