@@ -64,12 +64,21 @@ if engine.dialect.name == "postgresql":
             "ALTER TABLE webhook_notification_rules ADD COLUMN IF NOT EXISTS ntfy_enabled BOOLEAN NOT NULL DEFAULT TRUE"
         ))
         connection.execute(text("ALTER TABLE webhook_notification_rules ADD COLUMN IF NOT EXISTS pushover_sound VARCHAR(40)"))
-        # Dinheiro entrando toca o cha-ching no Pushover. Só preenche o que nunca foi escolhido
-        # (quem escolheu "padrão do aparelho" fica com texto vazio e não é mudado).
+        # Passos que rodam uma vez só (fica registrado o nome de cada um).
         connection.execute(text(
-            "UPDATE webhook_notification_rules SET pushover_sound = 'cashregister' WHERE pushover_sound IS NULL "
-            "AND event_key IN ('purchase_approved', 'subscription_created', 'subscription_renewed', 'upgrade_realizado')"
+            "CREATE TABLE IF NOT EXISTS app_one_time_steps ("
+            "name VARCHAR(120) PRIMARY KEY, applied_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now())"
         ))
+        # Receita nova passa a tocar o "viajeonvenda": o cha-ching que a versão anterior gravou volta
+        # a ser o padrão do evento. Escolha feita depois na tela não é mexida.
+        if connection.execute(text(
+            "INSERT INTO app_one_time_steps (name) VALUES ('pushover_revenue_sound_viajeonvenda') "
+            "ON CONFLICT DO NOTHING RETURNING name"
+        )).first():
+            connection.execute(text(
+                "UPDATE webhook_notification_rules SET pushover_sound = NULL WHERE pushover_sound = 'cashregister' "
+                "AND event_key IN ('purchase_approved', 'subscription_created', 'subscription_renewed', 'upgrade_realizado')"
+            ))
         connection.execute(text("ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS deactivated_at TIMESTAMP WITH TIME ZONE"))
         connection.execute(text(
             "ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS deactivation_estimated BOOLEAN NOT NULL DEFAULT FALSE"

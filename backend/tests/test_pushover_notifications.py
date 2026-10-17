@@ -88,12 +88,14 @@ def test_accounts_keep_keys_encrypted_and_share_the_app_token(admin, db_session,
     assert admin.delete(f"/api/v1/admin-master/webhook-notifications/pushover-accounts/{listed[1]['id']}").status_code == 204
 
 
-def _account(db_session, name: str, user_key: str, event_keys: list[str], enabled: bool = True) -> PushoverAccount:
+def _account(
+    db_session, name: str, user_key: str, event_keys: list[str], enabled: bool = True, app_token: str = "token-app"
+) -> PushoverAccount:
     from app.services.api_key_crypto import encrypt_api_key
 
     account = PushoverAccount(
         name=name, user_key_encrypted=encrypt_api_key(user_key), user_key_last4=user_key[-4:],
-        app_token_encrypted=encrypt_api_key("token-app"), app_token_last4="-app", event_keys=event_keys, enabled=enabled,
+        app_token_encrypted=encrypt_api_key(app_token), app_token_last4=app_token[-4:], event_keys=event_keys, enabled=enabled,
     )
     db_session.add(account)
     db_session.commit()
@@ -146,8 +148,8 @@ def test_purchase_approved_for_new_renewal_and_upgrade_but_not_cancellation(db_s
         "R$ 970,00 | Bia | Cartão | Upgrade",
     ]
     assert pushover_calls.sent[-1]["title"] == "💰 Compra aprovada - Anual"
-    # Dinheiro entrando: cha-ching.
-    assert {call["sound"] for call in pushover_calls.sent} == {"cashregister"}
+    # Receita nova: o som personalizado "viajeonvenda".
+    assert {call["sound"] for call in pushover_calls.sent} == {"viajeonvenda"}
 
 
 def test_overdue_charge_is_sent_once_per_charge(db_session, pushover_calls):
@@ -174,3 +176,57 @@ def test_rule_test_reports_each_channel(admin, db_session, pushover_calls):
     checkout = next(rule for rule in rules if rule["event_key"] == "checkout_started")
     empty = admin.post(f"/api/v1/admin-master/webhook-notifications/{checkout['id']}/test", json={"event_key": "checkout_started"}).json()
     assert empty["success"] is False and "Nenhum canal" in empty["message"]
+
+
+def test_sound_can_be_changed_per_event_and_missing_custom_sound_falls_back(db_session, monkeypatch, pushover_calls):
+    from app.models.webhook_notification import WebhookNotificationRule
+
+    _account(db_session, "Matheus", "u-matheus", ["purchase_approved", "payment_overdue"])
+    attempts: list[str | None] = []
+
+    def picky_send(**kwargs):
+        attempts.append(kwargs.get("sound"))
+        if kwargs.get("sound") == "viajeonvenda":
+            raise pushover.PushoverError("sound is invalid")  # conta sem o som personalizado
+        pushover_calls.sent.append(kwargs)
+
+    monkeypatch.setattr(pushover, "send_message", picky_send)
+    assert send_notification(event_key="purchase_approved", context={"user_name": "Bia"}) is True
+    assert attempts == ["viajeonvenda", None]  # reenviou com o som padrão do app
+    account = db_session.query(PushoverAccount).first()
+    db_session.refresh(account)
+    assert "viajeonvenda" in account.last_error
+
+    # O teste do evento conta que o som não existe e o aviso saiu com o som padrão.
+    rule = db_session.query(WebhookNotificationRule).filter_by(event_key="purchase_approved").first()
+    result = webhook_notifications.test_notification(rule_id=rule.id, db=db_session)
+    assert "viajeonvenda" in result["deliveries"][0]["error"] and result["deliveries"][0]["ok"] is True
+
+    # Som escolhido na tela vale no lugar do padrão; evento sem padrão não manda som.
+    rule = db_session.query(WebhookNotificationRule).filter_by(event_key="purchase_approved").first()
+    rule.pushover_sound = "cashregister"
+    db_session.commit()
+    attempts.clear()
+    send_notification(event_key="purchase_approved", context={"user_name": "Bia"})
+    send_notification(event_key="payment_overdue", context={"user_name": "Bia"}, dedupe_key="x1")
+    assert attempts == ["cashregister", None]
+
+
+def test_rules_show_the_default_sound_and_list_account_sounds(admin, db_session, monkeypatch, pushover_calls):
+    _account(db_session, "Matheus", "u-matheus", ["purchase_approved"])
+    monkeypatch.setattr(pushover, "list_sounds", lambda **kwargs: {"pushover": "Pushover (default)", "viajeonvenda": "Viaje On venda"})
+    rules = {rule["event_key"]: rule for rule in admin.get("/api/v1/admin-master/webhook-notifications").json()}
+    assert rules["purchase_approved"]["default_pushover_sound"] == "viajeonvenda"
+    assert rules["subscription_renewed"]["default_pushover_sound"] == "viajeonvenda"
+    assert rules["checkout_started"]["default_pushover_sound"] is None
+    sounds = admin.get("/api/v1/admin-master/webhook-notifications/pushover-sounds").json()
+    assert {"value": "viajeonvenda", "label": "Viaje On venda"} in sounds
+
+    # Outra conta com outro aplicativo, sem o som personalizado: a lista só traz o que toca em todas.
+    _account(db_session, "Outra", "u-outra", ["purchase_approved"], app_token="token-outro")
+    monkeypatch.setattr(
+        pushover, "list_sounds",
+        lambda **kwargs: {"pushover": "Pushover (default)", **({"viajeonvenda": "Viaje On venda"} if kwargs["app_token"] == "token-app" else {})},
+    )
+    sounds = admin.get("/api/v1/admin-master/webhook-notifications/pushover-sounds").json()
+    assert [sound["value"] for sound in sounds] == ["pushover"]
