@@ -99,6 +99,8 @@ class Settings(BaseSettings):
     smtp_use_tls: bool = Field(True, alias="SMTP_USE_TLS")
     smtp_use_ssl: bool = Field(False, alias="SMTP_USE_SSL")
     webapp_base_url: str | None = Field(None, alias="WEBAPP_BASE_URL")
+    hub_funnel_url: str | None = Field(None, alias="HUB_FUNNEL_URL")
+    hub_funnel_key: str | None = Field(None, alias="HUB_FUNNEL_KEY")
     viajeon_provision_token: str | None = Field(None, alias="VIAJEON_PROVISION_TOKEN")
     viajeon_provision_secret: str | None = Field(None, alias="VIAJEON_PROVISION_SECRET")
     gpt_key: str | None = Field(None, alias="GPT_KEY")

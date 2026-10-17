@@ -34,6 +34,7 @@ from app.services.asaas import AsaasAPIError, AsaasClient, build_default_split_p
 from app.services.card_installments import InstallmentOption, installment_options, option_for
 from app.services.company_status import mark_subscription_overdue
 from app.services.legacy_renewal import is_legacy_renewal_session, legacy_renewal_info
+from app.services.hub_funnel import send_hub_event
 from app.services.ntfy import SubscriptionPushScenario, format_brl, publish_subscription_notification
 from app.services.trial import end_trial
 from app.services.trial import republish_all_user_pages
@@ -306,6 +307,20 @@ def _notify_checkout_started(session: CheckoutSession) -> None:
     até 3 horas não gera outro aviso."""
     metadata = dict(session.metadata_json or {})
     first = metadata.get("first_payment_amount")
+    send_hub_event(
+        "checkout_started",
+        email=session.customer_email,
+        name=session.customer_name,
+        phone=session.customer_phone,
+        payload={
+            "checkout_session_id": session.token,
+            "plan": session.product_name or session.offer_key,
+            "billing_cycle": session.billing_cycle,
+            "amount": float(first or session.amount or 0) or None,
+            "upgrade": bool(metadata.get("upgrade_mode")),
+        },
+        external_id=f"ro-checkout-{session.token}",
+    )
     notify_safely(
         event_key="checkout_started",
         context={
