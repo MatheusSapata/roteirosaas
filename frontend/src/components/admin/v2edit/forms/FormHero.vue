@@ -27,13 +27,35 @@
           @update:model-value="setMediaMode"
         />
         <template v-if="mediaMode === 'photo'">
-          <ImageUploadField :model-value="modelValue.backgroundImage || ''" label="Foto do computador" hint="Ideal 2400 × 1350 px." layout="compact" @update:model-value="patch({ backgroundImage: $event || '' })" />
+          <ImageUploadField
+            :model-value="modelValue.backgroundImage || ''"
+            label="Foto do computador"
+            :hint="desktopHint"
+            layout="compact"
+            :fallback-url="modelValue.backgroundImage ? '' : modelValue.mobileBackgroundImage || ''"
+            @update:model-value="setPhoto('desktop', $event)"
+          />
+          <button v-if="modelValue.backgroundImage" type="button" class="ved-inline-btn" @click="openFocus('desktop')">Ajustar encaixe</button>
           <ImageUploadField
             :model-value="modelValue.mobileBackgroundImage || ''"
             label="Foto do celular"
-            hint="Opcional. Melhor quase quadrada; sem ela, usa a do computador."
+            :hint="mobileHint"
             layout="compact"
-            @update:model-value="patch({ mobileBackgroundImage: $event || '' })"
+            :fallback-url="modelValue.mobileBackgroundImage ? '' : modelValue.backgroundImage || ''"
+            @update:model-value="setPhoto('mobile', $event)"
+          />
+          <button v-if="modelValue.mobileBackgroundImage" type="button" class="ved-inline-btn" @click="openFocus('mobile')">Ajustar encaixe</button>
+          <ImageFocusDialog
+            :open="focusDialog.open"
+            :src="focusDialog.src"
+            :model-value="focusDialog.value"
+            :screens="focusDialog.screens"
+            :default-focus="frames.focus"
+            :desktop-ratio="frames.desktop"
+            :mobile-ratio="frames.mobile"
+            :title="focusDialog.title"
+            @apply="applyFocus"
+            @close="focusDialog.open = false"
           />
         </template>
         <EdText v-else :model-value="modelValue.videoUrl || ''" label="Link do vídeo" type="url" hint="YouTube. Toca sem som, em repetição." @update:model-value="patch({ videoUrl: $event })" />
@@ -125,6 +147,7 @@ import EdRich from "../EdRich.vue";
 import EdSeg from "../EdSeg.vue";
 import EdText from "../EdText.vue";
 import V2EditShell from "../V2EditShell.vue";
+import ImageFocusDialog from "../ImageFocusDialog.vue";
 import { readText, useDraft, writeText } from "../useDraft";
 
 const props = defineProps<{ modelValue: HeroSection }>();
@@ -169,6 +192,61 @@ const setChips = (next: { text: string; icon: string }[]) =>
     chips: next.map((chip, index) => writeText(props.modelValue.chips?.[index], chip.text)),
     chipIcons: next.map(chip => chip.icon)
   });
+// Fotos: sem a do computador, a do celular vale nas duas telas (e vice-versa). O encaixe é de
+// cada foto; foto nova volta ao encaixe padrão. Enviar só a do celular abre o encaixe na hora,
+// porque ela vai aparecer também na capa larga do computador.
+type PhotoSlot = "desktop" | "mobile";
+const layout = computed(() => props.modelValue.layout || "immersive");
+const desktopHint = computed(() =>
+  !props.modelValue.backgroundImage && props.modelValue.mobileBackgroundImage
+    ? "Usando a foto do celular. Envie outra se quiser uma só para o computador."
+    : "Ideal 2400 × 1350 px."
+);
+const mobileHint = computed(() =>
+  props.modelValue.mobileBackgroundImage || !props.modelValue.backgroundImage
+    ? "Opcional. Melhor quase quadrada; sem ela, usa a do computador."
+    : "Usando a do computador. Envie uma quase quadrada se quiser outra no celular."
+);
+// Molduras da prévia do encaixe, na proporção que a capa tem em cada tela.
+const frames = computed(() => {
+  if (layout.value === "split") return { desktop: "4 / 5", mobile: "4 / 5", focus: "50% 50%" };
+  if (layout.value === "immersive") return { desktop: "16 / 9", mobile: "1 / 1.12", focus: "50% 0%" };
+  return { desktop: "16 / 9", mobile: "7 / 10", focus: "50% 0%" };
+});
+// Telas em que a foto aparece: a do computador vai também ao celular sem foto própria (e nos
+// layouts que usam uma foto só); a do celular vai também ao computador sem foto própria.
+const screensFor = (slot: PhotoSlot, hasDesktop: boolean, hasMobile: boolean): PhotoSlot[] => {
+  if (slot === "desktop") return hasMobile && layout.value === "immersive" ? ["desktop"] : ["desktop", "mobile"];
+  return hasDesktop ? ["mobile"] : ["desktop", "mobile"];
+};
+const focusDialog = ref({ open: false, slot: "desktop" as PhotoSlot, src: "", value: "", screens: [] as PhotoSlot[], title: "" });
+const openFocus = (slot: PhotoSlot, uploaded?: string) => {
+  const section = props.modelValue;
+  const url = uploaded || (slot === "desktop" ? section.backgroundImage : section.mobileBackgroundImage) || "";
+  if (!url) return;
+  const hasDesktop = Boolean(slot === "desktop" ? url : section.backgroundImage);
+  const hasMobile = Boolean(slot === "mobile" ? url : section.mobileBackgroundImage);
+  const screens = screensFor(slot, hasDesktop, hasMobile);
+  focusDialog.value = {
+    open: true,
+    slot,
+    src: resolveMediaUrl(url) || url,
+    value: uploaded ? "" : (slot === "desktop" ? section.backgroundFocus : section.mobileBackgroundFocus) || "",
+    screens,
+    title: screens.length > 1 ? "Ajuste a foto para o computador e o celular" : slot === "desktop" ? "Ajuste a foto do computador" : "Ajuste a foto do celular"
+  };
+};
+const setPhoto = (slot: PhotoSlot, url: string | null) => {
+  const value = url || "";
+  if (slot === "desktop") patch({ backgroundImage: value, backgroundFocus: "" });
+  else patch({ mobileBackgroundImage: value, mobileBackgroundFocus: "" });
+  if (value && slot === "mobile" && !props.modelValue.backgroundImage) openFocus("mobile", value);
+};
+const applyFocus = (value: string) => {
+  patch(focusDialog.value.slot === "desktop" ? { backgroundFocus: value } : { mobileBackgroundFocus: value });
+  focusDialog.value.open = false;
+};
+
 // Sem escolha salva, mostra o padrão da capa: no topo com destaques, junto ao conteúdo sem eles.
 const logoPosition = computed(() => props.modelValue.logoPosition || (chips.value.some(chip => chip.text.trim()) ? "top" : "content"));
 </script>

@@ -343,8 +343,10 @@ const heroSection = computed(() => sections.value.find(section => section.type =
 const pageTitleText = computed(() => getLocalizedValue(pageData.value?.title as LocalizedString, currentLanguage));
 const heroBackgroundImage = computed(() => {
   const hero = heroSection.value;
-  if (hero?.backgroundImage) {
-    return resolveMediaUrl(hero.backgroundImage);
+  // Só a foto do celular: ela é a foto da página.
+  const photo = hero?.backgroundImage || hero?.mobileBackgroundImage;
+  if (photo) {
+    return resolveMediaUrl(photo);
   }
   if (pageData.value?.cover_image_url) {
     return resolveMediaUrl(pageData.value.cover_image_url);

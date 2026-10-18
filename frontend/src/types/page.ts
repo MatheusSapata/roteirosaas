@@ -48,6 +48,9 @@ export interface HeroSection extends SectionBase {
   subtitle?: LocalizedString;
   backgroundImage?: string;
   mobileBackgroundImage?: string;
+  /** Encaixe de cada foto ("x% y%"): o ponto que fica à vista quando a tela corta as bordas. */
+  backgroundFocus?: string;
+  mobileBackgroundFocus?: string;
   gradientColor?: string;
   logoUrl?: string;
   logoSize?: number;
@@ -78,6 +81,8 @@ export interface BannerCardSection extends SectionBase {
   title: LocalizedString;
   subtitle?: LocalizedString;
   backgroundImage?: string;
+  /** Do editor antigo: sem a foto do computador, vale nas duas telas. */
+  mobileBackgroundImage?: string;
   /** "shade": texto direto na foto com sombra (padrão); "card": texto num cartão sobre a foto. */
   layout?: "shade" | "card";
   gradientColor?: string;

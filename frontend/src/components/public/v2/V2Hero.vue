@@ -72,6 +72,7 @@ import { contrast, WHITE_TEXT_MIN_CONTRAST } from "./useSectionTone";
 import { useCopyFit } from "./useCopyFit";
 import TravelIcon from "../../shared/TravelIcon.vue";
 import { formatDayMonth, parseTripDate } from "../../../utils/tripDates";
+import { heroPhoto } from "../../../utils/heroPhoto";
 
 interface HeroChip {
   label: string;
@@ -111,8 +112,23 @@ const dates = computed<HeroDates | null>(() => {
     tag: ""
   };
 });
-const image = computed(() => resolveMediaUrl(props.section.backgroundImage) || "");
-const mobileImage = computed(() => resolveMediaUrl(props.section.mobileBackgroundImage) || "");
+// Só a foto do celular: ela vale também no computador (e o encaixe vai junto).
+const desktopPhoto = computed(() => heroPhoto(props.section, "desktop"));
+const image = computed(() => resolveMediaUrl(desktopPhoto.value.src) || "");
+// Foto própria do celular (só no Imersivo); a mesma do computador não precisa de <source>.
+const mobilePhoto = computed(() => heroPhoto(props.section, "mobile"));
+const mobileImage = computed(() => {
+  const url = resolveMediaUrl(mobilePhoto.value.src) || "";
+  return url && url !== image.value ? url : "";
+});
+// Encaixe escolhido no editor: sem ele, cada layout usa o seu (o Imersivo alinha pelo topo).
+const photoVars = computed(() => {
+  const vars: Record<string, string> = {};
+  if (desktopPhoto.value.focus) vars["--v2-hero-pos"] = desktopPhoto.value.focus;
+  const mobileFocus = layout.value === "immersive" && mobileImage.value ? mobilePhoto.value.focus : desktopPhoto.value.focus;
+  if (mobileFocus) vars["--v2-hero-pos-m"] = mobileFocus;
+  return vars;
+});
 const video = computed(() => {
   const embed = normalizeYoutubeEmbedUrl(props.section.videoUrl);
   if (!embed) return "";
@@ -127,7 +143,7 @@ const logoHeight = computed(() => Math.max(32, Math.min(props.section.logoSize ?
 // Altura do logo para as capas reservarem o espaço do "cabeçalho" no topo.
 const logoVars = computed(() => ({ "--v2-logo-h": `${logoHeight.value}px` }));
 const copyFit = useCopyFit(title, computed(() => localize(props.section.subtitle)));
-const heroVars = computed(() => ({ ...logoVars.value, ...copyFit.vars.value }));
+const heroVars = computed(() => ({ ...logoVars.value, ...copyFit.vars.value, ...photoVars.value }));
 // Logo é o selo de confiança da página: baixa junto com a foto, na versão leve (até 160 px de
 // altura cabe na de 640 px), e o servidor já o pede no HTML.
 const logoAttrs = computed(() => {
@@ -255,8 +271,14 @@ const HeroContent = defineComponent({
   height: 100%;
   border: 0;
   object-fit: cover;
-  /* Mesmo enquadramento da capa antiga: foto alinhada pelo topo. */
-  object-position: center top;
+  /* Mesmo enquadramento da capa antiga: foto alinhada pelo topo (ou o encaixe escolhido). */
+  object-position: var(--v2-hero-pos, center top);
+}
+/* Celular (o mesmo corte do <source> da foto do celular): o encaixe da foto que aparece nele. */
+@media (max-width: 640px) {
+  .v2-hero-media img {
+    object-position: var(--v2-hero-pos-m, var(--v2-hero-pos, center top));
+  }
 }
 .v2-hero-media iframe {
   pointer-events: none;
@@ -602,6 +624,7 @@ const HeroContent = defineComponent({
   aspect-ratio: 4 / 5;
   max-height: 680px;
   object-fit: cover;
+  object-position: var(--v2-hero-pos, center);
   border-radius: 28px;
 }
 .v2-hero--card {

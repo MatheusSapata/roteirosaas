@@ -33,7 +33,11 @@ const props = defineProps<{
 }>();
 // Sem escolha salva, usa a versão com sombra (texto direto na foto).
 const isCard = computed(() => props.section.layout === "card");
-const image = computed(() => resolveMediaUrl(props.section.backgroundImage || "") || props.section.backgroundImage || "");
+// Só a imagem do celular (editor antigo): ela vale também no computador.
+const image = computed(() => {
+  const photo = props.section.backgroundImage || props.section.mobileBackgroundImage || "";
+  return resolveMediaUrl(photo) || photo;
+});
 const label = computed(() => text(props.section.headingLabel));
 const title = computed(() => text(props.section.title));
 // O subtítulo de exemplo da seção antiga (que nunca aparecia) conta como vazio.

@@ -40,3 +40,8 @@ def test_banner_wins_over_redirect_and_destination_never_becomes_cover():
     assert derive_cover_image_from_config(config) == "/uploads/banner.jpg"
     only_destination = {"sections": [{"type": "redirect", "enabled": True, "url": "https://chat.whatsapp.com/abc"}]}
     assert derive_cover_image_from_config(only_destination) is None
+
+
+def test_banner_with_only_the_phone_photo_uses_it_as_cover():
+    config = {"sections": [{"type": "hero", "backgroundImage": "", "mobileBackgroundImage": "/uploads/celular.jpg"}]}
+    assert derive_cover_image_from_config(config) == "/uploads/celular.jpg"

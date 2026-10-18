@@ -2770,7 +2770,7 @@ const AI_SWAP_ITEM_KEEP_KEYS = ["ctaLink", "ctaMode", "ctaSectionId", "ctaOpenIn
 // Primeira foto de verdade de uma seção (Banner, Artigo, Texto e Imagens, Foto...).
 const aiSectionPhoto = (section: PageSection): string => {
   const raw = section as Record<string, any>;
-  const candidates = [raw.backgroundImage, raw.image, ...(Array.isArray(raw.images) ? raw.images : [])];
+  const candidates = [raw.backgroundImage, raw.image, raw.mobileBackgroundImage, raw.mobileImage, ...(Array.isArray(raw.images) ? raw.images : [])];
   return candidates.find(value => typeof value === "string" && value && !isAiFiller(value)) || "";
 };
 // Menu do topo: igual ao editor, a cor dos links acompanha o fundo (transparente e desfocado ficam
@@ -2800,6 +2800,10 @@ const mergeAiSwap = (current: PageSection, incoming: PageSection): PageSection =
       if (Array.isArray(converted.images)) converted.images = [photo];
       // Inclui as versões de celular, para não ficar a imagem provisória no telefone.
       for (const key of ["backgroundImage", "mobileBackgroundImage", "image", "mobileImage"]) if (key in converted) converted[key] = photo;
+      // O encaixe que a agência escolheu para essa foto vai junto (Banner).
+      const raw = current as Record<string, any>;
+      const focus = photo === raw.backgroundImage ? raw.backgroundFocus : photo === raw.mobileBackgroundImage ? raw.mobileBackgroundFocus : "";
+      if (focus) converted.backgroundFocus = converted.mobileBackgroundFocus = focus;
     }
     return converted as PageSection;
   }
@@ -2810,6 +2814,9 @@ const mergeAiSwap = (current: PageSection, incoming: PageSection): PageSection =
     for (const key of ["backgroundImage", "mobileBackgroundImage", "image", "mobileImage", "images"]) {
       if (key in next && !isAiFiller(next[key])) merged[key] = next[key];
     }
+    // Foto nova: o encaixe da anterior não vale para ela.
+    if (merged.backgroundImage !== (current as Record<string, any>).backgroundImage) delete merged.backgroundFocus;
+    if (merged.mobileBackgroundImage !== (current as Record<string, any>).mobileBackgroundImage) delete merged.mobileBackgroundFocus;
     if (Array.isArray(next.days)) {
       merged.days = (merged.days || []).map((day: Record<string, any>, index: number) =>
         next.days[index] && !isAiFiller(next.days[index].image) ? { ...day, image: next.days[index].image } : day
@@ -2854,7 +2861,7 @@ const aiPageImage = (page: AgencyPage) => {
     config = {};
   }
   const hero = Array.isArray(config.sections) ? config.sections.find((item: any) => item?.type === "hero") : null;
-  return hero?.backgroundImage || page.cover_image_url || "";
+  return hero?.backgroundImage || hero?.mobileBackgroundImage || page.cover_image_url || "";
 };
 // Itens do Menu do topo que a IA mandou sem o identificador da seção ("Roteiro"): liga pelo
 // título das seções da página; item que não acha seção (nem link externo) sai do menu.
@@ -4142,7 +4149,7 @@ const previewSectionExtraProps = (section: PageSection) => {
     extra.logoUrl = hero?.logoUrl || branding.value.logo_url || "";
     if (previewDesign.value === "v2") extra.logoRadius = hero?.logoBorderRadius ?? 0;
     // Sobreposto à capa (editor novo), o próprio banner aparece atrás do menu.
-    extra.previewBackgroundImage = overlayHeader.value.header >= 0 ? "" : hero?.backgroundImage || "";
+    extra.previewBackgroundImage = overlayHeader.value.header >= 0 ? "" : hero?.backgroundImage || hero?.mobileBackgroundImage || "";
     extra.previewOverlayColor = hero?.gradientColor || hero?.backgroundColor || "#05060f";
     extra.agencyName = branding.value.agency_name || currentAgency.value?.name || "";
     extra.agencySocialLinks = currentAgency.value?.social_links || branding.value.agency_profile?.social_links || [];
