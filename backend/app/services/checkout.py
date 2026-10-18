@@ -4,6 +4,7 @@ import hashlib
 import logging
 import secrets
 import json
+import threading
 from ipaddress import ip_address
 from urllib.request import Request, urlopen
 from datetime import date, datetime, timedelta, timezone
@@ -11,6 +12,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 from zoneinfo import ZoneInfo
 
+import httpx
 from fastapi import HTTPException
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, object_session, joinedload
@@ -19,6 +21,7 @@ from app.core.config import get_settings
 from app.models.checkout import CheckoutLead, CheckoutSession, CheckoutSettings, CheckoutTrackingEvent
 from app.models.subscription import Subscription
 from app.models.user import User
+from app.models.user_tracking import UserTracking
 from app.schemas.checkout import (
     CheckoutAppearanceOut,
     CheckoutCouponOut,
@@ -302,16 +305,48 @@ def _notify_checkout_subscription_push(
         pass
 
 
+UTM_KEYS = ("utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content")
+
+
+def _session_utm(session: CheckoutSession) -> dict[str, str]:
+    """Origem da compra (UTMs do anúncio, guardadas desde a LP, e o site de onde a pessoa veio)."""
+    raw = (session.metadata_json or {}).get("utm")
+    if not isinstance(raw, dict):
+        return {}
+    return {key: str(value).strip() for key, value in raw.items() if key in (*UTM_KEYS, "referrer") and str(value or "").strip()}
+
+
+def _record_checkout_origin(db: Session, user: User, session: CheckoutSession) -> None:
+    """A conta criada pela compra guarda a origem dela, como o cadastro grátis (Admin Master ›
+    Empresas mostra as UTMs do dono)."""
+    utm = _session_utm(session)
+    if not utm:
+        return
+    db.add(
+        UserTracking(
+            user_id=user.id,
+            utm_source=utm.get("utm_source"),
+            utm_medium=utm.get("utm_medium"),
+            utm_campaign=utm.get("utm_campaign"),
+            utm_term=utm.get("utm_term"),
+            utm_content=utm.get("utm_content"),
+            referrer=utm.get("referrer"),
+        )
+    )
+
+
 def _notify_checkout_started(session: CheckoutSession) -> None:
     """Checkout iniciado (dados preenchidos, sem pagar). A mesma pessoa voltando à mesma oferta em
     até 3 horas não gera outro aviso."""
     metadata = dict(session.metadata_json or {})
     first = metadata.get("first_payment_amount")
+    utm = _session_utm(session)
     send_hub_event(
         "checkout_started",
         email=session.customer_email,
         name=session.customer_name,
         phone=session.customer_phone,
+        utm={key: utm.get(key) for key in UTM_KEYS},
         payload={
             "checkout_session_id": session.token,
             "plan": session.product_name or session.offer_key,
@@ -672,22 +707,27 @@ def _meta_api_version() -> str:
     return value or "v20.0"
 
 
-def _build_meta_event_id(
-    *,
-    session: CheckoutSession,
-    event_name: str,
-    step: str | None = None,
-    status: str | None = None,
-    payment_method: str | None = None,
-) -> str:
-    parts = [
-        session.token,
-        (event_name or "").strip().lower(),
-        (step or "").strip().lower(),
-        (status or "").strip().lower(),
-        (payment_method or "").strip().lower(),
-    ]
-    return "|".join(part or "-" for part in parts)
+# Eventos do Meta no checkout. Os padrão saem uma vez por compra, com o mesmo event_id no navegador
+# (Pixel, CustomCheckoutView) e aqui (API de Conversões): o Meta junta os dois e conta um só.
+# InitiateCheckout é o "checkout iniciado" (dados preenchidos, na etapa de pagamento) e Purchase é a
+# compra aprovada (pagamento confirmado), mesmo que a pessoa já tenha fechado a página: o Pix pago
+# depois chega pelo webhook do Asaas.
+META_STANDARD_EVENTS: dict[str, str] = {
+    "details_submit_success": "Lead",
+    "details_completed": "Lead",
+    "step_method_view": "InitiateCheckout",
+    "payment_method_click": "AddPaymentInfo",
+    "pix_started": "AddPaymentInfo",
+    "card_processing": "AddPaymentInfo",
+    "payment_success": "Purchase",
+}
+# O pagamento não espera a resposta do Meta (os testes enviam na hora).
+META_CAPI_IN_BACKGROUND = True
+
+
+def meta_standard_event_id(token: str, standard_event: str) -> str:
+    """O mesmo event_id do navegador: "<token da sessão>|<evento em minúsculas>"."""
+    return f"{token}|{standard_event.lower()}"
 
 
 def _hash_meta_value(value: str | None) -> str | None:
@@ -697,19 +737,75 @@ def _hash_meta_value(value: str | None) -> str | None:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
-def _meta_user_data(session: CheckoutSession, ip_address_value: str | None, user_agent: str | None) -> dict[str, Any]:
-    email = _hash_meta_value(session.customer_email)
-    phone = _hash_meta_value(_normalize_digits(session.customer_phone))
-    user_data: dict[str, Any] = {
-        "client_ip_address": ip_address_value,
-        "client_user_agent": (user_agent or "").strip()[:2000] or None,
-        "external_id": _hash_meta_value(session.token),
+def _meta_client(session: CheckoutSession) -> dict[str, str]:
+    raw = (session.metadata_json or {}).get("meta_client")
+    return dict(raw) if isinstance(raw, dict) else {}
+
+
+def remember_meta_client(
+    session: CheckoutSession, *, ip_address_value: str | None, user_agent: str | None, metadata: dict[str, Any] | None
+) -> None:
+    """Guarda o que o Meta usa para reconhecer a pessoa (IP, navegador, cookies _fbp/_fbc e a página do
+    checkout), para os eventos que saem depois sem ela na página (o Pix pago depois)."""
+    metadata = metadata or {}
+    page_url = str(metadata.get("page_url") or "").strip()
+    updates = {
+        "ip": ip_address_value,
+        "user_agent": user_agent,
+        "fbp": metadata.get("fbp"),
+        "fbc": metadata.get("fbc"),
+        "page_url": page_url if page_url.startswith(("https://", "http://")) else None,
     }
-    if email:
-        user_data["em"] = [email]
-    if phone:
-        user_data["ph"] = [phone]
+    current = _meta_client(session)
+    changed = False
+    for key, value in updates.items():
+        text = str(value or "").strip()[:1000]
+        if key in {"fbp", "fbc"} and not text.startswith("fb."):
+            continue
+        if text and current.get(key) != text:
+            current[key] = text
+            changed = True
+    if changed:
+        session_metadata = dict(session.metadata_json or {})
+        session_metadata["meta_client"] = current
+        session.metadata_json = session_metadata
+
+
+def _meta_phone(value: str | None) -> str | None:
+    digits = _normalize_digits(value)
+    if len(digits) in {10, 11}:
+        digits = f"55{digits}"
+    return digits or None
+
+
+def _meta_user_data(session: CheckoutSession, ip_address_value: str | None, user_agent: str | None) -> dict[str, Any]:
+    client = _meta_client(session)
+    names = (session.customer_name or "").strip().lower().split()
+    user_data: dict[str, Any] = {
+        "client_ip_address": ip_address_value or client.get("ip"),
+        "client_user_agent": (user_agent or client.get("user_agent") or "").strip()[:2000] or None,
+        "external_id": _hash_meta_value(session.token),
+        "fbp": client.get("fbp"),
+        "fbc": client.get("fbc"),
+    }
+    for key, raw in (
+        ("em", session.customer_email),
+        ("ph", _meta_phone(session.customer_phone)),
+        ("fn", names[0] if names else None),
+        ("ln", names[-1] if len(names) > 1 else None),
+        ("zp", _normalize_digits(session.customer_zipcode)),
+        ("country", "br"),
+    ):
+        hashed = _hash_meta_value(raw)
+        if hashed:
+            user_data[key] = [hashed]
     return {key: value for key, value in user_data.items() if value}
+
+
+def meta_event_value(session: CheckoutSession) -> float:
+    """Valor da compra para o Meta: o que a pessoa paga agora (1ª mensalidade promocional, ou o valor
+    com cupom). O navegador usa o mesmo (first_payment_amount ou amount da sessão)."""
+    return float(session_first_payment_amount(session) or session.amount or 0)
 
 
 def _meta_custom_data(
@@ -723,10 +819,12 @@ def _meta_custom_data(
 ) -> dict[str, Any]:
     custom_data: dict[str, Any] = {
         "currency": "BRL",
-        "value": float(session_first_payment_amount(session) or session.amount or 0),
+        "value": meta_event_value(session),
         "content_name": session.product_name,
         "content_ids": [session.offer_key],
-        "checkout_event_name": event_name,
+        "content_type": "product",
+        "num_items": 1,
+        "order_id": session.token if event_name == "Purchase" else None,
         "checkout_step": step,
         "checkout_status": status,
         "checkout_payment_method": payment_method,
@@ -738,6 +836,14 @@ def _meta_custom_data(
     return {key: value for key, value in custom_data.items() if value is not None and value != ""}
 
 
+def _meta_event_source_url(session: CheckoutSession) -> str:
+    page_url = _meta_client(session).get("page_url") or ""
+    if page_url:
+        return page_url
+    base = (settings.webapp_base_url or "https://app.roteiroonline.com").rstrip("/")
+    return f"{base}/checkout/{session.offer_key}"
+
+
 def _meta_events_for_checkout_event(
     *,
     session: CheckoutSession,
@@ -746,81 +852,37 @@ def _meta_events_for_checkout_event(
     status: str | None,
     payment_method: str | None,
 ) -> list[tuple[str, str]]:
-    normalized_event = (event_name or "").strip().lower()
-    normalized_status = (status or "").strip().lower()
-    normalized_step = (step or "").strip().lower()
-    normalized_payment = (payment_method or "").strip().lower()
-
-    events: list[tuple[str, str]] = [("CheckoutStatus", _build_meta_event_id(
-        session=session,
-        event_name=normalized_event or "checkout_status",
-        step=normalized_step,
-        status=normalized_status,
-        payment_method=normalized_payment,
-    ))]
-
-    if normalized_event in {"details_submit_success", "details_completed"}:
-        events.append(("Lead", _build_meta_event_id(session=session, event_name="lead", step=normalized_step, status=normalized_status, payment_method=normalized_payment)))
-    elif normalized_event in {"step_method_view"}:
-        events.append(("Lead", _build_meta_event_id(session=session, event_name="lead", step=normalized_step, status=normalized_status, payment_method=normalized_payment)))
-        events.append(("InitiateCheckout", _build_meta_event_id(session=session, event_name="initiate_checkout", step=normalized_step, status=normalized_status, payment_method=normalized_payment)))
-    elif normalized_event in {"payment_method_click", "pix_started", "card_processing"}:
-        events.append(("AddPaymentInfo", _build_meta_event_id(session=session, event_name="add_payment_info", step=normalized_step, status=normalized_status, payment_method=normalized_payment)))
-    elif normalized_event in {"payment_success"} or normalized_status == "paid":
-        events.append(("Purchase", _build_meta_event_id(session=session, event_name="purchase", step=normalized_step, status="paid", payment_method=normalized_payment)))
-
-    return events
+    """Evento padrão do Meta para este passo do checkout (só pelo nome do passo: o status "pago" de
+    outros passos, como a tela de senha, não é outra compra)."""
+    standard = META_STANDARD_EVENTS.get((event_name or "").strip().lower())
+    return [(standard, meta_standard_event_id(session.token, standard))] if standard else []
 
 
-def _send_meta_pixel_event(
-    *,
-    pixel: dict[str, Any],
-    event_name: str,
-    event_id: str,
-    session: CheckoutSession,
-    step: str | None,
-    status: str | None,
-    payment_method: str | None,
-    metadata: dict[str, Any] | None,
-    ip_address_value: str | None,
-    user_agent: str | None,
-) -> None:
-    pixel_id = str(pixel.get("pixel_id") or "").strip()
-    access_token = str(pixel.get("access_token") or "").strip()
-    if not pixel_id or not access_token:
+def _post_meta_events(requests: list[tuple[str, str, dict[str, Any]]]) -> None:
+    """Manda cada evento (pixel, token de acesso, evento) à API de Conversões; erro só vai para o log."""
+
+    def run() -> None:
+        for pixel_id, access_token, event in requests:
+            url = f"https://graph.facebook.com/{_meta_api_version()}/{pixel_id}/events"
+            try:
+                response = httpx.post(url, params={"access_token": access_token}, json={"data": [event]}, timeout=10)
+                if response.status_code >= 400:
+                    logger.error(
+                        "Meta CAPI retornou erro para pixel_id=%s evento=%s status=%s body=%s",
+                        pixel_id,
+                        event.get("event_name"),
+                        response.status_code,
+                        response.text[:1000],
+                    )
+            except Exception:  # noqa: BLE001
+                logger.exception("Erro ao enviar evento Meta CAPI para pixel_id=%s", pixel_id)
+
+    if not requests:
         return
-
-    payload = {
-        "data": [
-            {
-                "event_name": event_name,
-                "event_time": int(datetime.now(timezone.utc).timestamp()),
-                "event_id": event_id,
-                "action_source": "website",
-                "user_data": _meta_user_data(session, ip_address_value, user_agent),
-                "custom_data": _meta_custom_data(
-                    session,
-                    event_name=event_name,
-                    step=step,
-                    status=status,
-                    payment_method=payment_method,
-                    metadata=metadata,
-                ),
-            }
-        ]
-    }
-    url = f"https://graph.facebook.com/{_meta_api_version()}/{pixel_id}/events"
-    try:
-        response = httpx.post(url, params={"access_token": access_token}, json=payload, timeout=10)
-        if response.status_code >= 400:
-            logger.error(
-                "Meta CAPI retornou erro para pixel_id=%s status=%s body=%s",
-                pixel_id,
-                response.status_code,
-                response.text[:1000],
-            )
-    except Exception:  # noqa: BLE001
-        logger.exception("Erro ao enviar evento Meta CAPI para pixel_id=%s", pixel_id)
+    if META_CAPI_IN_BACKGROUND:
+        threading.Thread(target=run, name="meta-capi", daemon=True).start()
+    else:
+        run()
 
 
 def _dispatch_meta_checkout_events(
@@ -835,11 +897,19 @@ def _dispatch_meta_checkout_events(
     ip_address_value: str | None,
     user_agent: str | None,
 ) -> None:
+    """Evento padrão do passo para os pixels da oferta com token da API de Conversões, uma vez por
+    compra (fica marcado na sessão: o webhook e o navegador avisando o mesmo pagamento não repetem)."""
     settings_record = get_checkout_settings(db)
-    pixels = _active_pixels_for_offer(settings_record, session.offer_key)
+    pixels = [
+        (str(pixel.get("pixel_id") or "").strip(), str(pixel.get("access_token") or "").strip())
+        for pixel in _active_pixels_for_offer(settings_record, session.offer_key)
+    ]
+    pixels = [(pixel_id, token) for pixel_id, token in pixels if pixel_id and token]
     if not pixels:
         return
-
+    session_metadata = dict(session.metadata_json or {})
+    sent = list(session_metadata.get("meta_events_sent") or [])
+    requests: list[tuple[str, str, dict[str, Any]]] = []
     for meta_event_name, event_id in _meta_events_for_checkout_event(
         session=session,
         event_name=event_name,
@@ -847,19 +917,33 @@ def _dispatch_meta_checkout_events(
         status=status,
         payment_method=payment_method,
     ):
-        for pixel in pixels:
-            _send_meta_pixel_event(
-                pixel=pixel,
+        if meta_event_name in sent:
+            continue
+        event = {
+            "event_name": meta_event_name,
+            "event_time": int(datetime.now(timezone.utc).timestamp()),
+            "event_id": event_id,
+            "action_source": "website",
+            "event_source_url": _meta_event_source_url(session),
+            "user_data": _meta_user_data(session, ip_address_value, user_agent),
+            "custom_data": _meta_custom_data(
+                session,
                 event_name=meta_event_name,
-                event_id=event_id,
-                session=session,
                 step=step,
                 status=status,
                 payment_method=payment_method,
                 metadata=metadata,
-                ip_address_value=ip_address_value,
-                user_agent=user_agent,
-            )
+            ),
+        }
+        requests.extend((pixel_id, token, event) for pixel_id, token in pixels)
+        sent.append(meta_event_name)
+    if not requests:
+        return
+    session_metadata["meta_events_sent"] = sent
+    session.metadata_json = session_metadata
+    db.add(session)
+    db.flush()
+    _post_meta_events(requests)
 
 
 def _serialize_coupons(record: CheckoutSettings) -> list[dict[str, Any]]:
@@ -1487,6 +1571,8 @@ def track_checkout_event(
         created_at=_utcnow(),
     )
     db.add(event)
+    remember_meta_client(session, ip_address_value=ip_address_value, user_agent=user_agent, metadata=metadata)
+    db.add(session)
 
     lead = _find_or_create_checkout_lead(db, session)
     if event.event_name == "step_method_view":
@@ -1529,6 +1615,7 @@ def track_checkout_event(
         ip_address_value=ip_address_value,
         user_agent=user_agent,
     )
+    db.commit()
 
 
 def list_checkout_tracking(db: Session, offer_key: str | None = None, limit: int = 200) -> list[dict[str, Any]]:
@@ -2155,6 +2242,7 @@ def _upsert_paid_user_and_subscription(db: Session, session: CheckoutSession) ->
         )
         db.add(user)
         db.flush()
+        _record_checkout_origin(db, user, session)
     else:
         user.name = session.customer_name or user.name
         user.whatsapp = session.customer_phone or user.whatsapp
@@ -2360,6 +2448,17 @@ def refresh_session_status(db: Session, session: CheckoutSession) -> CheckoutSes
                 ).isoformat()
                 session.metadata_json = metadata
             _complete_paid_checkout_session(db, session)
+            _dispatch_meta_checkout_events(
+                db,
+                session=session,
+                event_name="payment_success",
+                step="success",
+                status="paid",
+                payment_method=session.payment_method,
+                metadata=dict(session.metadata_json or {}),
+                ip_address_value=None,
+                user_agent=None,
+            )
         elif authorization_status in {"CANCELLED", "REFUSED"} and session.status != "paid":
             session.status = "failed"
         elif authorization_status == "EXPIRED" and session.status != "paid":

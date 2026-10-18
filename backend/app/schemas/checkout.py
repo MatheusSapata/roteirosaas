@@ -223,6 +223,20 @@ class CheckoutPublicConfigOut(BaseModel):
     pixels: list[CheckoutPixelPublicOut] = Field(default_factory=list)
 
 
+class CheckoutUtmIn(BaseModel):
+    """Origem da compra (UTMs do anúncio, guardadas desde a LP) e o site de onde a pessoa veio."""
+
+    utm_source: str | None = Field(default=None, max_length=255)
+    utm_medium: str | None = Field(default=None, max_length=255)
+    utm_campaign: str | None = Field(default=None, max_length=255)
+    utm_term: str | None = Field(default=None, max_length=255)
+    utm_content: str | None = Field(default=None, max_length=255)
+    referrer: str | None = Field(default=None, max_length=500)
+
+    def cleaned(self) -> dict[str, str]:
+        return {key: value.strip() for key, value in self.model_dump().items() if isinstance(value, str) and value.strip()}
+
+
 class CheckoutSessionCreate(BaseModel):
     offer_key: str = Field(..., min_length=1, max_length=120)
     customer_name: str = Field(..., min_length=1, max_length=255)
@@ -231,7 +245,10 @@ class CheckoutSessionCreate(BaseModel):
     customer_phone: str = Field(..., min_length=10, max_length=20)
     customer_zipcode: str = Field(..., min_length=8, max_length=10)
     coupon_code: str | None = Field(default=None, max_length=80)
+    # Aceito por compatibilidade e ignorado: os metadados da sessão são só do servidor (valor da 1ª
+    # cobrança, upgrade, assinatura substituída). A origem da compra vem em `utm`.
     metadata: dict[str, Any] | None = None
+    utm: CheckoutUtmIn | None = None
 
     @field_validator("offer_key")
     @classmethod

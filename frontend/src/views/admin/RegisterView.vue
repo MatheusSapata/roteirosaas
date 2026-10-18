@@ -106,6 +106,7 @@ import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import PasswordRequirements from "../../components/forms/PasswordRequirements.vue";
 import api from "../../services/api";
+import { captureAttribution } from "../../utils/attribution";
 import { useAuthStore } from "../../store/useAuthStore";
 import { addTagsToContactByEmail, viajeChatTagIds } from "../../services/viajeChat";
 import { createAdminLocalizer } from "../../utils/adminI18n";
@@ -237,18 +238,10 @@ const canSubmit = computed(() => {
 
 const utmParams = ref<Record<string, string>>({});
 
+// UTMs do endereço ou as guardadas desde a LP (30 dias), e o site de onde a pessoa veio.
 const collectUtmParams = () => {
   if (typeof window === "undefined") return;
-  const params = new URLSearchParams(window.location.search);
-  const collected: Record<string, string> = {};
-  ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"].forEach(key => {
-    const value = params.get(key);
-    if (value) collected[key] = value;
-  });
-  if (document.referrer) {
-    collected.referrer = document.referrer;
-  }
-  utmParams.value = collected;
+  utmParams.value = { ...captureAttribution() } as Record<string, string>;
 };
 
 const buildUtmPayload = () => {

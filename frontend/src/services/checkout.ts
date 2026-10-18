@@ -111,7 +111,8 @@ export interface CheckoutSessionPayload {
   customer_phone: string;
   customer_zipcode: string;
   coupon_code?: string | null;
-  metadata?: Record<string, unknown>;
+  /** Origem da compra: UTMs do anúncio e o site de onde a pessoa veio. */
+  utm?: Partial<Record<"utm_source" | "utm_medium" | "utm_campaign" | "utm_term" | "utm_content" | "referrer", string>>;
 }
 
 export interface CheckoutSession {

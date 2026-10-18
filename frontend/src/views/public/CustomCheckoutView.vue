@@ -450,6 +450,8 @@ import {
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import api from "../../services/api";
+import { captureAttribution, currentAttribution } from "../../utils/attribution";
+import { SALES_META_PIXEL_ID, firstMetaSend, metaBrowserContext, metaStandardEventId, startMetaPixels, trackMetaEvent } from "../../utils/metaPixel";
 import {
   LEGACY_RENEWAL_OFFER_KEY,
   createCheckoutSession,
@@ -521,62 +523,31 @@ let pollingInFlight = false;
 let fastCardChecksLeft = 0;
 let stepEnteredAt = Date.now();
 let hasTrackedMethodStep = false;
-let metaPixelsInitialized = false;
 
-const activeMetaPixels = computed(() => (config.value?.pixels || []).filter(pixel => pixel.active && pixel.pixel_id.trim()));
-
-const metaStandardEventName = (eventName: string, status?: string | null, paymentMethod?: string | null) => {
-  const normalized = String(eventName || "").trim().toLowerCase();
-  const normalizedStatus = String(status || "").trim().toLowerCase();
-  const normalizedPayment = String(paymentMethod || "").trim().toLowerCase();
-  if (normalized === "step_method_view") return "InitiateCheckout";
-  if (normalized === "payment_method_click" || normalized === "pix_started" || normalized === "card_processing") return "AddPaymentInfo";
-  if (normalized === "payment_success" || normalizedStatus === "paid") return "Purchase";
-  if (normalized === "details_submit_success" || normalized === "step_details_view") return "Lead";
-  if (normalized === "details_submit" || normalized === "details_completed") return "Lead";
-  if (normalized === "purchase") return "Purchase";
-  if (normalizedPayment === "card" && normalizedStatus === "processing") return "AddPaymentInfo";
-  return "";
+// Pixels deste checkout: os da oferta (Admin Master › Ofertas e checkout) e o da página de vendas,
+// o mesmo da LP. A renovação do plano antigo não manda eventos ao Meta.
+let metaPixelIds: string[] = [];
+const checkoutPixelIds = () => {
+  if (isLegacyRenewal.value) return [];
+  const configured = (config.value?.pixels || []).filter(pixel => pixel.active && pixel.pixel_id.trim()).map(pixel => pixel.pixel_id.trim());
+  return [...configured, SALES_META_PIXEL_ID];
 };
-
-const buildMetaEventId = (eventName: string, step?: string | null, status?: string | null, paymentMethod?: string | null) => {
-  const token = session.value?.token || offerKey.value || "checkout";
-  return [token, eventName, step || "", status || "", paymentMethod || ""]
-    .map(value => String(value || "").trim().toLowerCase() || "-")
-    .join("|");
-};
-
-const ensureMetaPixelBase = () => {
-  if (typeof document === "undefined") return;
-  if (document.getElementById("meta-pixel-base")) return;
-  const script = document.createElement("script");
-  script.id = "meta-pixel-base";
-  script.innerHTML = `
-    !function(f,b,e,v,n,t,s)
-    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-    n.queue=[];t=b.createElement(e);t.async=!0;
-    t.src=v;s=b.getElementsByTagName(e)[0];
-    s.parentNode.insertBefore(t,s)}(window, document,'script',
-    'https://connect.facebook.net/en_US/fbevents.js');
-  `;
-  document.head.appendChild(script);
-};
-
 const initializeMetaPixels = () => {
-  if (typeof window === "undefined") return;
-  const pixels = activeMetaPixels.value;
-  if (!pixels.length) return;
-  ensureMetaPixelBase();
-  if (!(window as any).fbq) return;
-  if (!metaPixelsInitialized) {
-    pixels.forEach(pixel => {
-      (window as any).fbq("init", pixel.pixel_id);
-    });
-    (window as any).fbq("track", "PageView");
-    metaPixelsInitialized = true;
-  }
+  if (metaPixelIds.length) return;
+  metaPixelIds = startMetaPixels(checkoutPixelIds());
+};
+
+// Passo do checkout → evento padrão do Meta, igual ao servidor (META_STANDARD_EVENTS em
+// app/services/checkout.py). Só o nome do passo decide: a tela de senha com a compra já paga não é
+// outra compra.
+const META_STANDARD_EVENTS: Record<string, string> = {
+  details_submit_success: "Lead",
+  details_completed: "Lead",
+  step_method_view: "InitiateCheckout",
+  payment_method_click: "AddPaymentInfo",
+  pix_started: "AddPaymentInfo",
+  card_processing: "AddPaymentInfo",
+  payment_success: "Purchase",
 };
 
 const sendMetaCheckoutEvent = (
@@ -587,28 +558,31 @@ const sendMetaCheckoutEvent = (
     payment_method?: string | null;
   } = {}
 ) => {
-  if (typeof window === "undefined") return;
-  const pixels = activeMetaPixels.value;
-  if (!pixels.length || !(window as any).fbq) return;
-
-  const eventId = buildMetaEventId(eventName, extra.step ?? step.value, extra.status ?? session.value?.status ?? null, extra.payment_method ?? session.value?.payment_method ?? null);
-  const payload = {
+  const token = session.value?.token;
+  if (!metaPixelIds.length || !token) return;
+  const checkoutStep = extra.step ?? step.value;
+  const checkoutStatus = extra.status ?? session.value?.status ?? null;
+  const paymentMethod = extra.payment_method ?? session.value?.payment_method ?? null;
+  // O que a pessoa paga agora (1ª mensalidade promocional ou o valor com cupom), como o servidor.
+  const data = {
     currency: "BRL",
-    value: Number(session.value?.amount ?? couponPreview.value?.amount ?? config.value?.offer.amount ?? 0),
+    value: Number(session.value?.first_payment_amount || session.value?.amount || 0),
     content_name: config.value?.offer.title || config.value?.offer.key || "Checkout",
-    content_ids: [config.value?.offer.key].filter(Boolean),
-    checkout_event_name: eventName,
-    checkout_step: extra.step ?? step.value,
-    checkout_status: extra.status ?? session.value?.status ?? null,
-    checkout_payment_method: extra.payment_method ?? session.value?.payment_method ?? null,
-    offer_key: config.value?.offer.key || "",
+    content_ids: [session.value?.offer_key || config.value?.offer.key].filter(Boolean),
+    content_type: "product",
+    num_items: 1,
   };
-
-  (window as any).fbq("trackCustom", "CheckoutStatus", payload, { eventID: eventId });
-  const standardEvent = metaStandardEventName(eventName, extra.status ?? session.value?.status ?? null, extra.payment_method ?? session.value?.payment_method ?? null);
-  if (standardEvent) {
-    (window as any).fbq("track", standardEvent, payload, { eventID: eventId });
-  }
+  trackMetaEvent(
+    metaPixelIds,
+    "CheckoutStatus",
+    { ...data, checkout_event_name: eventName, checkout_step: checkoutStep, checkout_status: checkoutStatus, checkout_payment_method: paymentMethod, offer_key: config.value?.offer.key || "" },
+    { custom: true, eventId: [token, eventName, checkoutStep, checkoutStatus, paymentMethod].map(value => String(value || "").trim().toLowerCase() || "-").join("|") }
+  );
+  const standardEvent = META_STANDARD_EVENTS[String(eventName || "").trim().toLowerCase()];
+  if (!standardEvent) return;
+  const eventId = metaStandardEventId(token, standardEvent);
+  if (!firstMetaSend(eventId)) return;
+  trackMetaEvent(metaPixelIds, standardEvent, standardEvent === "Purchase" ? { ...data, order_id: token } : data, { eventId });
 };
 
 const adminAppOrigin = () => {
@@ -988,7 +962,8 @@ const trackEvent = async (
       payment_method: extra.payment_method ?? session.value?.payment_method ?? null,
       duration_ms: duration,
       error_message: extra.error_message ?? null,
-      metadata: extra.metadata ?? null,
+      // Cookies do Meta e a página: o servidor manda os mesmos eventos pela API de Conversões.
+      metadata: { ...(extra.metadata || {}), ...metaBrowserContext() },
     });
   } catch (error) {
     console.debug("tracking_error", error);
@@ -1018,7 +993,9 @@ const submitDetails = async () => {
         customer_document: form.customer_document,
         customer_phone: form.customer_phone,
         customer_zipcode: form.customer_zipcode,
-        coupon_code: form.coupon_code
+        coupon_code: form.coupon_code,
+        // Origem da compra (UTMs do anúncio, guardadas desde a LP): vai para o cadastro da empresa.
+        utm: currentAttribution()
       });
     }
     await trackEvent("details_submit_success", {
@@ -1471,6 +1448,8 @@ const stopPolling = () => {
 };
 
 onMounted(async () => {
+  // UTMs do anúncio (vindas no endereço, da LP ou de um link direto para o checkout).
+  captureAttribution();
   await loadConfig();
   const token = String(route.query.token || "");
   let loadedByToken = false;

@@ -164,7 +164,9 @@ def create_public_checkout_session(payload: CheckoutSessionCreate, db: Session =
         customer_phone=payload.customer_phone,
         customer_zipcode=payload.customer_zipcode,
         coupon_code=payload.coupon_code,
-        metadata=payload.metadata,
+        # Nada do que o navegador manda entra nos metadados da sessão (o servidor confia neles para
+        # cobrar e para mexer em assinaturas); só a origem da compra, já validada.
+        metadata={"utm": payload.utm.cleaned()} if payload.utm and payload.utm.cleaned() else None,
     )
     return CheckoutSessionOut.model_validate(serialize_checkout_session(db, session))
 
