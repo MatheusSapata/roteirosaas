@@ -11,13 +11,11 @@ class WebhookNotificationRuleBase(BaseModel):
     display_name: str = Field(min_length=1, max_length=255)
     description: str | None = None
     enabled: bool = True
-    ntfy_enabled: bool = True
     pushover_sound: str | None = Field(default=None, max_length=40)
     title_template: str = Field(min_length=1, max_length=255)
     body_template: str = Field(min_length=1)
     icon_tag: str | None = Field(default=None, max_length=80)
     priority: int = Field(default=3, ge=1, le=5)
-    topic: str | None = Field(default=None, max_length=255)
     sort_order: int = Field(default=0)
     is_builtin: bool = True
 
@@ -30,13 +28,11 @@ class WebhookNotificationRuleUpdate(BaseModel):
     display_name: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = None
     enabled: bool | None = None
-    ntfy_enabled: bool | None = None
     pushover_sound: str | None = Field(default=None, max_length=40)
     title_template: str | None = Field(default=None, min_length=1, max_length=255)
     body_template: str | None = Field(default=None)
     icon_tag: str | None = Field(default=None, max_length=80)
     priority: int | None = Field(default=None, ge=1, le=5)
-    topic: str | None = Field(default=None, max_length=255)
     sort_order: int | None = None
     is_builtin: bool | None = None
 

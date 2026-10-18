@@ -4,7 +4,7 @@ from decimal import Decimal
 
 from app.models.subscription import Subscription
 from app.models.user import User
-from app.services.ntfy import SubscriptionPushScenario
+from app.services.subscription_notifications import SubscriptionPushScenario
 
 
 def test_asaas_subscription_cancelled_webhook_sends_push(client, db_session, monkeypatch):

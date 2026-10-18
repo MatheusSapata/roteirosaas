@@ -14,7 +14,7 @@ TIMEOUT_SECONDS = 8.0
 MAX_TITLE = 250
 MAX_MESSAGE = 1024
 
-# Prioridade das regras (1 a 5, a do ntfy) → Pushover (-2 a 2). A 2 do Pushover (emergência) fica
+# Prioridade das regras (1 a 5) → Pushover (-2 a 2). A 2 do Pushover (emergência) fica
 # de fora: ela repete o alarme até alguém confirmar no celular.
 PRIORITY_MAP = {1: -2, 2: -1, 3: 0, 4: 1, 5: 1}
 

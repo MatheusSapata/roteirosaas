@@ -52,14 +52,14 @@ DEFAULT_AVAILABLE_FIELDS = [
     "due_date",
 ]
 
-# Eventos novos chegam pelo Pushover; no ntfy (tópico das assinaturas) começam desligados.
-SALES_EVENT_KEYS = ("purchase_approved", "checkout_started", "payment_overdue")
+# Eventos que uma conta nova do Pushover recebe: os de vendas (dinheiro entrando, checkout e cobrança vencida).
+SALES_EVENT_KEYS = ("purchase_approved", "subscription_renewed", "upgrade_realizado", "checkout_started", "payment_overdue")
 
 # Som de receita nova no Pushover: o som personalizado "viajeonvenda", cadastrado na conta dona do
 # aplicativo (a do token), que toca para todas as contas. Evento sem som escolhido na tela usa este
 # padrão; os outros eventos tocam o som padrão do app.
 REVENUE_SOUND = "viajeonvenda"
-REVENUE_EVENT_KEYS = ("purchase_approved", "subscription_created", "subscription_renewed", "upgrade_realizado")
+REVENUE_EVENT_KEYS = ("purchase_approved", "subscription_renewed", "upgrade_realizado")
 
 
 def default_pushover_sound(event_key: str) -> str | None:
@@ -71,31 +71,67 @@ def pushover_sound_for(rule: WebhookNotificationRule) -> str | None:
     return (rule.pushover_sound or "").strip() or default_pushover_sound(rule.event_key)
 
 
+# Um evento por acontecimento, e cada pagamento dispara um só: compra aprovada (assinatura nova,
+# inclusive quem sai do teste grátis), assinatura renovada ou upgrade (troca de plano ou de ciclo).
 DEFAULT_WEBHOOK_RULES: list[dict[str, Any]] = [
     {
-        "event_key": "subscription_created",
-        "display_name": "Nova assinatura",
-        "description": "Dispara quando a assinatura é criada.",
+        "event_key": "purchase_approved",
+        "display_name": "Compra aprovada",
+        "description": "Pagamento confirmado de uma assinatura nova (inclui quem assina saindo do teste grátis).",
         "enabled": True,
-        "title_template": "Assinatura criada - {{plan_name}}",
-        "body_template": "{{amount}} | {{user_name}} | {{payment_method}}",
-        "icon_tag": "rocket",
-        "priority": 3,
-        "topic": "roteiro_online_assinaturas",
+        "title_template": "Compra aprovada - {{plan_name}}",
+        "body_template": "{{amount}} | {{user_name}} | {{payment_method}} | {{purchase_kind}}",
+        "icon_tag": "moneybag",
+        "priority": 4,
         "sort_order": 10,
         "is_builtin": True,
     },
     {
         "event_key": "subscription_renewed",
         "display_name": "Assinatura renovada",
-        "description": "Dispara quando a renovação é confirmada.",
+        "description": "Renovação paga: cobrança recorrente confirmada ou renovação do plano pelo painel.",
         "enabled": True,
         "title_template": "Assinatura renovada - {{plan_name}}",
         "body_template": "{{amount}} | {{user_name}} | {{payment_method}}",
         "icon_tag": "heavy_check_mark",
         "priority": 3,
-        "topic": "roteiro_online_assinaturas",
         "sort_order": 20,
+        "is_builtin": True,
+    },
+    {
+        "event_key": "upgrade_realizado",
+        "display_name": "Upgrade realizado",
+        "description": "Troca de plano ou de ciclo paga (ex.: mensal para anual, plano antigo para o plano único).",
+        "enabled": True,
+        "title_template": "Upgrade realizado - {{previous_plan_name}} para {{upgraded_plan_name}}",
+        "body_template": "{{amount}} | {{user_name}} | {{payment_method}}",
+        "icon_tag": "arrow_up",
+        "priority": 3,
+        "sort_order": 30,
+        "is_builtin": True,
+    },
+    {
+        "event_key": "checkout_started",
+        "display_name": "Checkout iniciado",
+        "description": "A pessoa preencheu os dados no checkout (ainda sem pagar). Uma vez por pessoa e oferta a cada 3 horas.",
+        "enabled": True,
+        "title_template": "Checkout iniciado - {{plan_name}}",
+        "body_template": "{{user_name}} | {{customer_phone}} | {{amount}}",
+        "icon_tag": "loudspeaker",
+        "priority": 3,
+        "sort_order": 40,
+        "is_builtin": True,
+    },
+    {
+        "event_key": "payment_overdue",
+        "display_name": "Cobrança vencida não paga",
+        "description": "Cobrança passou do vencimento sem pagamento: renovação de quem já assina ou a primeira cobrança de uma compra não concluída.",
+        "enabled": True,
+        "title_template": "Cobrança vencida - {{plan_name}}",
+        "body_template": "{{amount}} | {{user_name}} | venceu {{due_date}} | {{purchase_kind}}",
+        "icon_tag": "warning",
+        "priority": 4,
+        "sort_order": 50,
         "is_builtin": True,
     },
     {
@@ -107,21 +143,7 @@ DEFAULT_WEBHOOK_RULES: list[dict[str, Any]] = [
         "body_template": "{{amount}} | {{user_name}}",
         "icon_tag": "skull",
         "priority": 3,
-        "topic": "roteiro_online_assinaturas",
-        "sort_order": 30,
-        "is_builtin": True,
-    },
-    {
-        "event_key": "upgrade_realizado",
-        "display_name": "Upgrade realizado",
-        "description": "Dispara quando uma assinatura faz upgrade.",
-        "enabled": True,
-        "title_template": "Upgrade realizado - {{previous_plan_name}} para {{upgraded_plan_name}}",
-        "body_template": "{{amount}} | {{user_name}}",
-        "icon_tag": "arrow_up",
-        "priority": 3,
-        "topic": "roteiro_online_assinaturas",
-        "sort_order": 40,
+        "sort_order": 60,
         "is_builtin": True,
     },
     {
@@ -129,57 +151,16 @@ DEFAULT_WEBHOOK_RULES: list[dict[str, Any]] = [
         "display_name": "Gateway modificado Cakto -> Asaas",
         "description": "Dispara quando a assinatura antiga em Cakto passa a operar no fluxo Asaas.",
         "enabled": True,
-        "title_template": "GATEWAY MODIFICADO CAKTO -> ASAAS",
+        "title_template": "Gateway modificado Cakto -> Asaas",
         "body_template": "{{user_name}}",
         "icon_tag": "arrow_up",
         "priority": 3,
-        "topic": "roteiro_online_assinaturas",
-        "sort_order": 50,
-        "is_builtin": True,
-    },
-    {
-        "event_key": "purchase_approved",
-        "display_name": "Compra aprovada",
-        "description": "Pagamento aprovado: assinatura nova, renovação ou upgrade (qualquer forma de pagamento).",
-        "enabled": True,
-        "ntfy_enabled": False,
-        "title_template": "Compra aprovada - {{plan_name}}",
-        "body_template": "{{amount}} | {{user_name}} | {{payment_method}} | {{purchase_kind}}",
-        "icon_tag": "moneybag",
-        "priority": 4,
-        "topic": "roteiro_online_assinaturas",
-        "sort_order": 60,
-        "is_builtin": True,
-    },
-    {
-        "event_key": "checkout_started",
-        "display_name": "Checkout iniciado",
-        "description": "A pessoa preencheu os dados no checkout (ainda sem pagar). Uma vez por pessoa e oferta a cada 3 horas.",
-        "enabled": True,
-        "ntfy_enabled": False,
-        "title_template": "Checkout iniciado - {{plan_name}}",
-        "body_template": "{{user_name}} | {{customer_phone}} | {{amount}}",
-        "icon_tag": "loudspeaker",
-        "priority": 3,
-        "topic": "roteiro_online_assinaturas",
         "sort_order": 70,
         "is_builtin": True,
     },
-    {
-        "event_key": "payment_overdue",
-        "display_name": "Cobrança vencida não paga",
-        "description": "Cobrança passou do vencimento sem pagamento: renovação de quem já assina ou a primeira cobrança de uma compra não concluída.",
-        "enabled": True,
-        "ntfy_enabled": False,
-        "title_template": "Cobrança vencida - {{plan_name}}",
-        "body_template": "{{amount}} | {{user_name}} | venceu {{due_date}} | {{purchase_kind}}",
-        "icon_tag": "warning",
-        "priority": 4,
-        "topic": "roteiro_online_assinaturas",
-        "sort_order": 80,
-        "is_builtin": True,
-    },
 ]
+# Juntado à "Compra aprovada": a assinatura nova mandava os dois avisos ao mesmo tempo.
+RETIRED_EVENT_KEYS = ("subscription_created",)
 
 
 def _render_template(template: str, context: dict[str, Any]) -> str:
@@ -234,8 +215,33 @@ def _session_scope(db: Session | None = None):
         session.close()
 
 
+def _retire_old_events(db: Session) -> None:
+    """Uma vez: o evento juntado sai da lista e as contas do Pushover não perdem avisos. A "Compra
+    aprovada" avisava também renovação e upgrade; agora cada um tem o seu, e quem recebia a compra
+    passa a receber os três."""
+    for account in db.query(PushoverAccount).all():
+        keys = list(account.event_keys or [])
+        updated = ["purchase_approved" if key in RETIRED_EVENT_KEYS else key for key in keys]
+        if "purchase_approved" in updated:
+            updated += ["subscription_renewed", "upgrade_realizado"]
+        updated = list(dict.fromkeys(updated))
+        if updated != keys:
+            account.event_keys = updated
+    db.query(WebhookNotificationRule).filter(WebhookNotificationRule.event_key.in_(RETIRED_EVENT_KEYS)).delete(
+        synchronize_session=False
+    )
+    # Descrição e ordem dos eventos padrão acompanham a lista nova (texto, som e prioridade ficam).
+    defaults = {row["event_key"]: row for row in DEFAULT_WEBHOOK_RULES}
+    for rule in db.query(WebhookNotificationRule).filter(WebhookNotificationRule.event_key.in_(defaults)).all():
+        rule.description = defaults[rule.event_key]["description"]
+        rule.sort_order = defaults[rule.event_key]["sort_order"]
+    db.commit()
+
+
 def ensure_default_rules(db: Session) -> None:
     existing = {row.event_key for row in db.query(WebhookNotificationRule.event_key).all()}
+    if existing & set(RETIRED_EVENT_KEYS):
+        _retire_old_events(db)
     missing = [row for row in DEFAULT_WEBHOOK_RULES if row["event_key"] not in existing]
     if not missing:
         return
@@ -347,7 +353,7 @@ def notify_payment_overdue(
     dedupe_key: str | None = None,
 ) -> None:
     """Cobrança vencida sem pagamento (o gateway pode reenviar o aviso: sai uma vez por cobrança)."""
-    from app.services.ntfy import format_brl  # local import avoids circular dependency
+    from app.services.subscription_notifications import format_brl  # import local: evita import circular
 
     notify_safely(
         event_key="payment_overdue",
@@ -418,21 +424,10 @@ def send_to_pushover_account(
 
 
 def _deliver(session: Session, rule: WebhookNotificationRule, context: dict[str, Any]) -> list[dict[str, Any]]:
-    """Manda pelo ntfy (se ligado na regra) e para cada conta do Pushover que escolheu o evento.
-    Um canal com erro não impede os outros. Devolve o resultado de cada envio."""
-    title, body, tags = build_rendered_notification(rule, context)
+    """Manda para cada conta do Pushover que escolheu o evento. Uma conta com erro não impede as
+    outras. Devolve o resultado de cada envio."""
+    title, body, _tags = build_rendered_notification(rule, context)
     results: list[dict[str, Any]] = []
-    if rule.ntfy_enabled:
-        from app.services.ntfy import NtfyService  # local import avoids circular dependency
-
-        client = NtfyService(default_topic=rule.topic or None)
-        target = rule.topic or client.default_topic
-        try:
-            client.publish(topic=target, title=title, message=body, priority=rule.priority, tags=tags)
-            results.append({"channel": "ntfy", "target": target, "ok": True})
-        except Exception as exc:  # noqa: BLE001 - um canal com erro não derruba os outros
-            logger.warning("notification_ntfy_failed event=%s error=%s", rule.event_key, exc)
-            results.append({"channel": "ntfy", "target": target, "ok": False, "error": str(exc)[:300]})
     emoji = _icon_emoji(rule.icon_tag)
     push_title = f"{emoji} {title}".strip() if emoji else title
     for account in _accounts_for(session, rule.event_key):
@@ -484,7 +479,7 @@ def send_notification(
         return any(item["ok"] for item in results)
 
 
-# Os avisos saem em segundo plano: o checkout e os webhooks não esperam o ntfy nem o Pushover.
+# Os avisos saem em segundo plano: o checkout e os webhooks não esperam o Pushover.
 # Os testes desligam para conferir o envio na hora.
 RUN_IN_BACKGROUND = True
 

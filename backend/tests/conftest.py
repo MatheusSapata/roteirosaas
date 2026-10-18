@@ -63,12 +63,10 @@ def prepare_database():
 
 @pytest.fixture(autouse=True)
 def no_real_push(monkeypatch):
-    """Teste nunca manda aviso de verdade (ntfy ou Pushover); quem quer conferir o envio troca de novo."""
+    """Teste nunca manda aviso de verdade (Pushover); quem quer conferir o envio troca de novo."""
     from app.services import pushover, webhook_notifications
-    from app.services.ntfy import NtfyService
 
     monkeypatch.setattr(webhook_notifications, "RUN_IN_BACKGROUND", False)
-    monkeypatch.setattr(NtfyService, "publish", lambda self, **kwargs: None)
     monkeypatch.setattr(pushover, "send_message", lambda **kwargs: None)
     monkeypatch.setattr(pushover, "validate_user", lambda **kwargs: None)
 

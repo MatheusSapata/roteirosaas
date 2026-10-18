@@ -60,9 +60,6 @@ if engine.dialect.name == "postgresql":
         connection.execute(text("DROP TABLE IF EXISTS stock_image_searches"))
         connection.execute(text("ALTER TABLE media_assets ADD COLUMN IF NOT EXISTS keywords TEXT"))
         connection.execute(text("ALTER TABLE media_assets ADD COLUMN IF NOT EXISTS source VARCHAR(30)"))
-        connection.execute(text(
-            "ALTER TABLE webhook_notification_rules ADD COLUMN IF NOT EXISTS ntfy_enabled BOOLEAN NOT NULL DEFAULT TRUE"
-        ))
         connection.execute(text("ALTER TABLE webhook_notification_rules ADD COLUMN IF NOT EXISTS pushover_sound VARCHAR(40)"))
         # Passos que rodam uma vez só (fica registrado o nome de cada um).
         connection.execute(text(

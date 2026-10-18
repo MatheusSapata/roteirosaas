@@ -398,7 +398,7 @@
               <p v-if="perDay" class="lp-price-day">
                 <Zap :size="14" aria-hidden="true" /><span>Menos de R$ {{ perDay }} por dia<span class="lp-hide-sm">: uma venda a mais já paga a assinatura</span>.</span>
               </p>
-              <RouterLink :to="`/checkout/${currentOffer.key}`" class="lp-btn lp-btn-block">Quero assinar agora <ArrowRight :size="18" aria-hidden="true" /></RouterLink>
+              <RouterLink :to="{ path: `/checkout/${currentOffer.key}`, query: checkoutQuery }" class="lp-btn lp-btn-block">Quero assinar agora <ArrowRight :size="18" aria-hidden="true" /></RouterLink>
             </template>
             <template v-else-if="!salesPlanLoading">
               <p class="lp-price-eq">Fale com a gente para assinar.</p>
@@ -521,6 +521,8 @@ import {
 } from "lucide-vue-next";
 import { getPublicSalesPlan, type SalesPlan } from "../../services/checkout";
 import { formatBRL, salesPlanMath } from "../../utils/salesPlan";
+import { captureAttribution, utmQuery } from "../../utils/attribution";
+import { SALES_META_PIXEL_ID, startMetaPixels } from "../../utils/metaPixel";
 import logoWhite from "../../assets/lp/logo-branco.webp";
 import editorMp4 from "../../assets/lp/editor.mp4";
 import editorWebm from "../../assets/lp/editor.webm";
@@ -538,7 +540,6 @@ import exemploItalia from "../../assets/lp/exemplo-italia.webp";
  */
 const HERO_VIDEO = "https://player-vz-19330b59-441.tv.pandavideo.com.br/embed/?v=13897fe0-22c6-420f-ad7c-523e37f8fd7f";
 const DEMO_URL = "https://cal.com/viajeon/roteiro-online";
-const META_PIXEL_ID = "1584327072834789";
 const PAGE_TITLE = "Roteiro Online | Páginas de roteiro que vendem";
 const PAGE_DESCRIPTION =
   "Crie páginas profissionais de roteiro em minutos e faça seu cliente sentir o valor antes mesmo de saber o preço.";
@@ -777,6 +778,8 @@ const annualInstallment = computed(() => {
 });
 // Promoção da 1ª mensalidade (só enquanto vale; o servidor já tira a que acabou).
 const nowMs = ref(Date.now());
+// UTMs do anúncio no endereço do checkout (além de guardadas no navegador).
+const checkoutQuery = ref<Record<string, string>>({});
 const monthlyPromo = computed(() => {
   const offer = salesPlan.value.monthly;
   if (!offer?.first_payment_amount) return null;
@@ -904,30 +907,6 @@ const goToPlans = (target?: "monthly" | "annual") => {
   document.getElementById("planos")?.scrollIntoView({ behavior: "smooth", block: "start" });
 };
 
-// Mesmo pixel da Meta que a página no WordPress usava (PixelYourSite).
-type Fbq = ((...args: unknown[]) => void) & { callMethod?: (...args: unknown[]) => void; queue: unknown[][]; loaded: boolean; version: string; push: unknown };
-const trackPageView = () => {
-  const w = window as unknown as { fbq?: Fbq; _fbq?: Fbq };
-  if (!w.fbq) {
-    const fbq = function (...args: unknown[]) {
-      if (fbq.callMethod) fbq.callMethod(...args);
-      else fbq.queue.push(args);
-    } as Fbq;
-    fbq.push = fbq;
-    fbq.loaded = true;
-    fbq.version = "2.0";
-    fbq.queue = [];
-    w.fbq = fbq;
-    if (!w._fbq) w._fbq = fbq;
-    const script = document.createElement("script");
-    script.async = true;
-    script.src = "https://connect.facebook.net/en_US/fbevents.js";
-    document.head.appendChild(script);
-  }
-  w.fbq("init", META_PIXEL_ID);
-  w.fbq("track", "PageView");
-};
-
 const setMeta = (name: string, content: string) => {
   let tag = document.querySelector<HTMLMetaElement>(`meta[name="${name}"]`);
   if (!tag) {
@@ -964,7 +943,10 @@ onMounted(() => {
       nowMs.value = Date.now();
     }, 1000);
   }
-  trackPageView();
+  // Pixel da página de vendas (o mesmo do checkout) e as UTMs do anúncio, que seguem para o checkout.
+  startMetaPixels([SALES_META_PIXEL_ID]);
+  captureAttribution();
+  checkoutQuery.value = utmQuery();
 });
 
 onBeforeUnmount(() => {

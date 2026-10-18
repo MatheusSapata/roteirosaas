@@ -1,6 +1,6 @@
-"""Pushover como segundo canal de avisos: várias contas (uma por pessoa, sem Pushover Teams), cada
-uma escolhe os eventos; chaves guardadas criptografadas; eventos de compra aprovada, checkout
-iniciado e cobrança vencida."""
+"""Avisos pelo Pushover (o único canal): várias contas (uma por pessoa, sem Pushover Teams), cada uma
+escolhe os eventos; chaves guardadas criptografadas; cada pagamento dispara um aviso só, do tipo
+certo (compra aprovada, renovação ou upgrade)."""
 from __future__ import annotations
 
 from types import SimpleNamespace
@@ -11,7 +11,7 @@ from app.api.deps import get_current_superuser
 from app.main import app
 from app.models.pushover_account import PushoverAccount
 from app.services import pushover, webhook_notifications
-from app.services.ntfy import SubscriptionPushScenario, publish_subscription_notification
+from app.services.subscription_notifications import SubscriptionPushScenario, publish_subscription_notification
 from app.services.webhook_notifications import contact_context, notify_payment_overdue, send_notification
 
 
@@ -32,11 +32,8 @@ def pushover_calls(monkeypatch):
 
     monkeypatch.setattr(pushover, "send_message", fake_send)
     monkeypatch.setattr(pushover, "validate_user", fake_validate)
-    # Sem ntfy de verdade: os eventos antigos ainda mandam para o tópico.
-    ntfy_calls: list[dict] = []
-    monkeypatch.setattr("app.services.ntfy.NtfyService.publish", lambda self, **kwargs: ntfy_calls.append(kwargs))
     webhook_notifications._RECENT.clear()
-    return SimpleNamespace(sent=sent, validated=validated, ntfy=ntfy_calls)
+    return SimpleNamespace(sent=sent, validated=validated)
 
 
 @pytest.fixture
@@ -55,8 +52,8 @@ def test_accounts_keep_keys_encrypted_and_share_the_app_token(admin, db_session,
     body = first.json()
     assert body["user_key_masked"].endswith("sG") and "uQiRzpo4" not in str(body)
     assert body["app_token_masked"].endswith("Ui") and "azGDOR" not in str(body)
-    # Conta nova começa recebendo os três eventos de vendas.
-    assert body["event_keys"] == ["purchase_approved", "checkout_started", "payment_overdue"]
+    # Conta nova começa recebendo os eventos de vendas: dinheiro entrando, checkout e cobrança vencida.
+    assert body["event_keys"] == ["purchase_approved", "subscription_renewed", "upgrade_realizado", "checkout_started", "payment_overdue"]
 
     # Segunda pessoa, sem o token: usa o do aplicativo já cadastrado.
     second = admin.post(
@@ -120,18 +117,17 @@ def test_each_account_gets_only_its_events_and_a_failure_does_not_stop_the_other
     assert call["message"] == "Ana | (11) 98765-4321 | R$ 67,00"
     assert call["url"] == "https://wa.me/5511987654321" and call["url_title"] == "Chamar no WhatsApp"
     assert call["sound"] is None  # checkout iniciado: som padrão do aparelho
-    assert pushover_calls.ntfy == []  # evento novo: ntfy começa desligado
     db_session.refresh(broken)
     assert "invalid" in broken.last_error
 
-    # Evento antigo continua no ntfy e não vai para quem não escolheu.
+    # Evento que nenhuma conta escolheu não vai a ninguém.
     pushover_calls.sent.clear()
-    send_notification(event_key="subscription_created", context={"user_name": "Ana"})
-    assert len(pushover_calls.ntfy) == 1 and pushover_calls.sent == []
+    assert send_notification(event_key="subscription_cancelled", context={"user_name": "Ana"}) is False
+    assert pushover_calls.sent == []
 
 
-def test_purchase_approved_for_new_renewal_and_upgrade_but_not_cancellation(db_session, pushover_calls):
-    _account(db_session, "Matheus", "u-matheus", ["purchase_approved"])
+def test_each_payment_sends_one_notice_of_its_own_kind(db_session, pushover_calls):
+    _account(db_session, "Matheus", "u-matheus", ["purchase_approved", "subscription_renewed", "upgrade_realizado"])
     for scenario in (SubscriptionPushScenario.NEW, SubscriptionPushScenario.RENEWED, SubscriptionPushScenario.CANCELLED):
         publish_subscription_notification(
             scenario=scenario, user_name="Bia", payment_method="PIX", amount="97.00", plan_name="Roteiro Online",
@@ -141,15 +137,40 @@ def test_purchase_approved_for_new_renewal_and_upgrade_but_not_cancellation(db_s
         scenario=SubscriptionPushScenario.UPGRADED, user_name="Bia", payment_method="Cartão", amount="970",
         previous_plan_name="Mensal", upgraded_plan_name="Anual",
     )
-    messages = [call["message"] for call in pushover_calls.sent]
-    assert messages == [
-        "R$ 97,00 | Bia | PIX | Nova assinatura",
-        "R$ 97,00 | Bia | PIX | Renovação",
-        "R$ 970,00 | Bia | Cartão | Upgrade",
+    # Um aviso por pagamento (nada de "compra aprovada" e "nova assinatura" juntos); o cancelamento
+    # não foi escolhido por esta conta.
+    assert [(call["title"], call["message"]) for call in pushover_calls.sent] == [
+        ("💰 Compra aprovada - Roteiro Online", "R$ 97,00 | Bia | PIX | Nova assinatura"),
+        ("✔️ Assinatura renovada - Roteiro Online", "R$ 97,00 | Bia | PIX"),
+        ("⬆️ Upgrade realizado - Mensal para Anual", "R$ 970,00 | Bia | Cartão"),
     ]
-    assert pushover_calls.sent[-1]["title"] == "💰 Compra aprovada - Anual"
-    # Receita nova: o som personalizado "viajeonvenda".
+    # Receita nova: o som personalizado "viajeonvenda" nos três.
     assert {call["sound"] for call in pushover_calls.sent} == {"viajeonvenda"}
+
+
+def test_accounts_keep_their_notices_when_new_subscription_joins_purchase(db_session, pushover_calls):
+    from app.models.webhook_notification import WebhookNotificationRule
+
+    db_session.add(
+        WebhookNotificationRule(
+            event_key="subscription_created", display_name="Nova assinatura", title_template="Assinatura criada",
+            body_template="{{amount}}", is_builtin=True,
+        )
+    )
+    db_session.commit()
+    buyer = _account(db_session, "Matheus", "u-matheus", ["purchase_approved", "checkout_started"])
+    old = _account(db_session, "Vendas", "u-vendas", ["subscription_created"])
+    other = _account(db_session, "Suporte", "u-suporte", ["payment_overdue"])
+
+    rules = webhook_notifications.list_rules(db_session)
+    assert [rule.event_key for rule in rules][:3] == ["purchase_approved", "subscription_renewed", "upgrade_realizado"]
+    assert "subscription_created" not in {rule.event_key for rule in rules}
+    for account in (buyer, old, other):
+        db_session.refresh(account)
+    # A compra aprovada avisava também renovação e upgrade: quem recebia continua recebendo os três.
+    assert buyer.event_keys == ["purchase_approved", "checkout_started", "subscription_renewed", "upgrade_realizado"]
+    assert old.event_keys == ["purchase_approved", "subscription_renewed", "upgrade_realizado"]
+    assert other.event_keys == ["payment_overdue"]
 
 
 def test_overdue_charge_is_sent_once_per_charge(db_session, pushover_calls):
@@ -168,14 +189,14 @@ def test_rule_test_reports_each_channel(admin, db_session, pushover_calls):
     _account(db_session, "Quebrada", "u-recusa", ["payment_overdue"])
     rules = admin.get("/api/v1/admin-master/webhook-notifications").json()
     overdue = next(rule for rule in rules if rule["event_key"] == "payment_overdue")
-    assert overdue["ntfy_enabled"] is False
+    assert "ntfy_enabled" not in overdue and "topic" not in overdue
     result = admin.post(f"/api/v1/admin-master/webhook-notifications/{overdue['id']}/test", json={"event_key": "payment_overdue"}).json()
     assert result["success"] is True and result["message"] == "Alguns envios falharam."
     assert [(item["target"], item["ok"]) for item in result["deliveries"]] == [("Matheus", True), ("Quebrada", False)]
 
     checkout = next(rule for rule in rules if rule["event_key"] == "checkout_started")
     empty = admin.post(f"/api/v1/admin-master/webhook-notifications/{checkout['id']}/test", json={"event_key": "checkout_started"}).json()
-    assert empty["success"] is False and "Nenhum canal" in empty["message"]
+    assert empty["success"] is False and "Nenhuma conta" in empty["message"]
 
 
 def test_sound_can_be_changed_per_event_and_missing_custom_sound_falls_back(db_session, monkeypatch, pushover_calls):
