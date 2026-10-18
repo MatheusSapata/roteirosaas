@@ -43,6 +43,18 @@
           Criativos
           <span class="ed-beta">Beta</span>
         </button>
+        <button
+          v-if="isPublished && publicUrl"
+          type="button"
+          class="ed-icon-btn"
+          :class="{ 'is-done': linkCopied }"
+          :aria-label="linkCopied ? 'Link copiado' : 'Copiar link da página'"
+          :title="linkCopied ? 'Link copiado' : 'Copiar link da página'"
+          @click="copyPageLink"
+        >
+          <CheckIcon v-if="linkCopied" aria-hidden="true" />
+          <LinkIcon v-else aria-hidden="true" />
+        </button>
         <button v-if="isPublished && !phoneEditor" type="button" class="ed-btn ed-btn-ghost" :disabled="!publicUrl" @click="viewPublicPage">
           <ExternalLinkIcon aria-hidden="true" />
           {{ viewCopy.actions.viewPage }}
@@ -267,6 +279,12 @@
         <span class="v2ed-toast-ico" aria-hidden="true"><CheckIcon /></span>
         <span>{{ aiToast }}</span>
         <button v-if="aiStructurePreviousSections" type="button" @click="undoAiStructure(); aiToast = ''">Desfazer</button>
+      </div>
+    </Transition>
+    <Transition name="fade">
+      <div v-if="linkCopied" class="v2ed-toast" role="status">
+        <span class="v2ed-toast-ico" aria-hidden="true"><CheckIcon /></span>
+        <span>Link copiado: <b>{{ previewAddressLabel }}</b></span>
       </div>
     </Transition>
     <Transition name="fade">
@@ -6393,6 +6411,43 @@ const viewPublicPage = () => {
   window.open(publicUrl.value, "_blank");
 };
 
+// Copiar o link da página publicada pelo topo do editor (para mandar no WhatsApp sem abrir a página).
+const linkCopied = ref(false);
+let linkCopiedTimer: ReturnType<typeof setTimeout> | null = null;
+const copyText = async (text: string) => {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    // Sem permissão da área de transferência (alguns celulares): o jeito antigo.
+    const field = document.createElement("textarea");
+    field.value = text;
+    field.setAttribute("readonly", "");
+    field.style.position = "fixed";
+    field.style.opacity = "0";
+    document.body.appendChild(field);
+    field.select();
+    let copied = false;
+    try {
+      copied = document.execCommand("copy");
+    } catch {
+      copied = false;
+    }
+    field.remove();
+    return copied;
+  }
+};
+const copyPageLink = async () => {
+  if (!publicUrl.value || !hasWindow) return;
+  if (!(await copyText(publicUrl.value))) {
+    window.prompt("Copie o link da página:", publicUrl.value);
+    return;
+  }
+  linkCopied.value = true;
+  if (linkCopiedTimer) clearTimeout(linkCopiedTimer);
+  linkCopiedTimer = setTimeout(() => (linkCopied.value = false), 2500);
+};
+
 const cancelNavigationModal = () => {
   pendingNavigationPath.value = null;
   unsavedNavigationModal.value.open = false;
@@ -8267,6 +8322,7 @@ onMounted(async () => {
 .ed-btn-primary:hover:not(:disabled) { background: color-mix(in srgb, var(--primary) 88%, black); }
 .ed-icon-btn { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 999px; background: var(--card); color: var(--muted-foreground); box-shadow: var(--shadow-card); }
 .ed-icon-btn svg { width: 16px; height: 16px; }
+.ed-icon-btn.is-done { color: var(--primary); }
 .ed-menu-wrap { position: relative; }
 .ed-menu { position: absolute; top: calc(100% + 6px); right: 0; z-index: 60; display: flex; min-width: 200px; flex-direction: column; border-radius: 14px; background: var(--popover); padding: 6px; box-shadow: var(--shadow-elegant); }
 .ed-menu button { border-radius: 10px; padding: 8px 10px; text-align: left; font-size: 13px; color: var(--popover-foreground); }
