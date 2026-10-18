@@ -118,7 +118,7 @@ def test_webhook_notification_rule(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     deliveries = result["deliveries"]
     if not deliveries:
-        message = "Nenhum canal ligado: ligue o ntfy ou escolha este evento numa conta do Pushover."
+        message = "Nenhuma conta do Pushover recebe este evento: ligue o evento numa conta."
     elif all(item["ok"] for item in deliveries):
         message = "Enviado."
     else:

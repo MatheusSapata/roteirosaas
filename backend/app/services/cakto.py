@@ -18,7 +18,7 @@ from app.models.subscription import Subscription
 from app.models.user import User
 from app.services import auth as auth_service
 from app.services.email import send_cakto_onboarding_email
-from app.services.ntfy import SubscriptionPushScenario, publish_subscription_notification
+from app.services.subscription_notifications import SubscriptionPushScenario, publish_subscription_notification
 from app.services.webhook_notifications import notify_payment_overdue
 from app.services.trial import end_trial
 from app.services.trial import republish_all_user_pages
@@ -823,7 +823,7 @@ class CaktoIntegrationService:
                 customer_phone=user.whatsapp if user else None,
             )
         except Exception:  # pragma: no cover - alerta não pode bloquear webhook
-            logger.exception("Falha ao enviar notificação ntfy para evento Cakto.")
+            logger.exception("Falha ao enviar o aviso do evento Cakto.")
 
     def _obtain_access_token(self) -> str:
         if self._access_token and self._token_expires_at and datetime.utcnow() < self._token_expires_at:

@@ -1,6 +1,6 @@
 <template>
   <div class="admin-master-surface am-page w-full">
-    <AdminMasterHeader title="Webhooks e push" subtitle="Quais eventos mandam aviso no celular (ntfy e Pushover), com o texto e o ícone de cada um.">
+    <AdminMasterHeader title="Webhooks e push" subtitle="Quais eventos mandam aviso no celular pelo Pushover: o texto, o som e quem recebe cada um.">
       <button v-if="tab === 'events'" type="button" class="am-btn am-btn-primary" @click="createNewRule"><AmIcon name="plus" />Novo evento</button>
       <button v-else type="button" class="am-btn am-btn-primary" @click="newAccount"><AmIcon name="plus" />Nova conta</button>
     </AdminMasterHeader>
@@ -61,7 +61,7 @@
           <span>
             {{ testResult.message }}
             <span v-for="item in testResult.deliveries" :key="`${item.channel}-${item.target}`" class="wh-delivery">
-              {{ item.ok ? "✓" : "✗" }} {{ item.channel === "ntfy" ? `ntfy · ${item.target}` : `Pushover · ${item.target}` }}<template v-if="item.error"> ({{ item.error }})</template>
+              {{ item.ok ? "✓" : "✗" }} {{ `Pushover · ${item.target}` }}<template v-if="item.error"> ({{ item.error }})</template>
             </span>
           </span>
         </div>
@@ -84,19 +84,15 @@
             </div>
             <div class="am-field">
               <label for="wh-title">Título</label>
-              <input id="wh-title" v-model="form.title_template" class="am-input am-mono" placeholder="Assinatura criada - {{plan_name}}" />
+              <input id="wh-title" v-model="form.title_template" class="am-input am-mono" placeholder="Compra aprovada - {{plan_name}}" />
             </div>
             <div class="am-field">
               <label for="wh-body">Texto</label>
               <input id="wh-body" v-model="form.body_template" class="am-input am-mono" placeholder="{{amount}} | {{user_name}} | {{payment_method}}" />
             </div>
-            <div class="grid gap-3.5 sm:grid-cols-3">
+            <div class="grid gap-3.5 sm:grid-cols-2">
               <div class="am-field">
-                <label for="wh-topic">Tópico</label>
-                <input id="wh-topic" v-model="form.topic" class="am-input am-mono" placeholder="roteiro_online_assinaturas" />
-              </div>
-              <div class="am-field">
-                <label for="wh-priority">Prioridade</label>
+                <label for="wh-priority">Prioridade no celular</label>
                 <select id="wh-priority" v-model.number="form.priority" class="am-input">
                   <option v-for="option in priorityOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
                 </select>
@@ -107,14 +103,7 @@
               </div>
             </div>
             <div class="rounded-[14px] border border-border px-4 py-3">
-              <p class="am-eyebrow mb-2.5">Para onde vai</p>
-              <div class="wh-channel">
-                <div class="min-w-0">
-                  <b class="block text-[13px]">ntfy</b>
-                  <small class="am-muted text-xs">Tópico {{ form.topic || "roteiro_online_assinaturas" }}</small>
-                </div>
-                <button type="button" class="am-switch" :class="{ on: form.ntfy_enabled }" role="switch" :aria-checked="form.ntfy_enabled" aria-label="Enviar pelo ntfy" @click="form.ntfy_enabled = !form.ntfy_enabled"></button>
-              </div>
+              <p class="am-eyebrow mb-2.5">Quem recebe</p>
               <div v-for="account in accounts" :key="account.id" class="wh-channel">
                 <div class="min-w-0">
                   <b class="block truncate text-[13px]">Pushover · {{ account.name }}</b>
@@ -151,7 +140,7 @@
                 Nenhuma conta do Pushover.
                 <button type="button" class="wh-link" @click="tab = 'pushover'; newAccount()">Cadastrar conta</button>
               </p>
-              <p v-else class="am-card-sub !mt-1">O ntfy e o som salvam com o evento; as contas do Pushover mudam na hora.</p>
+              <p v-else class="am-card-sub !mt-1">O som salva com o evento; quem recebe muda na hora.</p>
             </div>
             <div class="flex items-center justify-between gap-3 rounded-[14px] border border-border px-4 py-3">
               <div>
@@ -177,7 +166,7 @@
             </div>
 
             <div>
-              <p class="am-eyebrow mb-2">Ícone · a tag precisa existir no ntfy</p>
+              <p class="am-eyebrow mb-2">Ícone no título do aviso</p>
               <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 2xl:grid-cols-5">
                 <button
                   v-for="icon in meta?.icons || defaultIcons"
@@ -188,10 +177,7 @@
                   @click="form.icon_tag = icon.tag"
                 >
                   <span class="text-lg">{{ icon.emoji }}</span>
-                  <span class="min-w-0">
-                    <b class="block truncate text-[12.5px]">{{ icon.label }}</b>
-                    <small class="am-mono am-muted block truncate">{{ icon.tag }}</small>
-                  </span>
+                  <b class="min-w-0 truncate text-[12.5px]">{{ icon.label }}</b>
                 </button>
               </div>
             </div>
@@ -337,12 +323,12 @@ import api from "../../services/api";
 import AmIcon from "../../components/admin/master/AmIcon.vue";
 import AdminMasterHeader from "../../components/admin/master/AdminMasterHeader.vue";
 
+// O que cada prioridade faz no Pushover (a 5 antiga era igual à 4).
 const priorityOptions = [
-  { value: 1, label: "Mínima (1)" },
-  { value: 2, label: "Baixa (2)" },
-  { value: 3, label: "Normal (3)" },
-  { value: 4, label: "Alta (4)" },
-  { value: 5, label: "Urgente (5)" }
+  { value: 1, label: "Mínima · fica só na lista do app" },
+  { value: 2, label: "Baixa · sem som nem vibração" },
+  { value: 3, label: "Normal" },
+  { value: 4, label: "Alta · toca mesmo nas horas de silêncio" }
 ];
 
 type Rule = {
@@ -351,7 +337,6 @@ type Rule = {
   display_name: string;
   description?: string | null;
   enabled: boolean;
-  ntfy_enabled: boolean;
   // Vazio: o padrão do evento (default_pushover_sound) ou, sem ele, o som padrão do app.
   pushover_sound?: string | null;
   default_pushover_sound?: string | null;
@@ -359,7 +344,6 @@ type Rule = {
   body_template: string;
   icon_tag?: string | null;
   priority: number;
-  topic?: string | null;
   sort_order: number;
   is_builtin: boolean;
 };
@@ -398,7 +382,8 @@ type PushoverAccount = {
 };
 type Delivery = { channel: string; target: string; ok: boolean; error?: string | null };
 type TestResult = { success: boolean; message?: string | null; deliveries: Delivery[] };
-const SALES_EVENTS = ["purchase_approved", "checkout_started", "payment_overdue"];
+// Conta nova recebe os de vendas: dinheiro entrando (compra, renovação, upgrade), checkout e cobrança vencida.
+const SALES_EVENTS = ["purchase_approved", "subscription_renewed", "upgrade_realizado", "checkout_started", "payment_overdue"];
 // Sons do Pushover (pushover.net/api#sounds). Receita nova (compra, renovação, upgrade) toca por
 // padrão o "viajeonvenda", som personalizado da conta dona do aplicativo (toca para todas as contas).
 type PushoverSound = { value: string; label: string };
@@ -467,14 +452,12 @@ const emptyForm = (): Rule => ({
   display_name: "",
   description: "",
   enabled: true,
-  ntfy_enabled: true,
   pushover_sound: "",
   default_pushover_sound: null,
-  title_template: "Assinatura criada - {{plan_name}}",
+  title_template: "Aviso - {{plan_name}}",
   body_template: "{{amount}} | {{user_name}} | {{payment_method}}",
-  icon_tag: "rocket",
+  icon_tag: "loudspeaker",
   priority: 3,
-  topic: "roteiro_online_assinaturas",
   sort_order: 0,
   is_builtin: false
 });
@@ -518,12 +501,10 @@ const errorText = (error: any, fallback: string) => {
 };
 const ruleName = (key: string) => rules.value.find(rule => rule.event_key === key)?.display_name || key;
 const formatDate = (value: string) => new Date(value).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
-// "ntfy · 2 contas do Pushover", "Só Pushover (Matheus)", "Nenhum canal"...
-const channelSummary = (rule: Pick<Rule, "event_key" | "ntfy_enabled">) => {
+// "Pushover (Matheus)", "Pushover (2 contas)", "Nenhuma conta".
+const channelSummary = (rule: Pick<Rule, "event_key">) => {
   const names = accounts.value.filter(account => account.enabled && account.event_keys.includes(rule.event_key)).map(account => account.name);
-  const pushover = names.length === 1 ? `Pushover (${names[0]})` : names.length ? `Pushover (${names.length} contas)` : "";
-  const parts = [rule.ntfy_enabled ? "ntfy" : "", pushover].filter(Boolean);
-  return parts.length ? parts.join(" · ") : "Nenhum canal";
+  return names.length === 1 ? `Pushover (${names[0]})` : names.length ? `Pushover (${names.length} contas)` : "Nenhuma conta";
 };
 
 const loadAccounts = async () => {
@@ -544,11 +525,13 @@ const loadAccountSounds = async () => {
 };
 
 const loadData = async () => {
+  // Eventos antes das contas: listar os eventos acerta, uma vez, os eventos de cada conta (o
+  // "Nova assinatura" virou a "Compra aprovada").
   const [rulesRes, metaRes] = await Promise.all([
     api.get<Rule[]>("/admin-master/webhook-notifications"),
-    api.get<MetaResponse>("/admin-master/webhook-notifications/meta"),
-    loadAccounts()
+    api.get<MetaResponse>("/admin-master/webhook-notifications/meta")
   ]);
+  await loadAccounts();
   rules.value = rulesRes.data || [];
   meta.value = metaRes.data || null;
   if (!selectedRuleId.value && rules.value.length) {
@@ -562,15 +545,13 @@ const resetFormFromRule = (rule: Rule) => {
   form.display_name = rule.display_name;
   form.description = rule.description || "";
   form.enabled = rule.enabled;
-  form.ntfy_enabled = rule.ntfy_enabled !== false;
   form.pushover_sound = rule.pushover_sound || "";
   form.default_pushover_sound = rule.default_pushover_sound || null;
   customSoundMode.value = false;
   form.title_template = rule.title_template;
   form.body_template = rule.body_template;
   form.icon_tag = rule.icon_tag || "";
-  form.priority = rule.priority;
-  form.topic = rule.topic || "";
+  form.priority = Math.min(Math.max(Number(rule.priority) || 3, 1), 4);
   form.sort_order = rule.sort_order;
   form.is_builtin = rule.is_builtin;
 };
@@ -596,14 +577,12 @@ const saveRule = async () => {
       display_name: form.display_name.trim(),
       description: form.description?.trim() || null,
       enabled: form.enabled,
-      ntfy_enabled: form.ntfy_enabled,
       // Texto vazio = som padrão do evento ("viajeonvenda" nas receitas; nos outros, o do app).
       pushover_sound: (form.pushover_sound || "").trim(),
       title_template: form.title_template.trim(),
       body_template: form.body_template.trim(),
       icon_tag: form.icon_tag?.trim() || null,
       priority: Number(form.priority || 3),
-      topic: form.topic?.trim() || null,
       sort_order: Number(form.sort_order || 0),
       is_builtin: Boolean(form.is_builtin)
     };

@@ -38,7 +38,7 @@ from app.services.card_installments import InstallmentOption, installment_option
 from app.services.company_status import mark_subscription_overdue
 from app.services.legacy_renewal import is_legacy_renewal_session, legacy_renewal_info
 from app.services.hub_funnel import send_hub_event
-from app.services.ntfy import SubscriptionPushScenario, format_brl, publish_subscription_notification
+from app.services.subscription_notifications import SubscriptionPushScenario, format_brl, publish_subscription_notification
 from app.services.trial import end_trial
 from app.services.trial import republish_all_user_pages
 from app.services.webhook_notifications import contact_context, notify_payment_overdue, notify_safely, send_notification
@@ -397,7 +397,7 @@ def _notify_gateway_modified_cakto_to_asaas(user: User) -> None:
             },
         )
     except Exception:  # pragma: no cover - alerta não pode quebrar o checkout
-        logger.exception("Falha ao enviar notificação ntfy de mudança de gateway.")
+        logger.exception("Falha ao enviar o aviso de mudança de gateway.")
 
 
 def _resolve_target_subscription_for_upgrade(db: Session, session: CheckoutSession) -> Subscription | None:
@@ -432,14 +432,69 @@ def _should_upgrade_session_in_place(db: Session, session: CheckoutSession) -> b
     return _can_upgrade_subscription_in_place(_resolve_target_subscription_for_upgrade(db, session))
 
 
+def checkout_purchase_scenario(
+    session: CheckoutSession, previous_plan: str | None = None, previous_cycle: str | None = None
+) -> SubscriptionPushScenario:
+    """Que compra foi esta, para o aviso. O checkout público é assinatura nova. O fluxo de upgrade
+    (cliente logado) serve a coisas diferentes: quem sai do teste grátis está assinando (nova); a
+    renovação do plano antigo pelo painel e quem paga de novo o mesmo plano e ciclo estão renovando;
+    só a troca de plano ou de ciclo é upgrade."""
+    metadata = dict(session.metadata_json or {})
+    if not metadata.get("upgrade_mode"):
+        return SubscriptionPushScenario.NEW
+    if metadata.get("legacy_renewal"):
+        return SubscriptionPushScenario.RENEWED
+    if metadata.get("legacy_upgrade"):
+        return SubscriptionPushScenario.UPGRADED
+    if metadata.get("first_subscription"):
+        return SubscriptionPushScenario.NEW
+    plan = str(previous_plan or metadata.get("current_plan") or "").strip().lower()
+    cycle = str(previous_cycle or metadata.get("current_billing_cycle") or "").strip().lower()
+    same_plan = plan == str(session.plan_key or "").strip().lower()
+    same_cycle = not cycle or cycle == str(session.billing_cycle or "").strip().lower()
+    return SubscriptionPushScenario.RENEWED if same_plan and same_cycle else SubscriptionPushScenario.UPGRADED
+
+
+def _announce_checkout_purchase(
+    session: CheckoutSession, user: User, scenario: SubscriptionPushScenario, previous_plan: str | None
+) -> None:
+    """Um aviso por compra (compra aprovada, renovação ou upgrade), venha a confirmação do cartão na
+    hora, do polling ou do webhook do Asaas: fica marcado na sessão."""
+    metadata = dict(session.metadata_json or {})
+    if metadata.get("purchase_notified_at"):
+        return
+    metadata["purchase_notified_at"] = _utcnow().isoformat()
+    session.metadata_json = metadata
+    upgraded = scenario == SubscriptionPushScenario.UPGRADED
+    _notify_checkout_subscription_push(
+        scenario=scenario,
+        session=session,
+        user=user,
+        previous_plan_name=previous_plan if upgraded else None,
+        upgraded_plan_name=session.plan_key if upgraded else None,
+    )
+
+
 def _complete_paid_checkout_session(db: Session, session: CheckoutSession) -> User:
+    """Libera o que foi pago e avisa a compra. Todo caminho que confirma o pagamento passa aqui
+    (cartão na hora, polling e webhook do Asaas)."""
+    # O plano e o ciclo de antes da compra decidem se é renovação ou upgrade.
+    metadata = dict(session.metadata_json or {})
+    previous_user = session.user or _find_existing_user(db, session.customer_email, session.customer_document)
+    previous_subscription = previous_user.subscription if previous_user else None
+    previous_plan = str(metadata.get("current_plan") or (previous_user.plan if previous_user else "") or "").strip().lower() or None
+    previous_cycle = metadata.get("current_billing_cycle") or (previous_subscription.billing_cycle if previous_subscription else None)
+    scenario = checkout_purchase_scenario(session, previous_plan, previous_cycle)
     if _should_upgrade_session_in_place(db, session):
-        user, _previous_plan = _apply_upgrade_after_payment(db, session)
-        return user
-    if _is_upgrade_session(session):
-        # Plano novo pago: encerra a cobrança do plano anterior (assinatura no cartão ou Pix automático).
-        _cancel_replaced_contracts_after_upgrade(db, session)
-    return _upsert_paid_user_and_subscription(db, session)
+        user, applied_previous_plan = _apply_upgrade_after_payment(db, session)
+        previous_plan = applied_previous_plan or previous_plan
+    else:
+        if _is_upgrade_session(session):
+            # Plano novo pago: encerra a cobrança do plano anterior (assinatura no cartão ou Pix automático).
+            _cancel_replaced_contracts_after_upgrade(db, session)
+        user = _upsert_paid_user_and_subscription(db, session)
+    _announce_checkout_purchase(session, user, scenario, previous_plan)
+    return user
 
 
 def _extract_card_last4(number: str | None) -> str | None:
@@ -1378,6 +1433,8 @@ def create_upgrade_checkout_session(
         "upgrade_mode": True,
         "target_user_id": user.id,
         "current_plan": user.plan,
+        # Com o plano, decide no aviso se a compra é renovação (mesmo plano e ciclo) ou upgrade.
+        "current_billing_cycle": subscription.billing_cycle if subscription else None,
         # Assina pela primeira vez (teste grátis ou conta sem plano pago): vale a promoção da 1ª mensalidade.
         # Cliente dos planos antigos nunca é primeira assinatura, mesmo inativo ou vindo da Cakto: o
         # upgrade dele é no valor cheio.
@@ -2535,6 +2592,17 @@ def refresh_session_status(db: Session, session: CheckoutSession) -> CheckoutSes
     if mapped == "paid" and not session.paid_at:
         session.paid_at = _utcnow()
         _complete_paid_checkout_session(db, session)
+        _dispatch_meta_checkout_events(
+            db,
+            session=session,
+            event_name="payment_success",
+            step="success",
+            status="paid",
+            payment_method=session.payment_method,
+            metadata=dict(session.metadata_json or {}),
+            ip_address_value=None,
+            user_agent=None,
+        )
     session.updated_at = _utcnow()
     db.add(session)
     db.commit()
@@ -2936,27 +3004,7 @@ def handle_asaas_checkout_webhook(db: Session, payload: dict[str, Any]) -> bool:
         if not session.paid_at:
             session.paid_at = _utcnow()
         session.status = "paid"
-        if _is_upgrade_session(session):
-            if _should_upgrade_session_in_place(db, session):
-                user, previous_plan = _apply_upgrade_after_payment(db, session)
-            else:
-                _cancel_replaced_contracts_after_upgrade(db, session)
-                previous_plan = str((dict(session.metadata_json or {}).get("current_plan") or "")).strip().lower() or None
-                user = _upsert_paid_user_and_subscription(db, session)
-            _notify_checkout_subscription_push(
-                scenario=SubscriptionPushScenario.UPGRADED,
-                session=session,
-                user=user,
-                previous_plan_name=previous_plan,
-                upgraded_plan_name=session.plan_key,
-            )
-        else:
-            user = _upsert_paid_user_and_subscription(db, session)
-            _notify_checkout_subscription_push(
-                scenario=SubscriptionPushScenario.NEW,
-                session=session,
-                user=user,
-            )
+        _complete_paid_checkout_session(db, session)
         _dispatch_meta_checkout_events(
             db,
             session=session,
