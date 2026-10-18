@@ -71,7 +71,7 @@ export const applyTemplateBranding = <T extends PageConfig | null | undefined>(
 export const extractTemplatePreviewImage = (template: PageTemplate): string => {
   const sections = template?.config_json?.sections || [];
   const hero = sections.find(section => section?.type === "hero") as HeroSection | undefined;
-  return hero?.backgroundImage || "";
+  return hero?.backgroundImage || hero?.mobileBackgroundImage || "";
 };
 
 export const extractTemplateSections = (template: PageTemplate): PageSection[] => {

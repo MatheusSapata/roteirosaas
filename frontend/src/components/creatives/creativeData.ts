@@ -128,6 +128,7 @@ export const collectImages = (sections: PageSection[]): string[] => {
   };
   const hero = sections.find(section => section.type === "hero") as any;
   push(hero?.backgroundImage);
+  push(hero?.mobileBackgroundImage);
   for (const section of sections as any[]) {
     if (section.enabled === false) continue;
     push(section.backgroundImage);

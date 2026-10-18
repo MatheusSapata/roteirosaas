@@ -129,7 +129,9 @@ def _roteiro_online_metadata(raw_url: str, db: Session) -> Optional[dict[str, st
         description = _localized_text(general.get("shortDescription")) if isinstance(general, dict) else ""
     if not description:
         description = (page.seo_description or "").strip()
-    image = str(hero.get("backgroundImage") or page.cover_image_url or page.agency.logo_url or "").strip()
+    image = str(
+        hero.get("backgroundImage") or hero.get("mobileBackgroundImage") or page.cover_image_url or page.agency.logo_url or ""
+    ).strip()
     if image:
         image = urljoin(raw_url, image)
     return {"url": raw_url, "title": title[:300], "description": description[:1000], "image": image}
@@ -165,7 +167,9 @@ def _metadata_from_public_page(raw_url: str, payload: dict[str, Any]) -> dict[st
     if not description:
         description = str(payload.get("seo_description") or "").strip()
     branding = payload.get("branding") if isinstance(payload.get("branding"), dict) else {}
-    image = str(hero.get("backgroundImage") or payload.get("cover_image_url") or branding.get("logo_url") or "").strip()
+    image = str(
+        hero.get("backgroundImage") or hero.get("mobileBackgroundImage") or payload.get("cover_image_url") or branding.get("logo_url") or ""
+    ).strip()
     return {
         "url": raw_url,
         "title": title[:300],
@@ -317,7 +321,8 @@ def derive_cover_image_from_config(raw: Any) -> Optional[str]:
     # Banner Inicial primeiro; sem ele, a imagem do Redirecionamento (página de grupo, por
     # exemplo). O destino do Redirecionamento nunca entra na capa nem nas informações de
     # compartilhamento: a prévia do link mostra a própria página.
-    for kind, keys in (("hero", ("backgroundImage", "background_image")), ("redirect", ("image",))):
+    # Banner com só a foto do celular: ela é a capa.
+    for kind, keys in (("hero", ("backgroundImage", "background_image", "mobileBackgroundImage")), ("redirect", ("image",))):
         for section in sections:
             if not isinstance(section, dict):
                 continue

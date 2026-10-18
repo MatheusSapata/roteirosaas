@@ -282,6 +282,7 @@ import { normalizeYoutubeEmbedUrl } from "../../utils/video";
 import { getReadableTextColor } from "../../utils/colorContrast";
 import type { HeroSection } from "../../types/page";
 import { createLocalizer, getCurrentLanguage } from "../../utils/i18n";
+import { heroPhoto } from "../../utils/heroPhoto";
 
 const props = defineProps<{
   section: HeroSection;
@@ -301,7 +302,11 @@ const heroTitle = computed(() => localize(props.section.title));
 const subtitleHtml = computed(() => sanitizeHtml(localize(props.section.subtitle)));
 
 const layout = computed(() => "immersive");
-const heroBackgroundImage = computed(() => resolveMediaUrl(props.section.backgroundImage));
+// Só a foto do celular: ela vale também no computador (e o encaixe vai junto).
+const desktopPhoto = computed(() => heroPhoto(props.section, "desktop"));
+const mobilePhoto = computed(() => heroPhoto(props.section, "mobile"));
+const heroBackgroundImage = computed(() => resolveMediaUrl(desktopPhoto.value.src));
+const desktopPosition = computed(() => desktopPhoto.value.focus || "center top");
 const logoSrc = computed(() => props.hideLogo ? "" : resolveMediaUrl(props.section.logoUrl));
 const logoSize = computed(() => props.section.logoSize ?? 64);
 const logoBorderRadius = computed(() => props.section.logoBorderRadius ?? 0);
@@ -403,20 +408,12 @@ const immersiveHeroStyle = computed(() => ({
 }));
 const mobileContentBg = computed(() => mobileBaseColor.value);
 const mobileBackgroundStyle = computed(() => {
-  const mobileHeroImage = resolveMediaUrl(props.section.mobileBackgroundImage || "");
+  const mobileHeroImage = resolveMediaUrl(mobilePhoto.value.src);
   if (mobileHeroImage) {
     return {
       backgroundImage: `url(${mobileHeroImage})`,
       backgroundSize: "cover",
-      backgroundPosition: "center top",
-      backgroundRepeat: "no-repeat"
-    };
-  }
-  if (heroBackgroundImage.value) {
-    return {
-      backgroundImage: `url(${heroBackgroundImage.value})`,
-      backgroundSize: "cover",
-      backgroundPosition: "center top",
+      backgroundPosition: mobilePhoto.value.focus || "center top",
       backgroundRepeat: "no-repeat"
     };
   }
@@ -483,7 +480,7 @@ const desktopBackgroundStyle = computed(() => {
     return {
       backgroundImage: `linear-gradient(120deg, rgba(15,23,42,0.12), rgba(8,47,73,0.15)), url(${heroBackgroundImage.value})`,
       backgroundSize: "cover",
-      backgroundPosition: "center top",
+      backgroundPosition: desktopPosition.value,
       backgroundRepeat: "no-repeat"
     };
   }
@@ -495,7 +492,7 @@ const immersiveBackground = computed(() => {
     return {
       backgroundImage: `url(${heroBackgroundImage.value})`,
       backgroundSize: "cover",
-      backgroundPosition: "center top",
+      backgroundPosition: desktopPosition.value,
       backgroundRepeat: "no-repeat"
     };
   }
