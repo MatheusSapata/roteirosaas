@@ -17,7 +17,7 @@
         tone="warning"
         label="Banco próprio"
         :value="formatInt(summary.curated_photos)"
-        :hint="`fotos cadastradas · usadas antes de tudo · ${formatInt(summary.search_reuses)} buscas reaproveitadas`"
+        hint="fotos cadastradas · usadas antes de tudo"
       />
       <AdminMasterKpi
         v-for="(provider, index) in PROVIDERS"
@@ -394,10 +394,8 @@ const successMessage = ref("");
 const items = ref<ImageApiKey[]>([]);
 const providerFilter = ref<"all" | ImageProvider>("all");
 const summary = reactive<ImageApiKeysResponse["summary"]>({
-  searches: 0,
   photos: 0,
   photo_uses: 0,
-  search_reuses: 0,
   curated_photos: 0,
   pixabay: emptyProvider(),
   unsplash: emptyProvider(),

@@ -101,12 +101,16 @@
             <div class="media-item">
               <input ref="bgInput" type="file" accept="image/*" class="hidden" @change="onMediaFileChange('background', $event)" />
               <button type="button" class="media-thumb-button" @click="handleThumbClick('background')">
-                <img v-if="previewUrl(local.backgroundImage)" :src="previewUrl(local.backgroundImage) || ''" alt="Imagem de fundo" />
+                <img
+                  v-if="previewUrl(local.backgroundImage) || previewUrl(local.mobileBackgroundImage)"
+                  :src="previewUrl(local.backgroundImage) || previewUrl(local.mobileBackgroundImage) || ''"
+                  alt="Imagem de fundo"
+                />
                 <div v-else class="media-preview">BG</div>
               </button>
               <div class="media-info">
                 <strong>Imagem de fundo <span class="help" data-tip="Imagem principal de fundo da hero.">?</span></strong>
-                <p>Versão exibida na área principal da seção.</p>
+                <p>{{ !local.backgroundImage && local.mobileBackgroundImage ? "Usando a imagem mobile também no computador." : "Versão exibida na área principal da seção." }}</p>
               </div>
               <div class="btn-row">
                 <button type="button" @click="bgInput?.click()">{{ local.backgroundImage ? "Substituir" : "Adicionar" }}</button>

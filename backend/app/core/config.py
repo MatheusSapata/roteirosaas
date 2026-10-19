@@ -99,6 +99,8 @@ class Settings(BaseSettings):
     smtp_use_tls: bool = Field(True, alias="SMTP_USE_TLS")
     smtp_use_ssl: bool = Field(False, alias="SMTP_USE_SSL")
     webapp_base_url: str | None = Field(None, alias="WEBAPP_BASE_URL")
+    hub_funnel_url: str | None = Field(None, alias="HUB_FUNNEL_URL")
+    hub_funnel_key: str | None = Field(None, alias="HUB_FUNNEL_KEY")
     viajeon_provision_token: str | None = Field(None, alias="VIAJEON_PROVISION_TOKEN")
     viajeon_provision_secret: str | None = Field(None, alias="VIAJEON_PROVISION_SECRET")
     gpt_key: str | None = Field(None, alias="GPT_KEY")
@@ -129,9 +131,6 @@ class Settings(BaseSettings):
     whatsapp_inbox_webhooks_enabled: bool = Field(False, alias="WHATSAPP_INBOX_WEBHOOKS_ENABLED")
     evolution_test_instance_name: str = Field("test-instance", alias="EVOLUTION_TEST_INSTANCE_NAME")
     evolution_pairing_number: str | None = Field(None, alias="EVOLUTION_PAIRING_NUMBER")
-    ntfy_base_url: str = Field("https://ntfy.sh", alias="NTFY_BASE_URL")
-    ntfy_default_topic: str = Field("roteiro_online_assinaturas", alias="NTFY_DEFAULT_TOPIC")
-    ntfy_timeout_seconds: int = Field(20, alias="NTFY_TIMEOUT_SECONDS")
 
     @field_validator(
         "platform_domains",

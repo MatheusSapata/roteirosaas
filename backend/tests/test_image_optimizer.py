@@ -74,6 +74,13 @@ def test_hero_photo_is_preloaded_with_the_same_srcset_as_the_page():
     assert any("fonts.googleapis.com" in tag and "media=\"print\"" in tag for tag in tags)
 
 
+def test_banner_with_only_the_phone_photo_preloads_it_for_every_screen():
+    mobile = "https://cdn.example.com/m/mob_2400.webp"
+    images = _images(_hero_preload_tags(_page([{"type": "hero", "enabled": True, "backgroundImage": "", "mobileBackgroundImage": mobile}])))
+    assert len(images) == 1
+    assert f'href="{mobile}"' in images[0] and "media=" not in images[0]
+
+
 def test_agency_logo_is_preloaded_with_the_page_header():
     logo = "https://cdn.example.com/m/logo_2400.webp"
     tags = _hero_preload_tags(_page([{"type": "header", "enabled": True}, {"type": "prices", "enabled": True}], branding={"logo_url": logo}))

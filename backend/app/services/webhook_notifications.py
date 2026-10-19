@@ -1,15 +1,24 @@
 from __future__ import annotations
 
+import logging
 import re
+import threading
+import time
 from contextlib import contextmanager
-from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.db.session import SessionLocal
+from app.db import session as db_session
+from app.models.pushover_account import PushoverAccount
 from app.models.webhook_notification import WebhookNotificationRule
 from app.schemas.webhook_notification import WebhookNotificationMetaIcon
+from app.services.api_key_crypto import decrypt_api_key, encrypt_api_key, extract_api_key_last4
+from app.services import pushover
+
+logger = logging.getLogger(__name__)
 
 
 AVAILABLE_ICON_OPTIONS: list[WebhookNotificationMetaIcon] = [
@@ -37,34 +46,92 @@ DEFAULT_AVAILABLE_FIELDS = [
     "upgraded_plan_name",
     "cancelled_item",
     "occurred_at",
+    "purchase_kind",
+    "customer_email",
+    "customer_phone",
+    "due_date",
 ]
 
+# Eventos que uma conta nova do Pushover recebe: os de vendas (dinheiro entrando, checkout e cobrança vencida).
+SALES_EVENT_KEYS = ("purchase_approved", "subscription_renewed", "upgrade_realizado", "checkout_started", "payment_overdue")
 
+# Som de receita nova no Pushover: o som personalizado "viajeonvenda", cadastrado na conta dona do
+# aplicativo (a do token), que toca para todas as contas. Evento sem som escolhido na tela usa este
+# padrão; os outros eventos tocam o som padrão do app.
+REVENUE_SOUND = "viajeonvenda"
+REVENUE_EVENT_KEYS = ("purchase_approved", "subscription_renewed", "upgrade_realizado")
+
+
+def default_pushover_sound(event_key: str) -> str | None:
+    return REVENUE_SOUND if event_key in REVENUE_EVENT_KEYS else None
+
+
+def pushover_sound_for(rule: WebhookNotificationRule) -> str | None:
+    """O som escolhido na tela; sem escolha, o padrão do evento."""
+    return (rule.pushover_sound or "").strip() or default_pushover_sound(rule.event_key)
+
+
+# Um evento por acontecimento, e cada pagamento dispara um só: compra aprovada (assinatura nova,
+# inclusive quem sai do teste grátis), assinatura renovada ou upgrade (troca de plano ou de ciclo).
 DEFAULT_WEBHOOK_RULES: list[dict[str, Any]] = [
     {
-        "event_key": "subscription_created",
-        "display_name": "Nova assinatura",
-        "description": "Dispara quando a assinatura é criada.",
+        "event_key": "purchase_approved",
+        "display_name": "Compra aprovada",
+        "description": "Pagamento confirmado de uma assinatura nova (inclui quem assina saindo do teste grátis).",
         "enabled": True,
-        "title_template": "Assinatura criada - {{plan_name}}",
-        "body_template": "{{amount}} | {{user_name}} | {{payment_method}}",
-        "icon_tag": "rocket",
-        "priority": 3,
-        "topic": "roteiro_online_assinaturas",
+        "title_template": "Compra aprovada - {{plan_name}}",
+        "body_template": "{{amount}} | {{user_name}} | {{payment_method}} | {{purchase_kind}}",
+        "icon_tag": "moneybag",
+        "priority": 4,
         "sort_order": 10,
         "is_builtin": True,
     },
     {
         "event_key": "subscription_renewed",
         "display_name": "Assinatura renovada",
-        "description": "Dispara quando a renovação é confirmada.",
+        "description": "Renovação paga: cobrança recorrente confirmada ou renovação do plano pelo painel.",
         "enabled": True,
         "title_template": "Assinatura renovada - {{plan_name}}",
         "body_template": "{{amount}} | {{user_name}} | {{payment_method}}",
         "icon_tag": "heavy_check_mark",
         "priority": 3,
-        "topic": "roteiro_online_assinaturas",
         "sort_order": 20,
+        "is_builtin": True,
+    },
+    {
+        "event_key": "upgrade_realizado",
+        "display_name": "Upgrade realizado",
+        "description": "Troca de plano ou de ciclo paga (ex.: mensal para anual, plano antigo para o plano único).",
+        "enabled": True,
+        "title_template": "Upgrade realizado - {{previous_plan_name}} para {{upgraded_plan_name}}",
+        "body_template": "{{amount}} | {{user_name}} | {{payment_method}}",
+        "icon_tag": "arrow_up",
+        "priority": 3,
+        "sort_order": 30,
+        "is_builtin": True,
+    },
+    {
+        "event_key": "checkout_started",
+        "display_name": "Checkout iniciado",
+        "description": "A pessoa preencheu os dados no checkout (ainda sem pagar). Uma vez por pessoa e oferta a cada 3 horas.",
+        "enabled": True,
+        "title_template": "Checkout iniciado - {{plan_name}}",
+        "body_template": "{{user_name}} | {{customer_phone}} | {{amount}}",
+        "icon_tag": "loudspeaker",
+        "priority": 3,
+        "sort_order": 40,
+        "is_builtin": True,
+    },
+    {
+        "event_key": "payment_overdue",
+        "display_name": "Cobrança vencida não paga",
+        "description": "Cobrança passou do vencimento sem pagamento: renovação de quem já assina ou a primeira cobrança de uma compra não concluída.",
+        "enabled": True,
+        "title_template": "Cobrança vencida - {{plan_name}}",
+        "body_template": "{{amount}} | {{user_name}} | venceu {{due_date}} | {{purchase_kind}}",
+        "icon_tag": "warning",
+        "priority": 4,
+        "sort_order": 50,
         "is_builtin": True,
     },
     {
@@ -76,21 +143,7 @@ DEFAULT_WEBHOOK_RULES: list[dict[str, Any]] = [
         "body_template": "{{amount}} | {{user_name}}",
         "icon_tag": "skull",
         "priority": 3,
-        "topic": "roteiro_online_assinaturas",
-        "sort_order": 30,
-        "is_builtin": True,
-    },
-    {
-        "event_key": "upgrade_realizado",
-        "display_name": "Upgrade realizado",
-        "description": "Dispara quando uma assinatura faz upgrade.",
-        "enabled": True,
-        "title_template": "Upgrade realizado - {{previous_plan_name}} para {{upgraded_plan_name}}",
-        "body_template": "{{amount}} | {{user_name}}",
-        "icon_tag": "arrow_up",
-        "priority": 3,
-        "topic": "roteiro_online_assinaturas",
-        "sort_order": 40,
+        "sort_order": 60,
         "is_builtin": True,
     },
     {
@@ -98,15 +151,16 @@ DEFAULT_WEBHOOK_RULES: list[dict[str, Any]] = [
         "display_name": "Gateway modificado Cakto -> Asaas",
         "description": "Dispara quando a assinatura antiga em Cakto passa a operar no fluxo Asaas.",
         "enabled": True,
-        "title_template": "GATEWAY MODIFICADO CAKTO -> ASAAS",
+        "title_template": "Gateway modificado Cakto -> Asaas",
         "body_template": "{{user_name}}",
         "icon_tag": "arrow_up",
         "priority": 3,
-        "topic": "roteiro_online_assinaturas",
-        "sort_order": 50,
+        "sort_order": 70,
         "is_builtin": True,
     },
 ]
+# Juntado à "Compra aprovada": a assinatura nova mandava os dois avisos ao mesmo tempo.
+RETIRED_EVENT_KEYS = ("subscription_created",)
 
 
 def _render_template(template: str, context: dict[str, Any]) -> str:
@@ -138,6 +192,10 @@ def _default_context(value: dict[str, Any] | None) -> dict[str, Any]:
     payload.setdefault("upgraded_plan_name", "Novo plano")
     payload.setdefault("cancelled_item", "")
     payload.setdefault("occurred_at", "")
+    payload.setdefault("purchase_kind", "")
+    payload.setdefault("customer_email", "")
+    payload.setdefault("customer_phone", "")
+    payload.setdefault("due_date", "")
     return payload
 
 
@@ -146,7 +204,7 @@ def _session_scope(db: Session | None = None):
     if db is not None:
         yield db
         return
-    session = SessionLocal()
+    session = db_session.SessionLocal()  # lida na hora (os testes trocam o banco)
     try:
         yield session
         session.commit()
@@ -157,16 +215,43 @@ def _session_scope(db: Session | None = None):
         session.close()
 
 
+def _retire_old_events(db: Session) -> None:
+    """Uma vez: o evento juntado sai da lista e as contas do Pushover não perdem avisos. A "Compra
+    aprovada" avisava também renovação e upgrade; agora cada um tem o seu, e quem recebia a compra
+    passa a receber os três."""
+    for account in db.query(PushoverAccount).all():
+        keys = list(account.event_keys or [])
+        updated = ["purchase_approved" if key in RETIRED_EVENT_KEYS else key for key in keys]
+        if "purchase_approved" in updated:
+            updated += ["subscription_renewed", "upgrade_realizado"]
+        updated = list(dict.fromkeys(updated))
+        if updated != keys:
+            account.event_keys = updated
+    db.query(WebhookNotificationRule).filter(WebhookNotificationRule.event_key.in_(RETIRED_EVENT_KEYS)).delete(
+        synchronize_session=False
+    )
+    # Descrição e ordem dos eventos padrão acompanham a lista nova (texto, som e prioridade ficam).
+    defaults = {row["event_key"]: row for row in DEFAULT_WEBHOOK_RULES}
+    for rule in db.query(WebhookNotificationRule).filter(WebhookNotificationRule.event_key.in_(defaults)).all():
+        rule.description = defaults[rule.event_key]["description"]
+        rule.sort_order = defaults[rule.event_key]["sort_order"]
+    db.commit()
+
+
 def ensure_default_rules(db: Session) -> None:
     existing = {row.event_key for row in db.query(WebhookNotificationRule.event_key).all()}
-    created = False
-    for row in DEFAULT_WEBHOOK_RULES:
-        if row["event_key"] in existing:
-            continue
-        db.add(WebhookNotificationRule(**row))
-        created = True
-    if created:
-        db.commit()
+    if existing & set(RETIRED_EVENT_KEYS):
+        _retire_old_events(db)
+    missing = [row for row in DEFAULT_WEBHOOK_RULES if row["event_key"] not in existing]
+    if not missing:
+        return
+    for row in missing:
+        try:
+            with db.begin_nested():
+                db.add(WebhookNotificationRule(**row))
+        except IntegrityError:
+            pass  # outra requisição criou o mesmo evento ao mesmo tempo
+    db.commit()
 
 
 def list_rules(db: Session) -> list[WebhookNotificationRule]:
@@ -229,30 +314,189 @@ def build_rendered_notification(rule: WebhookNotificationRule, context: dict[str
     return title, body, tags
 
 
+def contact_context(email: str | None, phone: str | None) -> dict[str, str]:
+    """E-mail e telefone do cliente para o aviso, com o link do WhatsApp (o Pushover abre a conversa)."""
+    digits = re.sub(r"\D", "", phone or "")
+    if len(digits) in (10, 11):
+        digits = f"55{digits}"
+    shown = ""
+    if len(digits) in (12, 13) and digits.startswith("55"):
+        local = digits[2:]
+        shown = f"({local[:2]}) {local[2:-4]}-{local[-4:]}"
+    elif digits:
+        shown = f"+{digits}"
+    return {
+        "customer_email": (email or "").strip(),
+        "customer_phone": shown,
+        "whatsapp_url": f"https://wa.me/{digits}" if len(digits) >= 12 else "",
+    }
+
+
+def _date_br(value: Any) -> str:
+    text = str(value or "").strip()[:10]
+    try:
+        return datetime.fromisoformat(text).strftime("%d/%m/%Y") if text else ""
+    except ValueError:
+        return text
+
+
+def notify_payment_overdue(
+    *,
+    user_name: str | None,
+    plan_name: str | None,
+    amount: Any,
+    due_date: Any,
+    payment_method: str | None,
+    kind: str,
+    email: str | None = None,
+    phone: str | None = None,
+    dedupe_key: str | None = None,
+) -> None:
+    """Cobrança vencida sem pagamento (o gateway pode reenviar o aviso: sai uma vez por cobrança)."""
+    from app.services.subscription_notifications import format_brl  # import local: evita import circular
+
+    notify_safely(
+        event_key="payment_overdue",
+        context={
+            "event_label": "Cobrança vencida",
+            "user_name": user_name or "Não informado",
+            "plan_name": plan_name or "Plano",
+            "amount": format_brl(amount),
+            "payment_method": payment_method or "Não informado",
+            "due_date": _date_br(due_date),
+            "purchase_kind": kind,
+            **contact_context(email, phone),
+        },
+        dedupe_key=dedupe_key,
+    )
+
+
+def _icon_emoji(tag: str | None) -> str:
+    return next((icon.emoji for icon in AVAILABLE_ICON_OPTIONS if icon.tag == tag), "")
+
+
+def _accounts_for(session: Session, event_key: str, *, only: int | None = None) -> list[PushoverAccount]:
+    query = session.query(PushoverAccount).filter(PushoverAccount.enabled.is_(True))
+    if only is not None:
+        query = query.filter(PushoverAccount.id == only)
+    return [account for account in query.order_by(PushoverAccount.id.asc()).all() if event_key in (account.event_keys or [])]
+
+
+def send_to_pushover_account(
+    account: PushoverAccount,
+    *,
+    title: str,
+    body: str,
+    priority: int,
+    context: dict[str, Any] | None = None,
+    sound: str | None = None,
+) -> str | None:
+    """Manda para uma conta e guarda na conta quando foi o último envio (ou o último erro). Devolve
+    um aviso quando o som escolhido não existe e o aviso saiu com o som padrão."""
+    context = context or {}
+    message = {
+        "app_token": decrypt_api_key(account.app_token_encrypted),
+        "user_key": decrypt_api_key(account.user_key_encrypted),
+        "title": title,
+        "message": body,
+        "priority": priority,
+        "device": account.device or None,
+        # Checkout iniciado e cobrança vencida: o aviso abre a conversa com o cliente.
+        "url": context.get("whatsapp_url") or None,
+        "url_title": "Chamar no WhatsApp" if context.get("whatsapp_url") else None,
+    }
+    note = None
+    try:
+        try:
+            pushover.send_message(**message, sound=sound or None)
+        except pushover.PushoverError as exc:
+            if not sound or "sound" not in str(exc).lower():
+                raise
+            # Som personalizado que o Pushover não achou: o aviso sai com o som padrão do app.
+            pushover.send_message(**message)
+            note = f'O som "{sound}" não está no Pushover da conta dona do aplicativo; o aviso tocou o som padrão.'
+    except Exception as exc:
+        account.last_error = str(exc)[:500]
+        raise
+    account.last_error = note
+    account.last_sent_at = datetime.now(timezone.utc)
+    return note
+
+
+def _deliver(session: Session, rule: WebhookNotificationRule, context: dict[str, Any]) -> list[dict[str, Any]]:
+    """Manda para cada conta do Pushover que escolheu o evento. Uma conta com erro não impede as
+    outras. Devolve o resultado de cada envio."""
+    title, body, _tags = build_rendered_notification(rule, context)
+    results: list[dict[str, Any]] = []
+    emoji = _icon_emoji(rule.icon_tag)
+    push_title = f"{emoji} {title}".strip() if emoji else title
+    for account in _accounts_for(session, rule.event_key):
+        try:
+            note = send_to_pushover_account(
+                account, title=push_title, body=body, priority=rule.priority, context=context, sound=pushover_sound_for(rule)
+            )
+            results.append({"channel": "pushover", "target": account.name, "ok": True, "error": note})
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("notification_pushover_failed event=%s account=%s error=%s", rule.event_key, account.id, exc)
+            results.append({"channel": "pushover", "target": account.name, "ok": False, "error": str(exc)[:300]})
+    return results
+
+
+# Mesmo aviso repetido (o gateway reenvia o webhook, a pessoa volta ao checkout): só o primeiro sai.
+_RECENT: dict[str, float] = {}
+_RECENT_LOCK = threading.Lock()
+
+
+def _seen_recently(key: str, ttl_seconds: int) -> bool:
+    now = time.monotonic()
+    with _RECENT_LOCK:
+        for old_key, expires in list(_RECENT.items()):
+            if expires < now:
+                _RECENT.pop(old_key, None)
+        if key in _RECENT:
+            return True
+        _RECENT[key] = now + ttl_seconds
+        return False
+
+
 def send_notification(
     *,
     event_key: str,
     context: dict[str, Any] | None = None,
     db: Session | None = None,
+    dedupe_key: str | None = None,
+    dedupe_seconds: int = 48 * 3600,
 ) -> bool:
     payload = _default_context(context)
     payload["event_key"] = event_key
+    if dedupe_key and _seen_recently(f"{event_key}:{dedupe_key}", dedupe_seconds):
+        return False
     with _session_scope(db) as session:
         rule = get_rule_by_event_key(session, event_key)
         if not rule or not rule.enabled:
             return False
-        title, body, tags = build_rendered_notification(rule, payload)
-        from app.services.ntfy import NtfyService  # local import avoids circular dependency
+        results = _deliver(session, rule, payload)
+        return any(item["ok"] for item in results)
 
-        client = NtfyService(default_topic=rule.topic or None)
-        client.publish(
-            topic=rule.topic or client.default_topic,
-            title=title,
-            message=body,
-            priority=rule.priority,
-            tags=tags,
-        )
-        return True
+
+# Os avisos saem em segundo plano: o checkout e os webhooks não esperam o Pushover.
+# Os testes desligam para conferir o envio na hora.
+RUN_IN_BACKGROUND = True
+
+
+def notify_safely(**kwargs: Any) -> None:
+    """Aviso que não pode atrapalhar o pagamento: sai em segundo plano e erro só vai para o log."""
+
+    def run() -> None:
+        try:
+            send_notification(**kwargs)
+        except Exception:  # noqa: BLE001
+            logger.exception("notification_failed event=%s", kwargs.get("event_key"))
+
+    if RUN_IN_BACKGROUND:
+        threading.Thread(target=run, name="notification", daemon=True).start()
+    else:
+        run()
 
 
 def test_notification(
@@ -268,14 +512,89 @@ def test_notification(
         payload = _default_context(context)
         payload["event_key"] = rule.event_key
         title, body, tags = build_rendered_notification(rule, payload)
-        from app.services.ntfy import NtfyService  # local import avoids circular dependency
+        results = _deliver(session, rule, payload)
+        session.commit()
+        return {"title": title, "body": body, "tags": tags, "deliveries": results}
 
-        client = NtfyService(default_topic=rule.topic or None)
-        client.publish(
-            topic=rule.topic or client.default_topic,
-            title=title,
-            message=body,
-            priority=rule.priority,
-            tags=tags,
+
+# Contas do Pushover (Admin Master)
+
+
+def list_pushover_accounts(db: Session) -> list[PushoverAccount]:
+    return db.query(PushoverAccount).order_by(PushoverAccount.id.asc()).all()
+
+
+def _clean_event_keys(db: Session, event_keys: list[str] | None) -> list[str]:
+    known = {rule.event_key for rule in list_rules(db)}
+    return [key for key in dict.fromkeys(event_keys or []) if key in known]
+
+
+def save_pushover_account(db: Session, payload: dict[str, Any], account: PushoverAccount | None = None) -> PushoverAccount:
+    """Cria ou altera uma conta. Chave e token em branco na alteração: ficam os atuais. Na conta
+    nova, token em branco usa o do aplicativo já cadastrado (um aplicativo serve para todas).
+    A chave é conferida com o Pushover antes de salvar."""
+    user_key = "".join(str(payload.get("user_key") or "").split())
+    app_token = "".join(str(payload.get("app_token") or "").split())
+    device = str(payload.get("device") or "").strip() or None
+    if account is None:
+        if not user_key:
+            raise ValueError("Informe a chave do usuário (User Key) do Pushover.")
+        if not app_token:
+            previous = db.query(PushoverAccount).order_by(PushoverAccount.id.desc()).first()
+            if previous is None:
+                raise ValueError("Informe o token do aplicativo (API Token) do Pushover.")
+            app_token = decrypt_api_key(previous.app_token_encrypted)
+        account = PushoverAccount(event_keys=list(SALES_EVENT_KEYS))
+    plain_user = user_key or decrypt_api_key(account.user_key_encrypted)
+    plain_token = app_token or decrypt_api_key(account.app_token_encrypted)
+    if user_key or app_token or device != account.device:
+        try:
+            pushover.validate_user(app_token=plain_token, user_key=plain_user, device=device)
+        except pushover.PushoverError as exc:
+            raise ValueError(f"O Pushover não aceitou a conta: {exc}") from exc
+    if user_key:
+        account.user_key_encrypted = encrypt_api_key(user_key)
+        account.user_key_last4 = extract_api_key_last4(user_key)
+    if app_token:
+        account.app_token_encrypted = encrypt_api_key(app_token)
+        account.app_token_last4 = extract_api_key_last4(app_token)
+    account.name = str(payload.get("name") or account.name or "Pushover").strip()[:120]
+    account.device = device
+    if payload.get("enabled") is not None:
+        account.enabled = bool(payload["enabled"])
+    if payload.get("event_keys") is not None:
+        account.event_keys = _clean_event_keys(db, payload["event_keys"])
+    db.add(account)
+    db.commit()
+    db.refresh(account)
+    return account
+
+
+def pushover_sounds(db: Session) -> list[dict[str, str]]:
+    """Sons que tocam para todas as contas ligadas: os do Pushover e os personalizados da conta dona
+    do aplicativo. Contas com tokens diferentes: só os sons que existem em todos. Sem conta ou sem
+    resposta: lista vazia (a tela usa a lista fixa)."""
+    accounts = db.query(PushoverAccount).filter(PushoverAccount.enabled.is_(True)).order_by(PushoverAccount.id).all()
+    tokens = list(dict.fromkeys(decrypt_api_key(account.app_token_encrypted) for account in accounts))
+    common: dict[str, str] | None = None
+    for token in tokens:
+        try:
+            sounds = pushover.list_sounds(app_token=token)
+        except Exception as exc:  # noqa: BLE001 - só uma ajuda para a tela
+            logger.info("pushover_sounds_unavailable error=%s", exc)
+            return []
+        common = sounds if common is None else {key: label for key, label in common.items() if key in sounds}
+    return [{"value": key, "label": label} for key, label in (common or {}).items()]
+
+
+def test_pushover_account(db: Session, account: PushoverAccount) -> None:
+    try:
+        send_to_pushover_account(
+            account,
+            title="🔔 Teste do Roteiro Online",
+            body=f"Avisos chegando para {account.name}.",
+            priority=3,
         )
-        return {"title": title, "body": body, "tags": tags}
+    finally:
+        db.add(account)
+        db.commit()

@@ -56,9 +56,34 @@ if engine.dialect.name == "postgresql":
         connection.execute(text("ALTER TABLE stock_images ADD COLUMN IF NOT EXISTS published_at TIMESTAMP WITH TIME ZONE"))
         connection.execute(text("ALTER TABLE stock_images ADD COLUMN IF NOT EXISTS source_name VARCHAR(120)"))
         connection.execute(text("ALTER TABLE stock_images ADD COLUMN IF NOT EXISTS preview_url VARCHAR(1000)"))
+        # Buscas de fotos guardadas (a mesma busca devolvia sempre as mesmas fotos): saíram.
+        connection.execute(text("DROP TABLE IF EXISTS stock_image_searches"))
+        connection.execute(text("ALTER TABLE media_assets ADD COLUMN IF NOT EXISTS keywords TEXT"))
+        connection.execute(text("ALTER TABLE media_assets ADD COLUMN IF NOT EXISTS source VARCHAR(30)"))
+        connection.execute(text("ALTER TABLE webhook_notification_rules ADD COLUMN IF NOT EXISTS pushover_sound VARCHAR(40)"))
+        # Passos que rodam uma vez só (fica registrado o nome de cada um).
+        connection.execute(text(
+            "CREATE TABLE IF NOT EXISTS app_one_time_steps ("
+            "name VARCHAR(120) PRIMARY KEY, applied_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now())"
+        ))
+        # Receita nova passa a tocar o "viajeonvenda": o cha-ching que a versão anterior gravou volta
+        # a ser o padrão do evento. Escolha feita depois na tela não é mexida.
+        if connection.execute(text(
+            "INSERT INTO app_one_time_steps (name) VALUES ('pushover_revenue_sound_viajeonvenda') "
+            "ON CONFLICT DO NOTHING RETURNING name"
+        )).first():
+            connection.execute(text(
+                "UPDATE webhook_notification_rules SET pushover_sound = NULL WHERE pushover_sound = 'cashregister' "
+                "AND event_key IN ('purchase_approved', 'subscription_created', 'subscription_renewed', 'upgrade_realizado')"
+            ))
         connection.execute(text("ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS deactivated_at TIMESTAMP WITH TIME ZONE"))
         connection.execute(text(
             "ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS deactivation_estimated BOOLEAN NOT NULL DEFAULT FALSE"
+        ))
+        # Valor de renovação dos planos antigos. O preenchimento é feito à mão, uma vez, por
+        # backend/sql/2026-10-15_legacy_renewal_amount.sql; aqui só garante que a coluna exista.
+        connection.execute(text(
+            "ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS legacy_renewal_amount NUMERIC(12, 2)"
         ))
         connection.execute(text(
             "UPDATE lessons SET video_updated_at = COALESCE(updated_at, created_at, now()) WHERE video_updated_at IS NULL"

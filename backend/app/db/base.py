@@ -39,6 +39,7 @@ from app.models import (
     whatsapp,
     checkout,
     webhook_notification,
+    pushover_account,
     agency_integration,
     viajeon_sso_ticket,
     viajeon_webhook_event,

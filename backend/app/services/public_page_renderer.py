@@ -295,8 +295,12 @@ def _hero_preload_tags(page: PublicPageOut) -> list[str]:
         layout = hero.get("layout") or "immersive"
         # Imersivo e Clássico com vídeo mostram o vídeo no lugar da foto.
         if not (layout in {"immersive", "classic"} and str(hero.get("videoUrl") or "").strip()):
-            image = _absolute(hero.get("backgroundImage"))
-            mobile = _absolute(hero.get("mobileBackgroundImage")) if layout == "immersive" else None
+            # Só a foto do celular: ela vale também no computador (como no front).
+            desktop_src = str(hero.get("backgroundImage") or "").strip()
+            mobile_src = str(hero.get("mobileBackgroundImage") or "").strip()
+            image = _absolute(desktop_src or mobile_src)
+            own_mobile = layout == "immersive" and desktop_src and mobile_src and mobile_src != desktop_src
+            mobile = _absolute(mobile_src) if own_mobile else None
             sizes = _HERO_SIZES.get(layout, "100vw")
             if image and mobile:
                 tags.append(_image_preload_tag(image, sizes, "(min-width: 641px)"))

@@ -18,7 +18,8 @@ from app.models.subscription import Subscription
 from app.models.user import User
 from app.services import auth as auth_service
 from app.services.email import send_cakto_onboarding_email
-from app.services.ntfy import SubscriptionPushScenario, publish_subscription_notification
+from app.services.subscription_notifications import SubscriptionPushScenario, publish_subscription_notification
+from app.services.webhook_notifications import notify_payment_overdue
 from app.services.trial import end_trial
 from app.services.trial import republish_all_user_pages
 
@@ -431,6 +432,18 @@ class CaktoIntegrationService:
                 next_due_date = self._extract_next_due_date(payload, order)
                 subscription.valid_until = self._calculate_valid_until(subscription.billing_cycle, next_due_date)
             subscription.failed_attempts = int(subscription.failed_attempts or 0) + 1
+            user = subscription.user
+            notify_payment_overdue(
+                user_name=(user.name if user else None) or self._extract_customer_name(payload, order),
+                plan_name=subscription.plan,
+                amount=incoming_amount if incoming_amount is not None else subscription.mrr_amount,
+                due_date=subscription.valid_until.date().isoformat() if subscription.valid_until else None,
+                payment_method=self._extract_payment_method(payload, order) or subscription.payment_method_type,
+                kind="Renovação recusada (Cakto)",
+                email=user.email if user else None,
+                phone=user.whatsapp if user else None,
+                dedupe_key=f"cakto:{subscription_code or order_id}:{subscription.failed_attempts}",
+            )
 
         subscription.status = effective_status
         subscription.updated_at = datetime.utcnow()
@@ -806,9 +819,11 @@ class CaktoIntegrationService:
                 plan_name=resolved_plan,
                 offer_name=offer_name,
                 cancelled_item=cancelled_item,
+                customer_email=user.email if user else None,
+                customer_phone=user.whatsapp if user else None,
             )
         except Exception:  # pragma: no cover - alerta não pode bloquear webhook
-            logger.exception("Falha ao enviar notificação ntfy para evento Cakto.")
+            logger.exception("Falha ao enviar o aviso do evento Cakto.")
 
     def _obtain_access_token(self) -> str:
         if self._access_token and self._token_expires_at and datetime.utcnow() < self._token_expires_at:

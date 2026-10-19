@@ -24,6 +24,15 @@
         </RouterLink>
       </section>
     </nav>
+    <!-- Para gravar vídeos: o menu do painel fica igual ao de um cliente. -->
+    <label class="amn-hide">
+      <input v-model="adminMasterHiddenInMenu" type="checkbox" class="sr-only" />
+      <span class="amn-switch" :class="{ on: adminMasterHiddenInMenu }" aria-hidden="true"><span></span></span>
+      <span class="amn-hide-text">
+        Ocultar do menu do painel
+        <small>{{ adminMasterHiddenInMenu ? "Oculto. Volte por /admin/administracao." : "Para gravar vídeos (também oculta Aulas)." }}</small>
+      </span>
+    </label>
     <RouterLink to="/admin/dashboard" class="amn-back">
       <AmIcon name="chevron-left" />
       <span>Voltar ao painel</span>
@@ -37,6 +46,7 @@ import { useRoute } from "vue-router";
 import AmIcon from "./AmIcon.vue";
 import { adminMasterNav } from "./nav";
 import { adminMasterCounts, loadAdminMasterCounts } from "../../../composables/useAdminMasterCounts";
+import { adminMasterHiddenInMenu } from "../../../composables/useAdminMasterMenu";
 
 const route = useRoute();
 const isActive = (path: string) => route.path === path || route.path.startsWith(`${path}/`);
@@ -157,7 +167,8 @@ onBeforeUnmount(() => {
   color: #ffffff;
 }
 .amn-item:focus-visible,
-.amn-back:focus-visible {
+.amn-back:focus-visible,
+.amn-hide:focus-within {
   outline: 2px solid var(--admin-accent);
   outline-offset: 1px;
 }
@@ -192,6 +203,57 @@ onBeforeUnmount(() => {
   font-weight: 700;
   color: var(--status-warning-foreground);
 }
+.amn-hide {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 12px;
+  padding: 12px 12px 10px;
+  border-top: 1px solid var(--admin-border);
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--admin-ink);
+}
+.amn-hide-text {
+  min-width: 0;
+  line-height: 1.3;
+}
+.amn-hide-text small {
+  display: block;
+  margin-top: 2px;
+  font-size: 11.5px;
+  font-weight: 400;
+  color: var(--admin-muted);
+}
+.amn-switch {
+  position: relative;
+  flex: none;
+  width: 32px;
+  height: 18px;
+  margin-top: 1px;
+  border-radius: 999px;
+  background: var(--admin-border);
+  transition: background-color 200ms ease-out;
+}
+.amn-switch span {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: transform 200ms ease-out;
+}
+.amn-switch.on {
+  background: linear-gradient(135deg, #f59e0b, #ea580c);
+}
+.amn-switch.on span {
+  transform: translateX(14px);
+}
 .amn-back {
   display: flex;
   align-items: center;
@@ -221,6 +283,7 @@ onBeforeUnmount(() => {
     box-shadow: none;
   }
   .amn-head,
+  .amn-hide,
   .amn-back {
     display: none;
   }

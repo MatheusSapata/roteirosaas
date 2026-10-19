@@ -1,12 +1,15 @@
 import api from "./api";
 
 export type CheckoutThemeMode = "light" | "dark";
+/** "classic": imagem na coluna lateral; "banner": banner no topo, mobile first (estilo Viaje On). */
+export type CheckoutLayout = "classic" | "banner";
 export type CheckoutDiscountType = "fixed" | "percent";
 
 export interface CheckoutAppearance {
   key: string;
   name: string;
   theme_mode: CheckoutThemeMode;
+  layout?: CheckoutLayout;
   desktop_image_url?: string | null;
   mobile_banner_url?: string | null;
   active: boolean;
@@ -38,6 +41,12 @@ export interface CheckoutOffer {
   checkout_key?: string | null;
   /** Plano único: esta oferta é a assinatura mensal ou a anual da página de vendas. */
   sales_slot?: "monthly" | "annual" | null;
+  /** Anual: parcelas no cartão (1 = só à vista) e valor fixo por número de parcelas ({"12": "97.00"}). */
+  max_installments?: number;
+  installment_fixed_values?: Record<string, string>;
+  /** Mensal: 1ª mensalidade promocional e quando a promoção termina (ISO). */
+  first_payment_amount?: string | null;
+  first_payment_ends_at?: string | null;
 }
 
 /** Plano único à venda (página de vendas e tela de planos): a oferta mensal e a anual. */
@@ -46,6 +55,12 @@ export interface SalesPlanOffer {
   title: string;
   billing_cycle: "monthly" | "annual";
   amount: string;
+  /** Maior parcelamento no cartão (ex.: 12) e o valor da parcela nele. */
+  max_installments?: number;
+  installment_value?: string | null;
+  /** Promoção da 1ª mensalidade em vigor. */
+  first_payment_amount?: string | null;
+  first_payment_ends_at?: string | null;
 }
 
 export interface SalesPlan {
@@ -81,6 +96,7 @@ export interface CheckoutSettings {
 
 export interface CheckoutPublicConfig {
   theme_mode: CheckoutThemeMode;
+  layout?: CheckoutLayout;
   desktop_image_url?: string | null;
   mobile_banner_url?: string | null;
   offer: CheckoutOffer;
@@ -95,7 +111,8 @@ export interface CheckoutSessionPayload {
   customer_phone: string;
   customer_zipcode: string;
   coupon_code?: string | null;
-  metadata?: Record<string, unknown>;
+  /** Origem da compra: UTMs do anúncio e o site de onde a pessoa veio. */
+  utm?: Partial<Record<"utm_source" | "utm_medium" | "utm_campaign" | "utm_term" | "utm_content" | "referrer", string>>;
 }
 
 export interface CheckoutSession {
@@ -123,7 +140,22 @@ export interface CheckoutSession {
   user_exists: boolean;
   requires_password_setup: boolean;
   is_upgrade?: boolean;
+  /** Renovação do plano antigo pelo valor que o cliente pagava (sem cupom e sem promoção). */
+  is_legacy_renewal?: boolean;
+  /** Upgrade de Profissional ou Agência antigo para o plano único (valor cheio, sem cupom e sem promoção). */
+  is_legacy_upgrade?: boolean;
   locked_profile_fields?: Record<string, boolean> | null;
+  /** 1ª cobrança promocional desta compra (mensal). */
+  first_payment_amount?: string | null;
+  /** Parcelas do cartão (1x à vista primeiro). */
+  installment_options?: CheckoutInstallmentOption[];
+}
+
+export interface CheckoutInstallmentOption {
+  count: number;
+  value: string;
+  total: string;
+  no_interest: boolean;
 }
 
 export interface CheckoutCouponPreviewPayload {
@@ -255,6 +287,31 @@ export const createUpgradeCheckoutSession = async (offerKey: string, couponCode?
   const response = await api.post<CheckoutSession>("/checkout/public/session/upgrade", {
     offer_key: offerKey,
     coupon_code: couponCode || null,
+  });
+  return response.data;
+};
+
+/** Chave usada na rota do checkout para a renovação do plano antigo (não é uma oferta do Admin Master). */
+export const LEGACY_RENEWAL_OFFER_KEY = "renovacao-assinatura";
+
+/** Aparência do checkout e resumo da renovação do plano antigo do cliente logado (valor vem do servidor). */
+export const getLegacyRenewalCheckoutConfig = async () => {
+  const response = await api.get<CheckoutPublicConfig>("/checkout/public/legacy-renewal/config");
+  return response.data;
+};
+
+export const createLegacyRenewalCheckoutSession = async () => {
+  const response = await api.post<CheckoutSession>("/checkout/public/session/legacy-renewal");
+  return response.data;
+};
+
+/**
+ * Upgrade do plano antigo (Profissional ou Agência) para o plano único. O cliente escolhe só o
+ * ciclo; a oferta e o valor (cheio, sem promoção) são decididos no servidor.
+ */
+export const createLegacyUpgradeCheckoutSession = async (billingCycle: "monthly" | "annual") => {
+  const response = await api.post<CheckoutSession>("/checkout/public/session/legacy-upgrade", {
+    billing_cycle: billingCycle,
   });
   return response.data;
 };

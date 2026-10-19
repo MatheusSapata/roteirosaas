@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, Integer, JSON, String, UniqueConstraint
+from sqlalchemy import Column, DateTime, Integer, String, UniqueConstraint
 from sqlalchemy.sql import func
 
 from app.db.base import Base
@@ -40,16 +40,3 @@ class StockImage(Base):
     tracked_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-
-class StockImageSearch(Base):
-    """Busca já feita num banco de fotos: os mesmos termos não consultam o banco de novo."""
-
-    __tablename__ = "stock_image_searches"
-
-    id = Column(Integer, primary_key=True, index=True)
-    query = Column(String(200), nullable=False, unique=True, index=True)
-    provider = Column(String(20), nullable=True)
-    image_ids = Column(JSON, nullable=False, default=list)
-    uses = Column(Integer, nullable=False, default=0)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    last_used_at = Column(DateTime(timezone=True), server_default=func.now())

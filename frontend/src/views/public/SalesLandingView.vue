@@ -1,11 +1,22 @@
 <template>
   <div class="lp public-tokens">
+    <!-- Faixa da promoção da 1ª mensalidade (só enquanto ela vale; a data vem do Admin Master). -->
+    <a v-if="monthlyPromo" href="#planos" class="lp-promo-bar" @click.prevent="goToPlans('monthly')">
+      <span class="lp-promo-tag">Oferta por tempo limitado</span>
+      <span>1ª mensalidade por <b>{{ formatBRL(monthlyPromo.amount, { cents: "auto" }) }}</b><span class="lp-hide-sm"> no plano mensal</span></span>
+      <span v-if="promoCountdown" class="lp-promo-time"><Timer :size="13" aria-hidden="true" /><span class="lp-hide-sm">termina em </span>{{ promoCountdown }}</span>
+    </a>
+
     <!-- 01 Capa (escura): texto à esquerda, vídeo quadrado à direita (no celular, o vídeo fica entre o texto e os botões). -->
     <section class="lp-sec is-night lp-hero">
       <div class="lp-wrap lp-hero-grid">
         <div class="lp-hero-copy">
-          <img :src="logoWhite" alt="Roteiro Online" class="lp-logo" width="240" height="72" />
-          <span class="lp-pill"><Sparkles :size="14" aria-hidden="true" />Aumente a sua conversão!</span>
+          <!-- No celular vira o cabeçalho: logo à esquerda e a demonstração à direita (sai de baixo do botão principal). -->
+          <div class="lp-hero-top">
+            <img :src="logoWhite" alt="Roteiro Online" class="lp-logo" width="240" height="72" />
+            <a :href="DEMO_URL" class="lp-top-demo" target="_blank" rel="noopener"><CalendarDays :size="14" aria-hidden="true" />Agendar demonstração</a>
+          </div>
+          <span class="lp-pill">Aumente a sua conversão!</span>
           <h1 class="lp-h1">Seu cliente não compra o que <span class="is-brand">não consegue imaginar!</span></h1>
           <p class="lp-lead">
             Crie páginas profissionais em minutos e faça seu cliente
@@ -33,7 +44,7 @@
         </div>
         <div class="lp-hero-actions">
           <div class="lp-ctas">
-            <a href="#planos" class="lp-btn" @click.prevent="goToPlans">Quero assinar <ArrowRight :size="18" aria-hidden="true" /></a>
+            <a href="#planos" class="lp-btn" @click.prevent="goToPlans()">Quero assinar <ArrowRight :size="18" aria-hidden="true" /></a>
             <a :href="DEMO_URL" class="lp-btn-ghost" target="_blank" rel="noopener">Agendar demonstração</a>
           </div>
           <p class="lp-note"><ShieldCheck :size="15" aria-hidden="true" /><span>Plano único com tudo incluso · 7 dias de garantia<span class="lp-hide-sm"> · Sem fidelidade</span></span></p>
@@ -51,12 +62,57 @@
       </div>
     </section>
 
-    <!-- 03 Dores -->
+    <!-- 03 Assistente IA (escura): a página sai pronta a partir do que a agência já tem -->
+    <section class="lp-sec is-night lp-sec-ai">
+      <div class="lp-wrap lp-ai">
+        <div class="lp-ai-copy">
+          <p class="lp-kicker">Assistente de IA</p>
+          <h2 class="lp-h2">Descreva a viagem. <span class="is-brand lp-nowrap">A IA monta a página.</span></h2>
+          <p class="lp-sub">
+            Mande o roteiro do jeito que você tem. O assistente escreve os textos e organiza o dia a dia, o que está incluso,
+            os preços e as dúvidas. Você só revisa e publica.
+          </p>
+          <ol class="lp-ai-steps">
+            <li v-for="(step, index) in AI_STEPS" :key="step.title">
+              <span class="lp-ai-num" aria-hidden="true">{{ index + 1 }}</span>
+              <div>
+                <h3>{{ step.title }}</h3>
+                <p>{{ step.text }}</p>
+              </div>
+            </li>
+          </ol>
+          <div class="lp-ai-chips" aria-label="O que você pode mandar">
+            <span v-for="chip in AI_INPUTS" :key="chip.label"><component :is="chip.icon" :size="14" aria-hidden="true" />{{ chip.label }}</span>
+          </div>
+        </div>
+        <div class="lp-shot lp-ai-shot">
+          <span class="lp-shot-tag"><i aria-hidden="true"></i>Editor atualizado</span>
+          <div class="lp-ai-visual">
+            <div class="lp-canva-bar" aria-hidden="true"><i></i><i></i><i></i><span>Assistente IA do Roteiro Online</span></div>
+            <!-- Gravado do editor de verdade por tools/help-media/lp-assistente.mjs. -->
+            <video
+              ref="aiVideo"
+              :poster="assistantPoster"
+              autoplay
+              muted
+              loop
+              playsinline
+              preload="metadata"
+              aria-label="Animação do Assistente IA: a agência descreve a viagem, a IA monta a página com banner, roteiro dia a dia, inclusos, preços e dúvidas, e a página é aplicada com um clique"
+            >
+              <source :src="assistantWebm" type="video/webm" />
+              <source :src="assistantMp4" type="video/mp4" />
+            </video>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 04 Dores -->
     <section class="lp-sec is-mist">
       <div class="lp-wrap">
         <h2 class="lp-h2">
-          É sério... mandando <span class="is-red">textão no WhatsApp,</span><br />
-          é bem provável que...
+          Mandando <span class="is-red lp-nowrap">textão no WhatsApp:</span>
         </h2>
         <div class="lp-pains">
           <div v-for="(pain, index) in PAINS" :key="pain.title" class="lp-pain">
@@ -205,7 +261,7 @@
     <section class="lp-sec is-green">
       <div class="lp-wrap">
         <p class="lp-kicker">Como funciona</p>
-        <h2 class="lp-h2">Onboarding em <span class="is-brand">menos de 3 minutos</span></h2>
+        <h2 class="lp-h2">Tudo pronto em <span class="is-brand lp-nowrap">menos de 3 minutos</span></h2>
         <div class="lp-steps">
           <div v-for="(step, index) in STEPS" :key="step.title" class="lp-step">
             <span class="lp-step-num">0{{ index + 1 }}</span>
@@ -216,7 +272,7 @@
           </div>
         </div>
         <div class="lp-steps-cta">
-          <a href="#planos" class="lp-btn" @click.prevent="goToPlans">Quero começar agora <ArrowRight :size="18" aria-hidden="true" /></a>
+          <a href="#planos" class="lp-btn" @click.prevent="goToPlans()">Quero começar agora <ArrowRight :size="18" aria-hidden="true" /></a>
         </div>
       </div>
     </section>
@@ -224,25 +280,28 @@
     <!-- 08 Mais fácil que o Canva -->
     <section class="lp-sec is-mist">
       <div class="lp-wrap">
-        <h2 class="lp-h2">Mais fácil que <span class="is-brand">editar no Canva!</span></h2>
+        <h2 class="lp-h2">Mais fácil que <span class="is-brand lp-nowrap">editar no Canva!</span></h2>
         <p class="lp-sub lp-canva-sub">Veja o editor em 40 segundos: escolher uma seção, editar, conferir no celular e publicar.</p>
         <div class="lp-canva">
-          <div class="lp-canva-visual">
-            <div class="lp-canva-bar" aria-hidden="true"><i></i><i></i><i></i><span>Editor do Roteiro Online</span></div>
-            <!-- Gravado do editor de verdade por tools/help-media/lp-editor.mjs. -->
-            <video
-              ref="editorVideo"
-              :poster="editorPoster"
-              autoplay
-              muted
-              loop
-              playsinline
-              preload="metadata"
-              aria-label="Animação do editor: escolher uma seção pronta, editar o texto, trocar o visual, ver no celular, pedir ao Assistente IA e publicar"
-            >
-              <source :src="editorWebm" type="video/webm" />
-              <source :src="editorMp4" type="video/mp4" />
-            </video>
+          <div class="lp-shot">
+            <span class="lp-shot-tag"><i aria-hidden="true"></i>Editor atualizado</span>
+            <div class="lp-canva-visual">
+              <div class="lp-canva-bar" aria-hidden="true"><i></i><i></i><i></i><span>Editor do Roteiro Online</span></div>
+              <!-- Gravado do editor de verdade por tools/help-media/lp-editor.mjs. -->
+              <video
+                ref="editorVideo"
+                :poster="editorPoster"
+                autoplay
+                muted
+                loop
+                playsinline
+                preload="metadata"
+                aria-label="Animação do editor: escolher uma seção pronta, editar o texto, trocar o visual, ver no celular, pedir ao Assistente IA e publicar"
+              >
+                <source :src="editorWebm" type="video/webm" />
+                <source :src="editorMp4" type="video/mp4" />
+              </video>
+            </div>
           </div>
           <ul class="lp-checks">
             <li v-for="item in EASIER" :key="item"><span class="lp-check" aria-hidden="true"><Check :size="14" /></span>{{ item }}</li>
@@ -273,7 +332,7 @@
       <div class="lp-marquee">
         <div class="lp-marquee-track">
           <span v-for="(item, index) in marqueeItems" :key="index" :aria-hidden="index >= INCLUDED.length ? 'true' : undefined">
-            <Sparkles :size="16" aria-hidden="true" />{{ item.short }}
+            <i class="lp-marquee-dot" aria-hidden="true"></i>{{ item.short }}
           </span>
         </div>
       </div>
@@ -296,10 +355,11 @@
             <div class="lp-offer-trust">
               <span v-for="item in TRUST" :key="item.label"><component :is="item.icon" :size="18" aria-hidden="true" />{{ item.label }}</span>
             </div>
-            <p class="lp-offer-foot"><Sparkles :size="15" aria-hidden="true" />Mensal ou anual, é a mesma assinatura: muda só a forma de pagar.</p>
+            <p class="lp-offer-foot">Mensal ou anual, é a mesma assinatura: muda só a forma de pagar.</p>
           </div>
           <div class="lp-price-box" :class="{ 'is-loading': salesPlanLoading }">
             <span v-if="cycle === 'annual' && salesMath && salesMath.savings > 0 && currentOffer" class="lp-best">Melhor escolha</span>
+            <span v-else-if="cycle === 'monthly' && monthlyPromo" class="lp-best is-urgent">Oferta por tempo limitado</span>
             <div v-if="salesPlan.monthly && salesPlan.annual" class="lp-cycle" role="tablist" aria-label="Forma de pagamento">
               <button type="button" role="tab" :aria-selected="cycle === 'monthly'" :class="{ on: cycle === 'monthly' }" @click="cycle = 'monthly'">Mensal</button>
               <button type="button" role="tab" :aria-selected="cycle === 'annual'" :class="{ on: cycle === 'annual' }" @click="cycle = 'annual'">
@@ -307,23 +367,38 @@
               </button>
             </div>
             <template v-if="currentOffer">
+              <p v-if="cycle === 'monthly' && monthlyPromo && promoCountdown" class="lp-promo-clock">
+                <Timer :size="14" aria-hidden="true" />termina em <b>{{ promoCountdown }}</b>
+              </p>
               <p v-if="cycle === 'annual' && salesMath && salesMath.savings > 0" class="lp-anchor">
                 de <s>{{ formatBRL(salesMath.twelveMonths) }}</s> por
               </p>
-              <div class="lp-price">
+              <p v-else-if="cycle === 'monthly' && monthlyPromo" class="lp-anchor">
+                de <s>{{ formatBRL(currentOffer.amount) }}</s> por
+              </p>
+              <!-- Anual: a parcela em destaque (ex.: 12x de R$ 97) e o valor à vista embaixo. -->
+              <div v-if="annualInstallment" class="lp-price">
+                <span class="cur">{{ annualInstallment.count }}x de R$</span><span class="val">{{ centsNumber(annualInstallment.value) }}</span>
+              </div>
+              <div v-else-if="cycle === 'monthly' && monthlyPromo" class="lp-price">
+                <span class="cur">R$</span><span class="val">{{ priceNumber(monthlyPromo.amount) }}</span><span class="per">no 1º mês</span>
+              </div>
+              <div v-else class="lp-price">
                 <span class="cur">R$</span><span class="val">{{ priceNumber(currentOffer.amount) }}</span><span class="per">{{ cycle === "annual" ? "/ano" : "/mês" }}</span>
               </div>
-              <p v-if="cycle === 'annual' && salesMath" class="lp-price-eq">
+              <p v-if="annualInstallment" class="lp-price-eq">ou <b>{{ formatBRL(currentOffer.amount) }} à vista</b></p>
+              <p v-else-if="cycle === 'annual' && salesMath" class="lp-price-eq">
                 equivale a <b>{{ formatBRL(salesMath.perMonth, { cents: "always" }) }} por mês</b>
               </p>
-              <p v-else class="lp-price-eq">Renova todo mês. <b>Sem fidelidade.</b></p>
+              <p v-else-if="monthlyPromo" class="lp-price-eq">Depois, <b>{{ formatBRL(currentOffer.amount) }}/mês</b>. Sem fidelidade.</p>
+              <p v-else class="lp-price-eq">Renova todo mês, sem fidelidade.</p>
               <p v-if="cycle === 'annual' && salesMath && salesMath.savings > 0" class="lp-price-save">
                 Economize {{ formatBRL(salesMath.savings) }}<span class="lp-hide-sm">: 1 ano por menos de {{ salesMath.lessThanMonths }} meses do mensal</span>
               </p>
               <p v-if="perDay" class="lp-price-day">
                 <Zap :size="14" aria-hidden="true" /><span>Menos de R$ {{ perDay }} por dia<span class="lp-hide-sm">: uma venda a mais já paga a assinatura</span>.</span>
               </p>
-              <RouterLink :to="`/checkout/${currentOffer.key}`" class="lp-btn lp-btn-block">Quero assinar agora <ArrowRight :size="18" aria-hidden="true" /></RouterLink>
+              <RouterLink :to="{ path: `/checkout/${currentOffer.key}`, query: checkoutQuery }" class="lp-btn lp-btn-block">Quero assinar agora <ArrowRight :size="18" aria-hidden="true" /></RouterLink>
             </template>
             <template v-else-if="!salesPlanLoading">
               <p class="lp-price-eq">Fale com a gente para assinar.</p>
@@ -387,11 +462,16 @@
           Assine, entre na plataforma e publique em menos de 30 minutos. Se não gostar, devolvemos 100% do valor em 7 dias.
         </p>
         <div class="lp-ctas">
-          <a href="#planos" class="lp-btn" @click.prevent="goToPlans">Quero assinar <ArrowRight :size="18" aria-hidden="true" /></a>
+          <a href="#planos" class="lp-btn" @click.prevent="goToPlans()">Quero assinar <ArrowRight :size="18" aria-hidden="true" /></a>
           <a :href="DEMO_URL" class="lp-btn-ghost" target="_blank" rel="noopener">Agendar demonstração</a>
         </div>
         <p class="lp-final-note">Sem fidelidade · 7 dias de garantia · Cancelamento simples</p>
         <RouterLink to="/login" class="lp-login">Já é cliente? Entrar</RouterLink>
+        <!-- Aviso exigido para anunciar no Facebook/Instagram. -->
+        <p class="lp-disclaimer">
+          Este site não faz parte do Facebook nem da Meta Platforms, Inc. e não é endossado pelo Facebook de nenhuma forma.
+          Facebook é uma marca registrada da Meta Platforms, Inc.
+        </p>
       </div>
     </section>
   </div>
@@ -417,6 +497,7 @@ import {
   EyeOff,
   FileText,
   Ghost,
+  Mic,
   Globe,
   Hotel,
   Images,
@@ -430,7 +511,6 @@ import {
   Quote,
   ShieldCheck,
   Smartphone,
-  Sparkles,
   Timer,
   TrendingDown,
   UserRound,
@@ -441,10 +521,15 @@ import {
 } from "lucide-vue-next";
 import { getPublicSalesPlan, type SalesPlan } from "../../services/checkout";
 import { formatBRL, salesPlanMath } from "../../utils/salesPlan";
+import { captureAttribution, utmQuery } from "../../utils/attribution";
+import { SALES_META_PIXEL_ID, startMetaPixels } from "../../utils/metaPixel";
 import logoWhite from "../../assets/lp/logo-branco.webp";
 import editorMp4 from "../../assets/lp/editor.mp4";
 import editorWebm from "../../assets/lp/editor.webm";
 import editorPoster from "../../assets/lp/editor-poster.webp";
+import assistantMp4 from "../../assets/lp/assistente.mp4";
+import assistantWebm from "../../assets/lp/assistente.webm";
+import assistantPoster from "../../assets/lp/assistente-poster.webp";
 import exemploAbrolhos from "../../assets/lp/exemplo-abrolhos.webp";
 import exemploFoz from "../../assets/lp/exemplo-foz.webp";
 import exemploItalia from "../../assets/lp/exemplo-italia.webp";
@@ -455,14 +540,13 @@ import exemploItalia from "../../assets/lp/exemplo-italia.webp";
  */
 const HERO_VIDEO = "https://player-vz-19330b59-441.tv.pandavideo.com.br/embed/?v=13897fe0-22c6-420f-ad7c-523e37f8fd7f";
 const DEMO_URL = "https://cal.com/viajeon/roteiro-online";
-const META_PIXEL_ID = "1584327072834789";
 const PAGE_TITLE = "Roteiro Online | Páginas de roteiro que vendem";
 const PAGE_DESCRIPTION =
   "Crie páginas profissionais de roteiro em minutos e faça seu cliente sentir o valor antes mesmo de saber o preço.";
 
 const METRICS = [
   { value: "+200", label: "Agências ativas" },
-  { value: "+800", label: "Páginas criadas" },
+  { value: "+1.000", label: "Páginas criadas" },
   { value: "3 min", label: "Pra se cadastrar" },
   { value: "7 dias", label: "Garantia total" }
 ];
@@ -470,19 +554,32 @@ const METRICS = [
 const PAINS = [
   {
     icon: Ghost,
-    title: "suas cotações estejam sumindo",
+    title: "Suas cotações somem",
     text: "O lead pede, você manda, ele some. Sem página profissional, a cotação vira só mais uma mensagem perdida no WhatsApp."
   },
   {
     icon: EyeOff,
-    title: "seu cliente não vê o real valor",
+    title: "Seus clientes não veem valor",
     text: "Quando o passageiro vê só o preço, compara por preço. Quando enxerga a experiência completa, compra a experiência."
   },
   {
     icon: TrendingDown,
-    title: "você esteja concorrendo por preço",
+    title: "Você concorre só por preço",
     text: "Se a apresentação não sustenta o valor, o único argumento que sobra é desconto. Apresente melhor, venda pelo preço certo."
   }
+];
+
+// Assistente IA: como a página sai pronta e o que a agência pode mandar.
+const AI_STEPS = [
+  { title: "Conte a viagem do seu jeito", text: "Escreva, grave um áudio ou mande o PDF e os prints que você já tem." },
+  { title: "A IA monta a página inteira", text: "Banner, roteiro dia a dia, inclusos, preços e dúvidas, com fotos." },
+  { title: "Revise e publique", text: "Ajuste o que quiser no editor e mande o link no WhatsApp." }
+];
+const AI_INPUTS = [
+  { icon: MessageCircle, label: "Texto" },
+  { icon: Mic, label: "Áudio" },
+  { icon: FileText, label: "PDF" },
+  { icon: Images, label: "Prints e fotos" }
 ];
 
 // Antes e depois. As linhas do "textão" são só a largura de cada linha cinza da bolha.
@@ -645,21 +742,21 @@ const AUDIENCE = [
 // O que vem na assinatura: tudo o que a plataforma libera (plano interno Escala).
 // short: a versão curta, em etiquetas, no celular e na faixa.
 const INCLUDED = [
+  // Ordem pensada para as etiquetas do celular caberem duas por linha.
   { full: "Roteiros ilimitados no ar", short: "Roteiros ilimitados" },
+  { full: "Duplicar páginas em um clique", short: "Duplicar páginas" },
   { full: "Editor visual com seções prontas", short: "Editor visual" },
-  { full: "Assistente de IA para montar páginas", short: "Assistente de IA" },
-  { full: "Criativos para anúncios e stories", short: "Criativos" },
-  { full: "Módulo Leads e funil de vendas", short: "Módulo Leads" },
-  { full: "Caixa de entrada do WhatsApp", short: "WhatsApp" },
-  { full: "Domínio próprio da agência", short: "Domínio próprio" },
   { full: "Pixels Meta e Google", short: "Pixels Meta e Google" },
-  { full: "Equipe com até 5 usuários", short: "Equipe (5 usuários)" },
-  { full: "Duplicar páginas em um clique", short: "Duplicar páginas" }
+  { full: "Assistente de IA para montar páginas", short: "Assistente de IA" },
+  { full: "Módulo Leads e funil de vendas", short: "Módulo Leads" },
+  { full: "Notificações inteligentes", short: "Notificações inteligentes" },
+  { full: "Criativos para anúncios e stories", short: "Criativos" },
+  { full: "Domínio próprio da agência", short: "Domínio próprio" },
+  { full: "Equipe com até 5 usuários", short: "Equipe (5 usuários)" }
 ];
 // Selos no pé do cartão do que vem na assinatura (só no computador).
 const TRUST = [
   { icon: ShieldCheck, label: "7 dias de garantia" },
-  { icon: CalendarDays, label: "Mensal sem fidelidade" },
   { icon: CircleCheck, label: "Cancelamento simples" }
 ];
 // A faixa corre em laço: a lista vai duas vezes (a cópia fica escondida do leitor de tela).
@@ -668,10 +765,50 @@ const marqueeItems = [...INCLUDED, ...INCLUDED];
 // Plano único: oferta mensal e anual configuradas em Admin Master › Ofertas e checkout.
 const salesPlan = ref<SalesPlan>({ monthly: null, annual: null });
 const salesPlanLoading = ref(true);
-const cycle = ref<"monthly" | "annual">("annual");
+const cycle = ref<"monthly" | "annual">("monthly");
 const salesMath = computed(() => salesPlanMath(salesPlan.value.monthly?.amount, salesPlan.value.annual?.amount));
 const currentOffer = computed(() => salesPlan.value[cycle.value] || salesPlan.value.monthly || salesPlan.value.annual);
-const priceNumber = (amount: string) => formatBRL(amount).replace(/^R\$\s*/, "");
+const priceNumber = (amount: string) => formatBRL(amount, { cents: "auto" }).replace(/^R\$\s*/, "");
+const centsNumber = (amount: string) => formatBRL(amount, { cents: "always" }).replace(/^R\$\s*/, "");
+// Anual parcelado no cartão (ex.: 12x de R$ 97,00), configurado na oferta no Admin Master.
+const annualInstallment = computed(() => {
+  const offer = currentOffer.value;
+  if (cycle.value !== "annual" || !offer || offer.billing_cycle !== "annual" || (offer.max_installments || 1) <= 1 || !offer.installment_value) return null;
+  return { count: offer.max_installments || 1, value: offer.installment_value };
+});
+// Promoção da 1ª mensalidade (só enquanto vale; o servidor já tira a que acabou).
+const nowMs = ref(Date.now());
+// UTMs do anúncio no endereço do checkout (além de guardadas no navegador).
+const checkoutQuery = ref<Record<string, string>>({});
+const monthlyPromo = computed(() => {
+  const offer = salesPlan.value.monthly;
+  if (!offer?.first_payment_amount) return null;
+  const endsAt = offer.first_payment_ends_at ? new Date(offer.first_payment_ends_at).getTime() : null;
+  if (endsAt !== null && endsAt <= nowMs.value) return null;
+  return { amount: offer.first_payment_amount, endsAt };
+});
+// Segundos que faltam para as 23:59:59 de hoje no horário de Brasília.
+const saoPauloClock = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/Sao_Paulo",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hourCycle: "h23"
+});
+const secondsLeftToday = (ms: number) => {
+  const parts = Object.fromEntries(saoPauloClock.formatToParts(ms).map(part => [part.type, Number(part.value)]));
+  return Math.max(0, 86399 - ((parts.hour || 0) * 3600 + (parts.minute || 0) * 60 + (parts.second || 0)));
+};
+// Contagem da promoção: sempre até as 23h59 de hoje (recomeça à meia-noite); se a promoção
+// acabar antes disso, conta até o fim dela.
+const promoCountdown = computed(() => {
+  const promo = monthlyPromo.value;
+  if (!promo) return "";
+  let total = secondsLeftToday(nowMs.value);
+  if (promo.endsAt !== null) total = Math.min(total, Math.max(0, Math.floor((promo.endsAt - nowMs.value) / 1000)));
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${pad(Math.floor(total / 3600))}:${pad(Math.floor((total % 3600) / 60))}:${pad(total % 60)}`;
+});
 // "Menos de R$ X por dia": o próximo real inteiro acima do valor diário.
 const perDay = computed(() => {
   const offer = currentOffer.value;
@@ -682,8 +819,8 @@ const perDay = computed(() => {
 const loadSalesPlan = async () => {
   try {
     salesPlan.value = await getPublicSalesPlan();
-    // Abre no anual (melhor valor); sem anual, no mensal.
-    if (!salesPlan.value.annual) cycle.value = "monthly";
+    // Abre no mensal; sem mensal, no anual.
+    if (!salesPlan.value.monthly && salesPlan.value.annual) cycle.value = "annual";
   } catch {
     salesPlan.value = { monthly: null, annual: null };
   } finally {
@@ -743,47 +880,31 @@ const FAQ: FaqItem[] = [
 const faqAll = ref(false);
 // Quem pede menos movimento no sistema vê a animação parada, com os controles para tocar.
 const editorVideo = ref<HTMLVideoElement | null>(null);
+const aiVideo = ref<HTMLVideoElement | null>(null);
 
 // "Mensal ou anual?" com os valores do admin; sem eles, a resposta sem números.
 const faqItems = computed<FaqItem[]>(() => {
   const m = salesPlan.value.monthly;
   const a = salesPlan.value.annual;
   const math = salesMath.value;
+  const promo = monthlyPromo.value;
+  const installments =
+    a && (a.max_installments || 1) > 1 && a.installment_value
+      ? ` à vista ou em ${a.max_installments}x de ${formatBRL(a.installment_value, { cents: "always" })} no cartão`
+      : "";
+  const promoNote = promo ? ` Por tempo limitado, a 1ª mensalidade sai por ${formatBRL(promo.amount, { cents: "auto" })}.` : "";
   const cycleAnswer =
     m && a && math && math.savings > 0
-      ? `Nenhuma nos recursos: é a mesma assinatura, com tudo incluso. No mensal você paga ${formatBRL(m.amount)} por mês, sem fidelidade. No anual paga ${formatBRL(a.amount)} por 12 meses (equivale a ${formatBRL(math.perMonth, { cents: "always" })} por mês) e economiza ${formatBRL(math.savings)}.`
+      ? `Nenhuma nos recursos: é a mesma assinatura, com tudo incluso. No mensal você paga ${formatBRL(m.amount)} por mês, sem fidelidade.${promoNote} No anual paga ${formatBRL(a.amount)}${installments} pelos 12 meses e economiza ${formatBRL(math.savings)} frente a 12 mensalidades.`
       : "Nenhuma nos recursos: é a mesma assinatura, com tudo incluso. Muda só a forma de pagar: mês a mês, sem fidelidade, ou o ano inteiro com desconto.";
   const items = [...FAQ];
   items.splice(2, 0, { q: "Qual a diferença entre o mensal e o anual?", a: cycleAnswer });
   return items;
 });
 
-const goToPlans = () => {
+const goToPlans = (target?: "monthly" | "annual") => {
+  if (target && salesPlan.value[target]) cycle.value = target;
   document.getElementById("planos")?.scrollIntoView({ behavior: "smooth", block: "start" });
-};
-
-// Mesmo pixel da Meta que a página no WordPress usava (PixelYourSite).
-type Fbq = ((...args: unknown[]) => void) & { callMethod?: (...args: unknown[]) => void; queue: unknown[][]; loaded: boolean; version: string; push: unknown };
-const trackPageView = () => {
-  const w = window as unknown as { fbq?: Fbq; _fbq?: Fbq };
-  if (!w.fbq) {
-    const fbq = function (...args: unknown[]) {
-      if (fbq.callMethod) fbq.callMethod(...args);
-      else fbq.queue.push(args);
-    } as Fbq;
-    fbq.push = fbq;
-    fbq.loaded = true;
-    fbq.version = "2.0";
-    fbq.queue = [];
-    w.fbq = fbq;
-    if (!w._fbq) w._fbq = fbq;
-    const script = document.createElement("script");
-    script.async = true;
-    script.src = "https://connect.facebook.net/en_US/fbevents.js";
-    document.head.appendChild(script);
-  }
-  w.fbq("init", META_PIXEL_ID);
-  w.fbq("track", "PageView");
 };
 
 const setMeta = (name: string, content: string) => {
@@ -809,17 +930,23 @@ onMounted(() => {
   restoreDescription = setMeta("description", PAGE_DESCRIPTION);
   void loadSalesPlan();
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (editorVideo.value && reducedMotion) {
-    editorVideo.value.autoplay = false;
-    editorVideo.value.pause();
-    editorVideo.value.controls = true;
+  for (const video of [editorVideo.value, aiVideo.value]) {
+    if (video && reducedMotion) {
+      video.autoplay = false;
+      video.pause();
+      video.controls = true;
+    }
   }
   if (!reducedMotion) {
     countdownTimer = window.setInterval(() => {
       countdownLeft.value = countdownLeft.value > 0 ? countdownLeft.value - 1 : COUNTDOWN_START;
+      nowMs.value = Date.now();
     }, 1000);
   }
-  trackPageView();
+  // Pixel da página de vendas (o mesmo do checkout) e as UTMs do anúncio, que seguem para o checkout.
+  startMetaPixels([SALES_META_PIXEL_ID]);
+  captureAttribution();
+  checkoutQuery.value = utmQuery();
 });
 
 onBeforeUnmount(() => {
@@ -959,6 +1086,10 @@ onBeforeUnmount(() => {
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
 }
+/* Trecho de título que não pode quebrar no meio (ex.: "menos de 3 minutos"). */
+.lp-nowrap {
+  white-space: nowrap;
+}
 .is-red {
   color: var(--red);
 }
@@ -1095,6 +1226,14 @@ onBeforeUnmount(() => {
   width: 168px;
   height: auto;
 }
+.lp-hero-top {
+  display: flex;
+  align-items: center;
+}
+/* Só no cabeçalho do celular; no computador a demonstração fica ao lado do botão principal. */
+.lp-top-demo {
+  display: none;
+}
 .lp-pill {
   display: inline-flex;
   align-items: center;
@@ -1206,6 +1345,97 @@ onBeforeUnmount(() => {
   text-align: left;
 }
 
+/* Faixa da promoção da 1ª mensalidade */
+.lp-promo-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px 14px;
+  min-height: 40px;
+  padding: 7px 16px;
+  background: linear-gradient(90deg, #ff7a2f, #ff9b3d);
+  color: #2a1203;
+  font-size: 14px;
+  text-align: center;
+  text-decoration: none;
+}
+.lp-promo-bar b {
+  font-weight: 800;
+}
+.lp-promo-tag {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #2a1203;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.lp-promo-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px 3px 8px;
+  border-radius: 999px;
+  background: rgba(42, 18, 3, 0.9);
+  color: #fff;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* Tag "Editor atualizado" presa na borda de cima das animações: fica fora do vídeo e não cobre nada. */
+.lp-shot {
+  position: relative;
+  min-width: 0;
+}
+.lp-shot-tag {
+  position: absolute;
+  z-index: 2;
+  top: -12px;
+  right: 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px 5px 10px;
+  border-radius: 999px;
+  background: var(--mint);
+  color: var(--night);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  white-space: nowrap;
+  box-shadow: 0 8px 20px -8px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+}
+.lp-shot-tag i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: lp-live 1.8s ease-in-out infinite;
+}
+/* Na seção clara, a tag escura com contorno verde (para não sumir na barra escura da janela). */
+.is-mist .lp-shot-tag {
+  background: var(--night);
+  color: var(--mint);
+  box-shadow: 0 0 0 1px rgba(29, 233, 160, 0.5), 0 8px 20px -8px rgba(0, 0, 0, 0.55);
+}
+@keyframes lp-live {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
 /* 02 Números */
 .lp-metrics-sec {
   padding-top: 22px;
@@ -1239,7 +1469,94 @@ onBeforeUnmount(() => {
   text-transform: uppercase;
 }
 
-/* 03 Dores: cartões brancos com faixa vermelha no topo. */
+/* 03 Assistente IA: texto e passos à esquerda, a animação à direita. */
+.lp-ai {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  align-items: center;
+  gap: clamp(24px, 4vw, 48px);
+}
+.lp-ai-copy .lp-kicker,
+.lp-ai-copy .lp-h2,
+.lp-ai-copy .lp-sub {
+  margin-inline: 0 !important;
+  text-align: left;
+}
+.lp-ai-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 20px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.lp-ai-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--t-line);
+  border-radius: 14px;
+  background: var(--t-card);
+}
+.lp-ai-num {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--mint);
+  color: #05170f;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 800;
+}
+.lp-ai-steps h3 {
+  color: var(--t-ink);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.lp-ai-steps p {
+  margin-top: 2px !important;
+  color: var(--t-muted);
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+.lp-ai-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 14px;
+}
+.lp-ai-chips span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid rgba(29, 233, 160, 0.3);
+  border-radius: 999px;
+  background: rgba(29, 233, 160, 0.08);
+  color: var(--mint);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.lp-ai-visual {
+  overflow: hidden;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 0 0 1px rgba(29, 233, 160, 0.35), 0 30px 70px -30px rgba(29, 233, 160, 0.5);
+}
+.lp-ai-visual video {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 10;
+}
+
+/* 04 Dores: cartões brancos com faixa vermelha no topo. */
 .lp-pains {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1287,9 +1604,6 @@ onBeforeUnmount(() => {
   font-size: 17px;
   font-weight: 700;
   line-height: 1.3;
-}
-.lp-pain h3::first-letter {
-  text-transform: uppercase;
 }
 .lp-pain p {
   margin-top: 6px !important;
@@ -2169,8 +2483,12 @@ onBeforeUnmount(() => {
   text-transform: uppercase;
   white-space: nowrap;
 }
-.lp-marquee-track svg {
-  color: var(--t-accent);
+.lp-marquee-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--t-accent);
 }
 @keyframes lp-marquee {
   to {
@@ -2235,7 +2553,7 @@ onBeforeUnmount(() => {
 }
 .lp-offer-trust {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   margin-top: auto;
   padding-top: 18px;
@@ -2265,10 +2583,6 @@ onBeforeUnmount(() => {
   border-top: 1px solid var(--t-line);
   color: var(--t-muted);
   font-size: 13.5px;
-}
-.lp-offer-foot svg {
-  flex: none;
-  color: var(--mint);
 }
 /* O cartão do preço é claro, com as cores do tema claro. */
 .lp-price-box {
@@ -2348,6 +2662,22 @@ onBeforeUnmount(() => {
 .lp-anchor {
   color: var(--muted);
   font-size: 14px;
+}
+/* Urgência (laranja só aqui): selo e contagem da promoção da 1ª mensalidade. */
+.lp-best.is-urgent {
+  background: #ff7a2f;
+  color: #2a1203;
+}
+.lp-promo-clock {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #fff1e6;
+  color: #9a3412;
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
 }
 .lp-price {
   display: flex;
@@ -2570,6 +2900,16 @@ onBeforeUnmount(() => {
   color: var(--t-muted);
   font-size: 13px;
 }
+.lp-disclaimer {
+  max-width: 640px;
+  margin-top: 22px !important;
+  padding-top: 16px;
+  border-top: 1px solid var(--t-line);
+  color: var(--t-muted);
+  font-size: 11.5px;
+  line-height: 1.5;
+  opacity: 0.8;
+}
 .lp-login {
   margin-top: 12px;
   color: #c4d3cc;
@@ -2654,21 +2994,54 @@ onBeforeUnmount(() => {
     grid-template-rows: auto;
     row-gap: 14px;
   }
+  .lp-hero {
+    padding-top: 10px;
+  }
   .lp-hero-copy {
     align-items: center;
     gap: 10px;
     text-align: center;
   }
+  /* Cabeçalho: logo à esquerda, demonstração à direita, com uma linha fina embaixo. */
+  .lp-hero-top {
+    align-self: stretch;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 6px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
   .lp-logo {
-    width: 136px;
+    width: min(112px, 30vw);
+  }
+  .lp-top-demo {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 12px;
+    border: 1px solid rgba(29, 233, 160, 0.4);
+    border-radius: 999px;
+    background: rgba(29, 233, 160, 0.08);
+    color: var(--mint);
+    font-size: 12.5px;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .lp-pill {
+    padding: 5px 10px;
+    font-size: 10.5px;
+    letter-spacing: 0.05em;
   }
   .lp-lead {
     font-size: 16px;
   }
   .lp-hero-media {
     justify-self: center;
-    width: min(100%, 35vh);
-    width: min(100%, 35svh);
+    width: min(100%, 39vh);
+    width: min(100%, 39svh);
   }
   .lp-hero-video {
     border-radius: 16px;
@@ -2676,22 +3049,21 @@ onBeforeUnmount(() => {
   .lp-float {
     display: none;
   }
+  /* Duas linhas: "Seu cliente não compra o que" / "não consegue imaginar!" (o tamanho acompanha a largura). */
   .lp-h1 {
-    font-size: clamp(23px, 3.6svh, 30px);
+    font-size: clamp(20px, min(3.6svh, 5.9vw), 28px);
+  }
+  .lp-h1 .is-brand {
+    white-space: nowrap;
   }
   .lp-hero-actions .lp-ctas {
     flex-direction: column;
     align-items: stretch;
     gap: 8px;
   }
-  /* Na capa do celular, "Agendar demonstração" vira link, para a capa caber na tela. */
+  /* Na capa do celular, "Agendar demonstração" sobe para o cabeçalho. */
   .lp-hero-actions .lp-btn-ghost {
-    height: 32px;
-    border: 0;
-    background: none;
-    color: var(--mint);
-    text-decoration: underline;
-    text-underline-offset: 3px;
+    display: none;
   }
   .lp-hide-sm {
     display: none;
@@ -2860,6 +3232,78 @@ onBeforeUnmount(() => {
     margin-bottom: 14px;
   }
 }
+/* Celular: o Assistente IA vira título, animação e passos, nessa ordem; a faixa da promoção encolhe. */
+@media (max-width: 860px) {
+  .lp-ai {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+  .lp-ai-copy {
+    display: contents;
+  }
+  .lp-ai-copy .lp-kicker,
+  .lp-ai-copy .lp-h2 {
+    margin-inline: auto !important;
+    text-align: center;
+  }
+  .lp-ai-copy .lp-sub,
+  .lp-ai-chips {
+    display: none;
+  }
+  .lp-ai-shot {
+    order: 1;
+    margin-top: 18px;
+  }
+  .lp-ai-visual {
+    border-radius: 12px;
+  }
+  .lp-shot-tag {
+    top: -14px;
+    right: 12px;
+    padding: 4px 10px 4px 8px;
+    font-size: 10px;
+  }
+  .lp-ai-steps {
+    order: 2;
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .lp-ai-steps li {
+    padding: 10px 12px;
+  }
+  .lp-promo-bar {
+    gap: 2px 10px;
+    min-height: 0;
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+  .lp-promo-tag {
+    display: none;
+  }
+  .lp-promo-time {
+    padding: 2px 8px 2px 7px;
+    font-size: 12px;
+  }
+}
+@media (max-width: 860px) and (max-height: 700px) {
+  .lp-ai-steps p {
+    display: none;
+  }
+}
+@media (max-width: 380px) {
+  .lp-promo-bar {
+    font-size: 12px;
+    letter-spacing: -0.01em;
+  }
+  .lp-top-demo {
+    padding: 0 10px;
+    font-size: 12px;
+  }
+  .lp-top-demo svg {
+    display: none;
+  }
+}
+
 /* Celular com pouca altura (barra do navegador aberta, aparelhos menores). */
 @media (max-width: 860px) and (max-height: 700px) {
   .lp-swipe {
@@ -2908,7 +3352,7 @@ onBeforeUnmount(() => {
     padding-bottom: 22px;
   }
   .lp-hero-media {
-    width: min(100%, 32svh);
+    width: min(100%, 35svh);
   }
   .lp-lead {
     font-size: 15px;
@@ -2946,6 +3390,15 @@ onBeforeUnmount(() => {
   }
   .lp-pain p {
     margin-top: 4px !important;
+  }
+  /* Mais específico que a regra de 767 px, que vem depois (com a fonte Sora, as dores passavam da tela). */
+  .lp-pains .lp-pain {
+    gap: 12px;
+    padding: 12px 14px;
+  }
+  .lp-pains .lp-pain-ico {
+    width: 36px;
+    height: 36px;
   }
   .lp-steps-cta {
     display: none;
@@ -3081,7 +3534,8 @@ onBeforeUnmount(() => {
   .lp-ex:hover {
     transform: none;
   }
-  .lp-float {
+  .lp-float,
+  .lp-shot-tag i {
     animation: none;
   }
   /* Sem movimento, a faixa vira uma linha parada, quebrando em mais de uma se precisar. */

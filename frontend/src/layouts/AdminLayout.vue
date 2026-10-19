@@ -753,6 +753,7 @@
 <script setup lang="ts">
 // Estilos das telas do Admin Master: só o painel baixa (a página pública não usa).
 import "../styles/admin-master.css";
+import { adminMasterHiddenInMenu } from "../composables/useAdminMasterMenu";
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import { RouterLink, RouterView, useRoute, useRouter } from "vue-router";
 import type { Component } from "vue";
@@ -1554,7 +1555,7 @@ const adminNavigation = computed<AdminNavItem[]>(() => {
   if (canAccessCustomDomains.value) {
     items.splice(5, 0, { id: "domains", type: "link", label: navLabel("domains"), to: "/admin/domains", iconPath: "/admin/domains" });
   }
-  if (auth.user?.is_superuser) {
+  if (auth.user?.is_superuser && !adminMasterHiddenInMenu.value) {
     items.push({
       id: "admin-master",
       type: "link",
@@ -1571,7 +1572,7 @@ const adminNavigation = computed<AdminNavItem[]>(() => {
     if (item.id === "integrations") return hasPermission("integrations");
     if (item.id === "agency") return hasPermission("settings") || (canManageTeam.value && hasPermission("team_management"));
     // Aulas desativadas para as agências (fica a Central de Ajuda); o superadmin continua vendo.
-    if (item.id === "lessons") return !!auth.user?.is_superuser;
+    if (item.id === "lessons") return !!auth.user?.is_superuser && !adminMasterHiddenInMenu.value;
     return true;
   });
   return filtered

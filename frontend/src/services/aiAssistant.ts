@@ -34,6 +34,8 @@ export interface AiPageSectionSummary {
 
 interface AiAssistantChatResponse {
   reply: string;
+  /** Aviso do sistema junto da resposta (ex.: fotos extraídas de um PDF enviado). */
+  notice?: string | null;
 }
 
 export interface AiAssistantUsageResponse {
@@ -55,7 +57,7 @@ export const sendAiAssistantConversation = async (
   attachments: File[] = [],
   pageSections: AiPageSectionSummary[] = [],
   includeImages = true
-): Promise<{ reply: string; usage?: AiAssistantUsageResponse }> => {
+): Promise<{ reply: string; usage?: AiAssistantUsageResponse; notice?: string }> => {
   const form = new FormData();
   form.append("page_id", String(pageId));
   form.append("conversation", JSON.stringify(conversation));
@@ -81,6 +83,7 @@ export const sendAiAssistantConversation = async (
 
   return {
     reply: response.data.reply,
+    notice: response.data.notice || undefined,
     usage: {
       period_key: String(headers["x-ai-assistant-period"] || ""),
       used: parseNumber(headers["x-ai-assistant-usage"]) ?? 0,
@@ -145,6 +148,7 @@ export type AiAssistantStreamEvent =
   | { type: "status"; step: AiAssistantStreamStep; attachments?: number }
   | { type: "delta"; text: string }
   | { type: "replace"; text: string }
+  | { type: "notice"; text: string }
   | { type: "done"; reply: string; usage?: AiAssistantUsageResponse }
   | { type: "error"; status?: number; detail?: string };
 

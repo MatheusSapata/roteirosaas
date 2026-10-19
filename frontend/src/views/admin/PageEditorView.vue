@@ -43,6 +43,18 @@
           Criativos
           <span class="ed-beta">Beta</span>
         </button>
+        <button
+          v-if="isPublished && publicUrl"
+          type="button"
+          class="ed-icon-btn"
+          :class="{ 'is-done': linkCopied }"
+          :aria-label="linkCopied ? 'Link copiado' : 'Copiar link da página'"
+          :title="linkCopied ? 'Link copiado' : 'Copiar link da página'"
+          @click="copyPageLink"
+        >
+          <CheckIcon v-if="linkCopied" aria-hidden="true" />
+          <LinkIcon v-else aria-hidden="true" />
+        </button>
         <button v-if="isPublished && !phoneEditor" type="button" class="ed-btn ed-btn-ghost" :disabled="!publicUrl" @click="viewPublicPage">
           <ExternalLinkIcon aria-hidden="true" />
           {{ viewCopy.actions.viewPage }}
@@ -267,6 +279,12 @@
         <span class="v2ed-toast-ico" aria-hidden="true"><CheckIcon /></span>
         <span>{{ aiToast }}</span>
         <button v-if="aiStructurePreviousSections" type="button" @click="undoAiStructure(); aiToast = ''">Desfazer</button>
+      </div>
+    </Transition>
+    <Transition name="fade">
+      <div v-if="linkCopied" class="v2ed-toast" role="status">
+        <span class="v2ed-toast-ico" aria-hidden="true"><CheckIcon /></span>
+        <span>Link copiado: <b>{{ previewAddressLabel }}</b></span>
       </div>
     </Transition>
     <Transition name="fade">
@@ -613,7 +631,7 @@
               <button type="button" class="esv-link" @click="goLeads">{{ viewCopy.leadSection.manageButton }}</button>
             </EdGroup>
             <EdGroup v-else :title="viewCopy.leadSection.blockedTitle">
-              <p class="ved-hint">{{ viewCopy.leadSection.blockedDescription }}</p>
+              <p class="ved-hint">{{ leadBlockedDescription }}</p>
               <button type="button" class="esv-btn is-primary" @click="goPlans">{{ viewCopy.actions.viewPlans }}</button>
             </EdGroup>
           </template>
@@ -887,7 +905,7 @@
     >
       <h3 class="text-xl font-semibold text-slate-900 dark:text-white">{{ viewCopy.leadSection.blockedTitle }}</h3>
       <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">
-        {{ viewCopy.leadSection.blockedDescription }}
+        {{ leadBlockedDescription }}
       </p>
       <button
         type="button"
@@ -1323,6 +1341,7 @@
                     class="editor-ai-sidebar-bubble"
                     :class="message.role === 'user' ? 'is-user' : 'is-assistant'"
                   >
+                    <p v-if="message.notice" class="ai-notice" role="note">{{ message.notice }}</p>
                     <template v-if="newEditor && message.role === 'assistant' && hasAiStructure(message.content)">
                       <div v-if="aiIntroText(message.content)" class="editor-ai-sidebar-response-text">{{ aiIntroText(message.content) }}</div>
                       <div class="ai-v2-structure">
@@ -1338,6 +1357,16 @@
                             <button type="button" @click="toggleAiExpanded(index)">+{{ aiStructureNames(message.content).length - 5 }} seções</button>
                           </li>
                         </ol>
+                        <div v-if="aiPhotoStrip(message.content)" class="ai-v2-photos" role="status">
+                          <template v-if="aiPhotoStrip(message.content)!.pending">
+                            <span class="ai-v2-photos-spin" aria-hidden="true"></span>
+                            <span>Escolhendo as fotos...</span>
+                          </template>
+                          <template v-else>
+                            <img v-for="url in aiPhotoStrip(message.content)!.photos.slice(0, 5)" :key="url" :src="resolveMediaUrl(url)" alt="" loading="lazy" />
+                            <span :title="aiPhotoStrip(message.content)!.origins || undefined">{{ aiPhotoStrip(message.content)!.label }}</span>
+                          </template>
+                        </div>
                         <div class="ai-v2-actions">
                           <button v-if="aiSwapped.has(message.content)" type="button" class="is-primary" disabled>Trocada ✓</button>
                           <button v-else-if="aiSwapTarget(message.content)" type="button" class="is-primary" :disabled="aiStructureApplying || aiAssistantLoading || isSectionEditorOpen" :title="`Coloca a sugestão no lugar de ${aiSwapTarget(message.content)!.label}`" @click="applyAiStructure(message.content, 'swap')">Trocar {{ aiSwapTarget(message.content)!.label }}</button>
@@ -1726,6 +1755,7 @@ import {
   type AiAssistantUsageResponse
 } from "../../services/aiAssistant";
 import { useAuthStore } from "../../store/useAuthStore";
+import { isLegacyLimitedPlan } from "../../utils/planLabels";
 import { useAgencyStore } from "../../store/useAgencyStore";
 import { useLeadCaptureStore } from "../../store/useLeadCaptureStore";
 import type {
@@ -1762,6 +1792,7 @@ import type {
 import LeadFormPreview from "../../components/admin/leads/LeadFormPreview.vue";
 import { getSectionHeadingDefaults } from "../../utils/sectionHeadings";
 import { withoutNeverShownPlaceholders } from "../../utils/legacyPlaceholders";
+import { resolveMediaUrl } from "../../utils/media";
 import { sectionsInjectionKey } from "../../components/admin/sectionsContext";
 import { sectionUploadGuardKey } from "../../components/admin/sectionUploadGuard";
 import { describeSection, sectionLabels as defaultSectionLabels } from "../../utils/sectionLabels";
@@ -1887,6 +1918,9 @@ watch(pageSlug, () => markUnsavedChanges());
 watch(pageShortDescription, () => markUnsavedChanges());
 
 const auth = useAuthStore();
+const leadBlockedDescription = computed(() =>
+  isLegacyLimitedPlan(auth.user?.plan) ? viewCopy.leadSection.blockedDescriptionLegacy : viewCopy.leadSection.blockedDescription
+);
 const agencyStore = useAgencyStore();
 const leadCaptureStore = useLeadCaptureStore();
 const publicSiteBaseUrl = (
@@ -2054,6 +2088,11 @@ const viewCopy = {
     blockedDescription: t({
       pt: "Este recurso não está incluído no seu plano atual. Assine o Roteiro Online para ativar o formulário obrigatório de leads.",
       es: "Este recurso no está incluido en tu plan actual. Suscríbete a Roteiro Online para activar el formulario obligatorio de leads."
+    }),
+    // Planos antigos (Profissional e Agência): sem oferecer o plano novo.
+    blockedDescriptionLegacy: t({
+      pt: "Este recurso não está incluído no seu plano atual.",
+      es: "Este recurso no está incluido en tu plan actual."
     })
   },
   preview: {
@@ -2612,7 +2651,8 @@ const setupViewportWatcher = () => {
 
 const aiAssistantUrl = "https://chatgpt.com/g/g-6a0f578cbca48191b3073e3aa3556c5d-construtor-roteiro-online";
 // "live": resposta chegando agora; "seconds": quanto tempo a IA levou (só nesta sessão).
-type AiChatMessage = { role: "user" | "assistant"; content: string; live?: boolean; seconds?: number };
+// notice: aviso do sistema junto da resposta (ex.: fotos extraídas do PDF; não volta para a IA).
+type AiChatMessage = { role: "user" | "assistant"; content: string; live?: boolean; seconds?: number; notice?: string };
 const aiAssistantMessages = ref<AiChatMessage[]>([]);
 // Estrutura sendo escrita não aparece como texto cru: o andamento mostra as seções chegando.
 const aiLooksLikeStructure = (content: string) => /ESTRUTURA SUGERIDA|SE[CÇ][AÃ]O\s*:/i.test(content);
@@ -2748,7 +2788,7 @@ const AI_SWAP_ITEM_KEEP_KEYS = ["ctaLink", "ctaMode", "ctaSectionId", "ctaOpenIn
 // Primeira foto de verdade de uma seção (Banner, Artigo, Texto e Imagens, Foto...).
 const aiSectionPhoto = (section: PageSection): string => {
   const raw = section as Record<string, any>;
-  const candidates = [raw.backgroundImage, raw.image, ...(Array.isArray(raw.images) ? raw.images : [])];
+  const candidates = [raw.backgroundImage, raw.image, raw.mobileBackgroundImage, raw.mobileImage, ...(Array.isArray(raw.images) ? raw.images : [])];
   return candidates.find(value => typeof value === "string" && value && !isAiFiller(value)) || "";
 };
 // Menu do topo: igual ao editor, a cor dos links acompanha o fundo (transparente e desfocado ficam
@@ -2778,6 +2818,10 @@ const mergeAiSwap = (current: PageSection, incoming: PageSection): PageSection =
       if (Array.isArray(converted.images)) converted.images = [photo];
       // Inclui as versões de celular, para não ficar a imagem provisória no telefone.
       for (const key of ["backgroundImage", "mobileBackgroundImage", "image", "mobileImage"]) if (key in converted) converted[key] = photo;
+      // O encaixe que a agência escolheu para essa foto vai junto (Banner).
+      const raw = current as Record<string, any>;
+      const focus = photo === raw.backgroundImage ? raw.backgroundFocus : photo === raw.mobileBackgroundImage ? raw.mobileBackgroundFocus : "";
+      if (focus) converted.backgroundFocus = converted.mobileBackgroundFocus = focus;
     }
     return converted as PageSection;
   }
@@ -2788,6 +2832,9 @@ const mergeAiSwap = (current: PageSection, incoming: PageSection): PageSection =
     for (const key of ["backgroundImage", "mobileBackgroundImage", "image", "mobileImage", "images"]) {
       if (key in next && !isAiFiller(next[key])) merged[key] = next[key];
     }
+    // Foto nova: o encaixe da anterior não vale para ela.
+    if (merged.backgroundImage !== (current as Record<string, any>).backgroundImage) delete merged.backgroundFocus;
+    if (merged.mobileBackgroundImage !== (current as Record<string, any>).mobileBackgroundImage) delete merged.mobileBackgroundFocus;
     if (Array.isArray(next.days)) {
       merged.days = (merged.days || []).map((day: Record<string, any>, index: number) =>
         next.days[index] && !isAiFiller(next.days[index].image) ? { ...day, image: next.days[index].image } : day
@@ -2832,7 +2879,7 @@ const aiPageImage = (page: AgencyPage) => {
     config = {};
   }
   const hero = Array.isArray(config.sections) ? config.sections.find((item: any) => item?.type === "hero") : null;
-  return hero?.backgroundImage || page.cover_image_url || "";
+  return hero?.backgroundImage || hero?.mobileBackgroundImage || page.cover_image_url || "";
 };
 // Itens do Menu do topo que a IA mandou sem o identificador da seção ("Roteiro"): liga pelo
 // título das seções da página; item que não acha seção (nem link externo) sai do menu.
@@ -2877,8 +2924,12 @@ const resolveAiMenuLinks = (pageSections: PageSection[]): PageSection[] => {
 };
 const stripAiMarkers = (pageSections: PageSection[]) =>
   pageSections.map(section => {
-    if (!("aiSetKeys" in section) && !("aiFlights" in section)) return section;
-    const { aiSetKeys: _keys, aiFlights: _flights, ...clean } = section as PageSection & { aiSetKeys?: string[]; aiFlights?: unknown[] };
+    if (!("aiSetKeys" in section) && !("aiFlights" in section) && !("aiPhotoOrigins" in section)) return section;
+    const { aiSetKeys: _keys, aiFlights: _flights, aiPhotoOrigins: _origins, ...clean } = section as PageSection & {
+      aiSetKeys?: string[];
+      aiFlights?: unknown[];
+      aiPhotoOrigins?: Record<string, string>;
+    };
     return clean as PageSection;
   });
 // Trechos de voo da sugestão: o servidor grava na seção (com código, dados da API; sem, manuais)
@@ -3069,24 +3120,93 @@ const aiExpanded = reactive(new Set<number>());
 const aiDetails = reactive(new Set<number>());
 const toggleAiExpanded = (index: number) => (aiExpanded.has(index) ? aiExpanded.delete(index) : aiExpanded.add(index));
 const toggleAiDetails = (index: number) => (aiDetails.has(index) ? aiDetails.delete(index) : aiDetails.add(index));
+// Dias de cada roteiro, pelo identificador que a IA usa em "Substitui" (ou "secao-N").
+const aiItineraryDays = () => {
+  const itineraryDays: Record<string, number> = {};
+  sections.value.forEach((section, index) => {
+    if (section.type !== "itinerary") return;
+    const days = ((section as ItinerarySection).days || []).length;
+    if (section.anchorId) itineraryDays[section.anchorId] = days;
+    itineraryDays[`secao-${index + 1}`] = days;
+  });
+  return itineraryDays;
+};
+// Fotos do plano: assim que a IA entrega a estrutura, as seções (com as fotos dos bancos) já são
+// montadas em segundo plano. Inserir/Substituir/Trocar usam o que estiver pronto, sem buscar de novo.
+type AiPreparedStructure = {
+  key: string;
+  promise: Promise<PageSection[]>;
+  photos: string[] | null;
+  // Fotos que já eram da agência (outras páginas dela ou PDF enviado): foto → de onde veio.
+  origins: Record<string, string>;
+  failed: boolean;
+};
+// Uma por resposta e por "Inserir imagens" (ligar e desligar não busca as fotos de novo).
+const aiPrepared = reactive(new Map<string, AiPreparedStructure>());
+const AI_PREPARED_MAX = 6;
+const aiPreparedId = (reply: string, includeImages: boolean) => `${includeImages ? "1" : "0"}:${reply}`;
+const aiStockPhotos = (generated: PageSection[]) => aiPagePhotos(generated.filter(section => (section as any).aiStockPhoto));
+const aiAgencyPhotoOrigins = (generated: PageSection[]) =>
+  Object.assign({}, ...generated.map(section => ((section as any).aiPhotoOrigins || {}) as Record<string, string>)) as Record<string, string>;
+// 'página "Jalapão 6 dias"' e 'PDF "roteiro"' → "da página "Jalapão 6 dias" e do PDF "roteiro"".
+const aiOriginsText = (origins: Record<string, string>) => {
+  const labels = [...new Set(Object.values(origins))].map(origin => (origin.startsWith("PDF") ? `do ${origin}` : `da ${origin}`));
+  return labels.length > 1 ? `${labels.slice(0, -1).join(", ")} e ${labels[labels.length - 1]}` : labels[0] || "";
+};
+const prepareAiStructure = (reply: string, force = false) => {
+  const includeImages = aiIncludeImages.value;
+  const itineraryDays = aiItineraryDays();
+  // Os dias dos roteiros da página só contam quando a sugestão troca uma seção ("Substitui").
+  const key = /substitui/i.test(reply) ? JSON.stringify(itineraryDays) : "";
+  const id = aiPreparedId(reply, includeImages);
+  const current = aiPrepared.get(id);
+  if (current && !force && current.key === key && !current.failed) return current;
+  const promise = previewAiAssistantPageBase(pageId, reply, { includeImages, currentPhotos: aiPagePhotos(sections.value), itineraryDays });
+  const entry = reactive({ key, promise, photos: null, origins: {}, failed: false }) as AiPreparedStructure;
+  promise.then(
+    generated => {
+      entry.origins = aiAgencyPhotoOrigins(generated);
+      entry.photos = aiStockPhotos(generated);
+    },
+    () => { entry.failed = true; }
+  );
+  aiPrepared.delete(id);
+  aiPrepared.set(id, entry);
+  while (aiPrepared.size > AI_PREPARED_MAX) aiPrepared.delete(aiPrepared.keys().next().value as string);
+  return entry;
+};
+// Faixa do cartão da estrutura: "Escolhendo as fotos..." e depois as miniaturas das que vieram.
+const aiPhotoStrip = (reply: string) => {
+  const entry = aiIncludeImages.value ? aiPrepared.get(aiPreparedId(reply, true)) : undefined;
+  if (!entry || entry.failed) return null;
+  if (!entry.photos) return { pending: true, photos: [] as string[], label: "", origins: "" };
+  if (!entry.photos.length) return null;
+  const count = entry.photos.length;
+  const ownOrigins = entry.photos.filter(url => url in entry.origins).map(url => entry.origins[url]);
+  const own = ownOrigins.length;
+  const fromPdf = ownOrigins.filter(origin => origin.startsWith("PDF")).length;
+  const where = fromPdf === own ? "do seu PDF" : fromPdf ? "do seu material" : "das suas outras páginas";
+  const label = `${count === 1 ? "1 foto pronta" : `${count} fotos prontas`}${own ? ` · ${own} ${where}` : ""}`;
+  return { pending: false, photos: entry.photos, label, origins: own ? `Fotos que já eram da agência: ${aiOriginsText(entry.origins)}` : "" };
+};
+watch(aiIncludeImages, () => {
+  const last = aiLastAssistant.value;
+  if (last && !last.live && [true, false].some(images => aiPrepared.has(aiPreparedId(last.content, images)))) prepareAiStructure(last.content);
+});
 const applyAiStructure = async (reply: string, mode: "insert" | "replace" | "swap") => {
   if (aiStructureApplying.value || aiAssistantLoading.value || isSectionEditorOpen.value) return;
   aiStructureApplying.value = true;
   aiStructureError.value = "";
   try {
-    // Dias de cada roteiro, pelo identificador que a IA usa em "Substitui" (ou "secao-N").
-    const itineraryDays: Record<string, number> = {};
-    sections.value.forEach((section, index) => {
-      if (section.type !== "itinerary") return;
-      const days = ((section as ItinerarySection).days || []).length;
-      if (section.anchorId) itineraryDays[section.anchorId] = days;
-      itineraryDays[`secao-${index + 1}`] = days;
-    });
-    const generated = await previewAiAssistantPageBase(pageId, reply, {
-      includeImages: aiIncludeImages.value,
-      currentPhotos: aiPagePhotos(sections.value),
-      itineraryDays
-    });
+    let prepared = await prepareAiStructure(reply).promise;
+    // A página ganhou alguma dessas fotos depois do preparo (ex.: aplicou esta mesma sugestão):
+    // busca de novo para não repetir foto. Ao substituir tudo, as atuais saem, então não importa.
+    const onPage = new Set(aiPagePhotos(sections.value));
+    if (mode !== "replace" && aiStockPhotos(prepared).some(url => onPage.has(url))) {
+      prepared = await prepareAiStructure(reply, true).promise;
+    }
+    // Cópia: a aplicação mexe nas seções (identificadores) e a sugestão pode ser aplicada de novo.
+    const generated = JSON.parse(JSON.stringify(prepared)) as PageSection[];
     if (generated.some(section => section.type === "links" && (section as LinksSection).items?.some(item => (item as any).pageSlug))) {
       if (!aiAgencyPages.pages.value.length) await aiAgencyPages.load();
     }
@@ -3101,7 +3221,11 @@ const applyAiStructure = async (reply: string, mode: "insert" | "replace" | "swa
         ? { ...section, logoUrl: agencyLogo }
         : section
     ).map(prepareAiSection).map(section => {
-      const { aiReplaces: _replaced, aiStockPhoto: _stock, ...clean } = section as PageSection & { aiReplaces?: string; aiStockPhoto?: boolean };
+      const { aiReplaces: _replaced, aiStockPhoto: _stock, aiPhotoOrigins: _origins, ...clean } = section as PageSection & {
+        aiReplaces?: string;
+        aiStockPhoto?: boolean;
+        aiPhotoOrigins?: Record<string, string>;
+      };
       return clean as PageSection;
     }));
     let nextSections = additions;
@@ -3240,6 +3364,10 @@ const applyAiStructure = async (reply: string, mode: "insert" | "replace" | "swa
         : `"Inserir imagens" está desligado: ${photoMisses.join(", ")} ficou com a foto atual.`);
     }
     if (headerMadeSolid) notes.push("O menu ficou sólido: transparente e desfocado precisam de Banner Inicial.");
+    // Fotos que já eram da agência: avisa de onde vieram (outras páginas dela ou o PDF enviado).
+    const ownPhotos = aiAgencyPhotoOrigins(generated);
+    const ownCount = Object.keys(ownPhotos).length;
+    if (ownCount) notes.push(`${ownCount === 1 ? "1 foto veio" : `${ownCount} fotos vieram`} ${aiOriginsText(ownPhotos)}.`);
     showAiToast(notes.join(" "));
   } catch (err: any) {
     const detail = err?.response?.data?.detail;
@@ -3607,10 +3735,11 @@ const sendAiAssistantMessage = async () => {
 
   let succeeded = false;
   try {
-    let result: { reply: string; usage?: AiAssistantUsageResponse };
+    let result: { reply: string; usage?: AiAssistantUsageResponse; notice?: string };
     try {
       result = await streamAiAssistantConversation(pageId, conversationSnapshot, attachmentsSnapshot, event => {
         if (event.type === "status") aiLive.step = event.step;
+        else if (event.type === "notice") aiAssistantMessages.value[assistantIndex].notice = event.text;
         else if (event.type === "delta") setContent(aiLive.content + event.text);
         else if (event.type === "replace") setContent(event.text);
       }, pageSectionsSnapshot, aiIncludeImages.value);
@@ -3622,12 +3751,15 @@ const sendAiAssistantMessage = async () => {
       aiLive.step = "thinking";
       setContent("");
       result = await sendAiAssistantConversation(pageId, conversationSnapshot, attachmentsSnapshot, pageSectionsSnapshot, aiIncludeImages.value);
+      if (result.notice) aiAssistantMessages.value[assistantIndex].notice = result.notice;
     }
     if (result.usage) {
       aiAssistantUsage.value = result.usage;
     }
     setContent(result.reply);
     succeeded = true;
+    // Estrutura pronta: as fotos já começam a ser escolhidas enquanto a pessoa lê o plano.
+    if (hasAiStructure(result.reply)) prepareAiStructure(result.reply);
   } catch (error) {
     console.error("Erro ao consultar a ajuda IA", error);
     setContent(aiAssistantErrorText(error));
@@ -4035,7 +4167,7 @@ const previewSectionExtraProps = (section: PageSection) => {
     extra.logoUrl = hero?.logoUrl || branding.value.logo_url || "";
     if (previewDesign.value === "v2") extra.logoRadius = hero?.logoBorderRadius ?? 0;
     // Sobreposto à capa (editor novo), o próprio banner aparece atrás do menu.
-    extra.previewBackgroundImage = overlayHeader.value.header >= 0 ? "" : hero?.backgroundImage || "";
+    extra.previewBackgroundImage = overlayHeader.value.header >= 0 ? "" : hero?.backgroundImage || hero?.mobileBackgroundImage || "";
     extra.previewOverlayColor = hero?.gradientColor || hero?.backgroundColor || "#05060f";
     extra.agencyName = branding.value.agency_name || currentAgency.value?.name || "";
     extra.agencySocialLinks = currentAgency.value?.social_links || branding.value.agency_profile?.social_links || [];
@@ -6279,6 +6411,43 @@ const viewPublicPage = () => {
   window.open(publicUrl.value, "_blank");
 };
 
+// Copiar o link da página publicada pelo topo do editor (para mandar no WhatsApp sem abrir a página).
+const linkCopied = ref(false);
+let linkCopiedTimer: ReturnType<typeof setTimeout> | null = null;
+const copyText = async (text: string) => {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    // Sem permissão da área de transferência (alguns celulares): o jeito antigo.
+    const field = document.createElement("textarea");
+    field.value = text;
+    field.setAttribute("readonly", "");
+    field.style.position = "fixed";
+    field.style.opacity = "0";
+    document.body.appendChild(field);
+    field.select();
+    let copied = false;
+    try {
+      copied = document.execCommand("copy");
+    } catch {
+      copied = false;
+    }
+    field.remove();
+    return copied;
+  }
+};
+const copyPageLink = async () => {
+  if (!publicUrl.value || !hasWindow) return;
+  if (!(await copyText(publicUrl.value))) {
+    window.prompt("Copie o link da página:", publicUrl.value);
+    return;
+  }
+  linkCopied.value = true;
+  if (linkCopiedTimer) clearTimeout(linkCopiedTimer);
+  linkCopiedTimer = setTimeout(() => (linkCopied.value = false), 2500);
+};
+
 const cancelNavigationModal = () => {
   pendingNavigationPath.value = null;
   unsavedNavigationModal.value.open = false;
@@ -8153,6 +8322,7 @@ onMounted(async () => {
 .ed-btn-primary:hover:not(:disabled) { background: color-mix(in srgb, var(--primary) 88%, black); }
 .ed-icon-btn { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 999px; background: var(--card); color: var(--muted-foreground); box-shadow: var(--shadow-card); }
 .ed-icon-btn svg { width: 16px; height: 16px; }
+.ed-icon-btn.is-done { color: var(--primary); }
 .ed-menu-wrap { position: relative; }
 .ed-menu { position: absolute; top: calc(100% + 6px); right: 0; z-index: 60; display: flex; min-width: 200px; flex-direction: column; border-radius: 14px; background: var(--popover); padding: 6px; box-shadow: var(--shadow-elegant); }
 .ed-menu button { border-radius: 10px; padding: 8px 10px; text-align: left; font-size: 13px; color: var(--popover-foreground); }
@@ -8358,6 +8528,11 @@ onMounted(async () => {
 .ai-v2-structure li { display: flex; align-items: center; gap: 10px; padding: 6px 8px; font-size: 13px; }
 .ai-v2-structure li b { width: 16px; flex-shrink: 0; text-align: right; color: var(--muted-foreground); font-size: 12px; }
 .ai-v2-structure li.is-more button { padding-left: 26px; font-size: 13px; font-weight: 700; color: var(--primary); }
+.ai-notice { margin: 0 0 10px; padding: 10px 12px; border-radius: 12px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border); font-size: 12.5px; line-height: 1.45; color: var(--foreground); }
+.ai-v2-photos { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 36px; font-size: 12px; font-weight: 600; color: var(--muted-foreground); }
+.ai-v2-photos img { width: 34px; height: 34px; flex-shrink: 0; border-radius: 8px; object-fit: cover; background: var(--card); box-shadow: inset 0 0 0 1px var(--border); }
+.ai-v2-photos span:last-child { margin-left: 2px; }
+.ai-v2-photos-spin { width: 14px; height: 14px; flex-shrink: 0; border-radius: 999px; border: 2px solid var(--border); border-top-color: #12b981; animation: ai-live-spin 0.8s linear infinite; }
 .ai-v2-actions { display: flex; gap: 8px; }
 .ai-v2-actions button { flex: 1; padding: 0 12px; white-space: nowrap; height: 38px; border-radius: 999px; background: var(--card); box-shadow: inset 0 0 0 1px var(--border); font-size: 13px; font-weight: 700; color: var(--foreground); }
 .ai-v2-actions button.is-primary { background: #12b981; box-shadow: none; color: #fff; }

@@ -20,7 +20,9 @@ from app.services.asaas import AsaasAPIError, AsaasClient, build_default_split_p
 from app.services.cakto import CaktoAPIError, CaktoIntegrationService
 from app.services.checkout import find_pix_automatic_authorization_id, handle_asaas_checkout_webhook
 from app.services.company_status import mark_subscription_overdue
-from app.services.ntfy import SubscriptionPushScenario, publish_subscription_notification
+from app.services.subscription_notifications import SubscriptionPushScenario, publish_subscription_notification
+from app.services.webhook_notifications import notify_payment_overdue
+from app.services.legacy_renewal import legacy_renewal_info, legacy_upgrade_available
 from app.services.plans import effective_plan
 from app.services.trial import end_trial
 from app.services.trial import republish_all_user_pages
@@ -191,6 +193,15 @@ class BillingInfo(BaseModel):
     card_last4: Optional[str] = None
     scheduled_downgrade_plan: Optional[str] = None
     scheduled_downgrade_at: Optional[datetime] = None
+    # Plano antigo (antes do plano único): a tela mostra só o plano do cliente, sem o plano novo.
+    legacy: bool = False
+    # Valor da renovação por ciclo (mensal = do mês, anual = do ano), decidido no servidor.
+    legacy_renewal_amount: Optional[Decimal] = None
+    # panel: renova pela tela; external: gerida pelo local onde foi contratada; support: fale com o suporte.
+    legacy_renewal_mode: Optional[Literal["panel", "external", "support"]] = None
+    legacy_managed_externally: bool = False
+    # Profissional ou Agência antigo que renova pela tela: também pode fazer upgrade para o plano único.
+    legacy_upgrade_available: bool = False
 
 
 class BillingInvoiceOut(BaseModel):
@@ -350,6 +361,7 @@ def _increase_total_revenue(db: Session, amount: Decimal) -> None:
 
 def _build_billing_info(user: User) -> BillingInfo:
     sub = user.subscription
+    legacy = legacy_renewal_info(sub)
     return BillingInfo(
         plan=effective_plan(user),
         status=sub.status if sub else "inactive",
@@ -363,6 +375,11 @@ def _build_billing_info(user: User) -> BillingInfo:
         card_last4=sub.card_last4 if sub else None,
         scheduled_downgrade_plan=(sub.external_reference.split("scheduled_downgrade:", 1)[1] if sub and sub.external_reference and sub.external_reference.startswith("scheduled_downgrade:") else None),
         scheduled_downgrade_at=sub.valid_until if sub and sub.external_reference and sub.external_reference.startswith("scheduled_downgrade:") else None,
+        legacy=legacy.legacy,
+        legacy_renewal_amount=legacy.amount,
+        legacy_renewal_mode=legacy.mode,
+        legacy_managed_externally=legacy.managed_externally,
+        legacy_upgrade_available=legacy_upgrade_available(sub),
     )
 
 
@@ -523,9 +540,11 @@ def _notify_subscription_push(
             plan_name=subscription.plan or "Assinatura",
             offer_name=offer_name or subscription.external_reference or subscription.asaas_payment_link_id or subscription.asaas_subscription_id,
             cancelled_item=cancelled_item,
+            customer_email=user.email,
+            customer_phone=user.whatsapp,
         )
     except Exception:  # pragma: no cover - alerta não pode quebrar o webhook
-        logger.exception("Falha ao enviar notificação ntfy para webhook Asaas.")
+        logger.exception("Falha ao enviar o aviso do webhook Asaas.")
 
 
 @router.post("/webhook")
@@ -594,6 +613,17 @@ async def webhook(request: Request, db: Session = Depends(get_db)) -> Dict[str, 
                     elif event == "PAYMENT_OVERDUE":
                         # Inadimplente: no ar por 3 dias e cobrando por 30 (o job horário encerra depois).
                         mark_subscription_overdue(subscription, payment.get("dueDate"))
+                        notify_payment_overdue(
+                            user_name=user.name,
+                            plan_name=plan_key,
+                            amount=payment.get("value"),
+                            due_date=payment.get("dueDate"),
+                            payment_method=_humanize_payment_method(payment.get("billingType") or subscription.payment_method_type),
+                            kind="Renovação" if previous_status in {"active", "past_due"} else "Primeira cobrança",
+                            email=user.email,
+                            phone=user.whatsapp,
+                            dedupe_key=str(payment.get("id") or f"{user.id}:{payment.get('dueDate')}"),
+                        )
                     elif event in {"PAYMENT_REFUNDED", "PAYMENT_DELETED"}:
                         subscription.status = "inactive"
                         mark_viajechat_cancelled(

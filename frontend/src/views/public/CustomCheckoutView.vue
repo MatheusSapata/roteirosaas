@@ -1,12 +1,50 @@
 ﻿<template>
-  <div class="checkout-shell" :class="themeClass">
-    <div class="checkout-layout">
-      <aside class="checkout-banner-desktop" :style="desktopBannerStyle"></aside>
+  <!-- Dois modelos (Admin Master › Ofertas e checkout › Checkouts): o clássico (imagem na coluna lateral)
+       e o "Banner no topo", mobile first, inspirado no checkout do Viaje On. As etapas são as mesmas;
+       no modelo com banner os contêineres têm classes próprias (cb-*) para não herdar o layout clássico. -->
+  <div :class="[isBannerModel ? 'cb-shell' : 'checkout-shell', themeClass, { 'checkout-pending': !config }]">
+    <div :class="isBannerModel ? 'cb-page' : 'checkout-layout'">
+      <aside v-if="config && !isBannerModel" class="checkout-banner-desktop" :style="desktopBannerStyle"></aside>
 
-      <main class="checkout-main">
-        <div v-if="!isPaymentApproved" class="checkout-mobile-banner" :style="mobileBannerStyle"></div>
+      <main :class="isBannerModel ? 'cb-main' : 'checkout-main'">
+        <div v-if="config && !isBannerModel && !isPaymentApproved" class="checkout-mobile-banner" :style="mobileBannerStyle"></div>
 
-        <section class="checkout-stage">
+        <template v-if="isBannerModel && config">
+          <picture v-if="bannerDesktopUrl || bannerMobileUrl" class="cb-banner">
+            <source v-if="bannerMobileUrl" media="(max-width: 767px)" :srcset="bannerMobileUrl" />
+            <img :src="bannerDesktopUrl || bannerMobileUrl" :alt="config.offer.title" />
+          </picture>
+
+          <div class="cb-head">
+            <img :src="brandLogoSrc" alt="Roteiro Online" class="cb-head-logo" width="150" height="45" />
+            <p class="cb-head-title">{{ config.offer.title }}</p>
+            <p v-if="config.offer.subtitle" class="cb-head-sub">{{ config.offer.subtitle }}</p>
+            <div class="cb-head-chips">
+              <span class="is-ok"><ShieldCheckIcon aria-hidden="true" />Compra segura</span>
+              <span><LockIcon aria-hidden="true" />Dados protegidos</span>
+              <span><BadgeCheckIcon aria-hidden="true" />7 dias de garantia</span>
+            </div>
+          </div>
+
+          <ol v-if="!loading && !errorMessage" class="cb-steps" :aria-label="`Etapa ${progressStep} de 3`">
+            <li
+              v-for="(label, index) in progressLabels"
+              :key="label"
+              :class="{ 'is-active': index + 1 === progressStep, 'is-done': index + 1 < progressStep }"
+              :aria-current="index + 1 === progressStep ? 'step' : undefined"
+            >
+              <span class="cb-step-pill">
+                <span class="cb-step-dot">
+                  <CheckIcon v-if="index + 1 < progressStep" aria-hidden="true" />
+                  <template v-else>{{ index + 1 }}</template>
+                </span>
+                <span class="cb-step-label">{{ label }}</span>
+              </span>
+            </li>
+          </ol>
+        </template>
+
+        <section :class="isBannerModel ? 'cb-stage' : 'checkout-stage'">
           <template v-if="loading">
             <div class="checkout-loader-wrap">
               <div class="checkout-loader"></div>
@@ -22,12 +60,12 @@
 
           <template v-else-if="step === 'details'">
             <div class="checkout-copy">
-              <p class="checkout-eyebrow">{{ isUpgradeFlow ? "Vamos fazer seu upgrade!" : "Vamos começar!" }}</p>
+              <p class="checkout-eyebrow">{{ isLegacyRenewal ? "Vamos renovar sua assinatura!" : isUpgradeFlow ? "Vamos fazer seu upgrade!" : "Vamos começar!" }}</p>
               <h1 class="checkout-title">Informe seus dados para continuar</h1>
               <p class="checkout-subtitle">Todos os dados são necessários para a emissão da sua compra.</p>
             </div>
 
-            <form class="checkout-form" @submit.prevent="submitDetails">
+            <form id="checkout-details-form" class="checkout-form" @submit.prevent="submitDetails">
               <label class="checkout-field">
                 <span>Nome completo</span>
                 <input v-model="form.customer_name" :disabled="lockedProfileFields.customer_name" placeholder="Seu nome" />
@@ -65,7 +103,8 @@
                   </div>
                 </label>
               </div>
-              <label class="checkout-field">
+              <!-- Renovação do plano antigo (valor que o cliente já pagava) e upgrade do plano antigo (valor cheio): sem cupom. -->
+              <label v-if="!isLegacyRenewal && !isLegacyUpgrade" class="checkout-field">
                 <span>Você possui cupom de desconto?</span>
                 <div class="checkout-coupon-wrap">
                   <input v-model="form.coupon_code" placeholder="Digite seu cupom" />
@@ -123,7 +162,7 @@
             </div>
 
             <div class="checkout-card-step-shell">
-            <form class="checkout-form" @submit.prevent="submitCard">
+            <form id="checkout-card-form" class="checkout-form" @submit.prevent="submitCard">
               <div class="checkout-card-info">
                 <div class="checkout-card-info-icon">
                   <CreditCardIcon aria-hidden="true" />
@@ -171,10 +210,18 @@
                   />
                 </label>
               </div>
+              <label v-if="installmentOptions.length > 1" class="checkout-field">
+                <span>Parcelas</span>
+                <select v-model.number="card.installment_count" class="checkout-select">
+                  <option v-for="option in installmentOptions" :key="option.count" :value="option.count">
+                    {{ installmentOptionLabel(option) }}
+                  </option>
+                </select>
+              </label>
               <button class="checkout-secondary" type="button" @click="goBackToMethod">Pagar com outro método</button>
               <button class="checkout-primary" type="submit" :disabled="submitting || cardAwaitingConfirmation">
                 <span v-if="submitting || cardAwaitingConfirmation" class="checkout-inline-spinner" aria-hidden="true"></span>
-                {{ submitting ? "Processando..." : (cardAwaitingConfirmation ? "Aguardando confirmação..." : "Prosseguir") }}
+                {{ submitting ? "Processando..." : (cardAwaitingConfirmation ? "Aguardando confirmação..." : (isBannerModel ? "Pagar agora" : "Prosseguir")) }}
               </button>
             </form>
             </div>
@@ -200,6 +247,7 @@
             <div class="checkout-note-box">
               <p>Após o pagamento, você será redirecionado automaticamente.</p>
               <p>Ao confirmar no banco, você autoriza a recorrência mensal ou anual do seu plano.</p>
+              <p v-if="promoAmount">Hoje você paga {{ money(promoAmount) }}. As próximas mensalidades são de {{ formattedAmount }}.</p>
               <p v-if="session?.pix_expiration_date">O QR Code expira em {{ pixExpirationLabel }}.</p>
             </div>
 
@@ -216,7 +264,7 @@
             <div class="checkout-summary-card">
               <h3>Detalhes da compra</h3>
               <div class="checkout-summary-row"><span>Produto</span><strong>{{ config?.offer.title }}</strong></div>
-              <div class="checkout-summary-row"><span>Valor pago</span><strong>{{ formattedAmount }}</strong></div>
+              <div class="checkout-summary-row"><span>Valor pago</span><strong>{{ paidAmountLabel }}</strong></div>
               <div class="checkout-summary-row"><span>Forma de pagamento</span><strong>{{ paymentMethodLabel }}</strong></div>
               <div class="checkout-summary-row"><span>Data e hora</span><strong>{{ paidAtLabel }}</strong></div>
             </div>
@@ -224,7 +272,7 @@
             <div class="checkout-success-action">
               <button class="checkout-primary checkout-success-button" :disabled="true" type="button">
                 <span v-if="onboardingRedirecting" class="checkout-inline-spinner" aria-hidden="true"></span>
-                <span>{{ isUpgradeFlow ? "Realizando seu upgrade..." : "Iniciando seu cadastro..." }}</span>
+                <span>{{ isLegacyRenewal ? "Renovando sua assinatura..." : isUpgradeFlow ? "Realizando seu upgrade..." : "Iniciando seu cadastro..." }}</span>
               </button>
             </div>
           </template>
@@ -287,7 +335,7 @@
           <div v-if="showAccessTransition" class="checkout-access-transition">
             <div class="checkout-access-spinner"></div>
             <p class="checkout-access-line checkout-access-line-primary">
-              {{ isUpgradeFlow ? "Estamos realizando seu upgrade..." : "Estamos finalizando seu cadastro..." }}
+              {{ isLegacyRenewal ? "Estamos renovando sua assinatura..." : isUpgradeFlow ? "Estamos realizando seu upgrade..." : "Estamos finalizando seu cadastro..." }}
             </p>
             <p class="checkout-access-line checkout-access-line-secondary">
               Sua nova maneira de apresentar viagens começa agora.
@@ -297,12 +345,51 @@
           <p v-if="inlineError" class="checkout-inline-error">{{ inlineError }}</p>
         </section>
 
-        <div v-if="step !== 'success' && step !== 'password'" class="checkout-protected checkout-protected-footer">
+        <div v-if="config && step !== 'success' && step !== 'password'" class="checkout-protected checkout-protected-footer">
           <LockIcon aria-hidden="true" />
           <span>Sua compra está protegida. Pagamento processado pelo Asaas</span>
         </div>
 
-        <footer v-if="step !== 'success' && step !== 'password'" class="checkout-footer">
+        <!-- Modelo com banner: resumo ao lado no computador; no celular, total e botão fixos no rodapé. -->
+        <aside v-if="isBannerModel && config && !errorMessage && step !== 'success' && step !== 'password'" class="cb-summary" aria-label="Resumo do pedido">
+          <div class="cb-summary-card" :class="{ 'has-cta': Boolean(barAction) }">
+            <p class="cb-summary-title">Resumo do pedido</p>
+            <div class="cb-summary-item">
+              <span>{{ config.offer.footer_product_label || config.offer.title }}</span>
+              <span>{{ billingCycle === "annual" ? "Anual" : "Mensal" }}</span>
+            </div>
+            <div v-if="hasAppliedCoupon" class="cb-summary-coupon">
+              <TicketPercentIcon aria-hidden="true" />
+              <span>Cupom <b>{{ effectiveAppliedCouponCode }}</b><template v-if="discountPercentLabel"> · {{ discountPercentLabel }}</template></span>
+              <button type="button" :disabled="submitting" aria-label="Remover cupom" @click="removeAppliedCoupon">×</button>
+            </div>
+            <div class="cb-summary-total">
+              <small>
+                {{ promoAmount ? "Hoje você paga" : "Total a pagar" }}
+                <s v-if="promoAmount">{{ formattedAmount }}</s>
+                <s v-else-if="hasAppliedCoupon && originalAmountLabel">{{ originalAmountLabel }}</s>
+              </small>
+              <div class="cb-summary-price">
+                <strong>{{ footerPrice }}</strong>
+                <span v-if="footerSuffix">{{ footerSuffix }}</span>
+              </div>
+            </div>
+            <p v-if="footerNote" class="cb-summary-note">{{ footerNote }}</p>
+            <button
+              v-if="barAction"
+              class="cb-bar-cta"
+              type="submit"
+              :form="barAction.form"
+              :disabled="submitting || cardAwaitingConfirmation"
+            >
+              <span v-if="submitting || cardAwaitingConfirmation" class="checkout-inline-spinner" aria-hidden="true"></span>
+              {{ barAction.label }}
+            </button>
+            <p class="cb-summary-guarantee"><ShieldCheckIcon aria-hidden="true" />7 dias de garantia: não gostou, devolvemos 100%.</p>
+          </div>
+        </aside>
+
+        <footer v-if="config && !isBannerModel && step !== 'success' && step !== 'password'" class="checkout-footer">
           <div v-if="hasAppliedCoupon" class="checkout-footer-discount-line">
             <div class="checkout-footer-discount-main">
               <TicketPercentIcon class="checkout-footer-discount-icon" aria-hidden="true" />
@@ -330,14 +417,16 @@
             </div>
             <div class="checkout-footer-right">
               <div class="checkout-footer-total-only">
-                <small>Total a pagar</small>
+                <small>{{ promoAmount ? "Hoje você paga" : "Total a pagar" }}</small>
                 <div class="checkout-footer-price-row">
-                  <span v-if="hasAppliedCoupon && originalAmountLabel" class="checkout-footer-original-price">{{ originalAmountLabel }}</span>
+                  <span v-if="promoAmount" class="checkout-footer-original-price">{{ formattedAmount }}</span>
+                  <span v-else-if="hasAppliedCoupon && originalAmountLabel" class="checkout-footer-original-price">{{ originalAmountLabel }}</span>
                   <div class="checkout-footer-final-price">
-                    <strong>{{ formattedAmount }}</strong>
-                    <span class="checkout-footer-cycle-suffix">/ mês</span>
+                    <strong>{{ footerPrice }}</strong>
+                    <span v-if="footerSuffix" class="checkout-footer-cycle-suffix">{{ footerSuffix }}</span>
                   </div>
                 </div>
+                <span v-if="footerNote" class="checkout-footer-note">{{ footerNote }}</span>
               </div>
             </div>
           </div>
@@ -349,21 +438,30 @@
 
 <script setup lang="ts">
 import {
+  BadgeCheckIcon,
+  CheckIcon,
   CreditCardIcon,
   EyeIcon,
   EyeOffIcon,
   LockIcon,
+  ShieldCheckIcon,
   TicketPercentIcon
 } from "lucide-vue-next";
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import api from "../../services/api";
+import { captureAttribution, currentAttribution } from "../../utils/attribution";
+import { SALES_META_PIXEL_ID, firstMetaSend, metaBrowserContext, metaStandardEventId, startMetaPixels, trackMetaEvent } from "../../utils/metaPixel";
 import {
+  LEGACY_RENEWAL_OFFER_KEY,
   createCheckoutSession,
+  createLegacyRenewalCheckoutSession,
+  createLegacyUpgradeCheckoutSession,
   createUpgradeCheckoutSession,
   finishCheckoutPassword,
   getCheckoutConfig,
   getCheckoutSession,
+  getLegacyRenewalCheckoutConfig,
   previewCheckoutCoupon,
   trackCheckoutEvent,
   refreshCheckoutSession,
@@ -371,11 +469,15 @@ import {
   startPixCheckout,
   updateUpgradeCheckoutSessionDetails,
   type CheckoutCouponPreview,
+  type CheckoutInstallmentOption,
   type CheckoutPublicConfig,
   type CheckoutSession
 } from "../../services/checkout";
+import { installmentPreview } from "../../utils/cardInstallments";
 import { useAuthStore } from "../../store/useAuthStore";
 import { resolveMediaUrl } from "../../utils/media";
+import ColoredLogo from "../../assets/Logo Cor - Roteiro Online.png";
+import WhiteLogo from "../../assets/Logo Branco - Roteiro Online.png";
 
 type Step = "details" | "method" | "card" | "pix" | "success" | "password";
 
@@ -384,7 +486,20 @@ const router = useRouter();
 const auth = useAuthStore();
 
 const offerKey = computed(() => String(route.params.offerKey || route.query.offer || "").trim().toLowerCase());
-const isUpgradeFlow = computed(() => String(route.query.upgrade || "") === "1" || Boolean(session.value?.is_upgrade));
+// Renovação do plano antigo (/checkout/renovacao-assinatura): plano, ciclo e valor vêm do servidor.
+const isLegacyRenewal = computed(() => offerKey.value === LEGACY_RENEWAL_OFFER_KEY || Boolean(session.value?.is_legacy_renewal));
+// Upgrade do plano antigo (Profissional ou Agência) para o plano único: o servidor escolhe a oferta
+// do ciclo e cobra o valor cheio, sem cupom e sem promoção.
+const isLegacyUpgrade = computed(
+  () => String(route.query.legacy_upgrade || "") === "1" || Boolean(session.value?.is_legacy_upgrade)
+);
+const isUpgradeFlow = computed(
+  () =>
+    String(route.query.upgrade || "") === "1" ||
+    Boolean(session.value?.is_upgrade) ||
+    isLegacyRenewal.value ||
+    isLegacyUpgrade.value
+);
 const config = ref<CheckoutPublicConfig | null>(null);
 const session = ref<CheckoutSession | null>(null);
 const couponPreview = ref<CheckoutCouponPreview | null>(null);
@@ -408,62 +523,31 @@ let pollingInFlight = false;
 let fastCardChecksLeft = 0;
 let stepEnteredAt = Date.now();
 let hasTrackedMethodStep = false;
-let metaPixelsInitialized = false;
 
-const activeMetaPixels = computed(() => (config.value?.pixels || []).filter(pixel => pixel.active && pixel.pixel_id.trim()));
-
-const metaStandardEventName = (eventName: string, status?: string | null, paymentMethod?: string | null) => {
-  const normalized = String(eventName || "").trim().toLowerCase();
-  const normalizedStatus = String(status || "").trim().toLowerCase();
-  const normalizedPayment = String(paymentMethod || "").trim().toLowerCase();
-  if (normalized === "step_method_view") return "InitiateCheckout";
-  if (normalized === "payment_method_click" || normalized === "pix_started" || normalized === "card_processing") return "AddPaymentInfo";
-  if (normalized === "payment_success" || normalizedStatus === "paid") return "Purchase";
-  if (normalized === "details_submit_success" || normalized === "step_details_view") return "Lead";
-  if (normalized === "details_submit" || normalized === "details_completed") return "Lead";
-  if (normalized === "purchase") return "Purchase";
-  if (normalizedPayment === "card" && normalizedStatus === "processing") return "AddPaymentInfo";
-  return "";
+// Pixels deste checkout: os da oferta (Admin Master › Ofertas e checkout) e o da página de vendas,
+// o mesmo da LP. A renovação do plano antigo não manda eventos ao Meta.
+let metaPixelIds: string[] = [];
+const checkoutPixelIds = () => {
+  if (isLegacyRenewal.value) return [];
+  const configured = (config.value?.pixels || []).filter(pixel => pixel.active && pixel.pixel_id.trim()).map(pixel => pixel.pixel_id.trim());
+  return [...configured, SALES_META_PIXEL_ID];
 };
-
-const buildMetaEventId = (eventName: string, step?: string | null, status?: string | null, paymentMethod?: string | null) => {
-  const token = session.value?.token || offerKey.value || "checkout";
-  return [token, eventName, step || "", status || "", paymentMethod || ""]
-    .map(value => String(value || "").trim().toLowerCase() || "-")
-    .join("|");
-};
-
-const ensureMetaPixelBase = () => {
-  if (typeof document === "undefined") return;
-  if (document.getElementById("meta-pixel-base")) return;
-  const script = document.createElement("script");
-  script.id = "meta-pixel-base";
-  script.innerHTML = `
-    !function(f,b,e,v,n,t,s)
-    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-    n.queue=[];t=b.createElement(e);t.async=!0;
-    t.src=v;s=b.getElementsByTagName(e)[0];
-    s.parentNode.insertBefore(t,s)}(window, document,'script',
-    'https://connect.facebook.net/en_US/fbevents.js');
-  `;
-  document.head.appendChild(script);
-};
-
 const initializeMetaPixels = () => {
-  if (typeof window === "undefined") return;
-  const pixels = activeMetaPixels.value;
-  if (!pixels.length) return;
-  ensureMetaPixelBase();
-  if (!(window as any).fbq) return;
-  if (!metaPixelsInitialized) {
-    pixels.forEach(pixel => {
-      (window as any).fbq("init", pixel.pixel_id);
-    });
-    (window as any).fbq("track", "PageView");
-    metaPixelsInitialized = true;
-  }
+  if (metaPixelIds.length) return;
+  metaPixelIds = startMetaPixels(checkoutPixelIds());
+};
+
+// Passo do checkout → evento padrão do Meta, igual ao servidor (META_STANDARD_EVENTS em
+// app/services/checkout.py). Só o nome do passo decide: a tela de senha com a compra já paga não é
+// outra compra.
+const META_STANDARD_EVENTS: Record<string, string> = {
+  details_submit_success: "Lead",
+  details_completed: "Lead",
+  step_method_view: "InitiateCheckout",
+  payment_method_click: "AddPaymentInfo",
+  pix_started: "AddPaymentInfo",
+  card_processing: "AddPaymentInfo",
+  payment_success: "Purchase",
 };
 
 const sendMetaCheckoutEvent = (
@@ -474,28 +558,31 @@ const sendMetaCheckoutEvent = (
     payment_method?: string | null;
   } = {}
 ) => {
-  if (typeof window === "undefined") return;
-  const pixels = activeMetaPixels.value;
-  if (!pixels.length || !(window as any).fbq) return;
-
-  const eventId = buildMetaEventId(eventName, extra.step ?? step.value, extra.status ?? session.value?.status ?? null, extra.payment_method ?? session.value?.payment_method ?? null);
-  const payload = {
+  const token = session.value?.token;
+  if (!metaPixelIds.length || !token) return;
+  const checkoutStep = extra.step ?? step.value;
+  const checkoutStatus = extra.status ?? session.value?.status ?? null;
+  const paymentMethod = extra.payment_method ?? session.value?.payment_method ?? null;
+  // O que a pessoa paga agora (1ª mensalidade promocional ou o valor com cupom), como o servidor.
+  const data = {
     currency: "BRL",
-    value: Number(session.value?.amount ?? couponPreview.value?.amount ?? config.value?.offer.amount ?? 0),
+    value: Number(session.value?.first_payment_amount || session.value?.amount || 0),
     content_name: config.value?.offer.title || config.value?.offer.key || "Checkout",
-    content_ids: [config.value?.offer.key].filter(Boolean),
-    checkout_event_name: eventName,
-    checkout_step: extra.step ?? step.value,
-    checkout_status: extra.status ?? session.value?.status ?? null,
-    checkout_payment_method: extra.payment_method ?? session.value?.payment_method ?? null,
-    offer_key: config.value?.offer.key || "",
+    content_ids: [session.value?.offer_key || config.value?.offer.key].filter(Boolean),
+    content_type: "product",
+    num_items: 1,
   };
-
-  (window as any).fbq("trackCustom", "CheckoutStatus", payload, { eventID: eventId });
-  const standardEvent = metaStandardEventName(eventName, extra.status ?? session.value?.status ?? null, extra.payment_method ?? session.value?.payment_method ?? null);
-  if (standardEvent) {
-    (window as any).fbq("track", standardEvent, payload, { eventID: eventId });
-  }
+  trackMetaEvent(
+    metaPixelIds,
+    "CheckoutStatus",
+    { ...data, checkout_event_name: eventName, checkout_step: checkoutStep, checkout_status: checkoutStatus, checkout_payment_method: paymentMethod, offer_key: config.value?.offer.key || "" },
+    { custom: true, eventId: [token, eventName, checkoutStep, checkoutStatus, paymentMethod].map(value => String(value || "").trim().toLowerCase() || "-").join("|") }
+  );
+  const standardEvent = META_STANDARD_EVENTS[String(eventName || "").trim().toLowerCase()];
+  if (!standardEvent) return;
+  const eventId = metaStandardEventId(token, standardEvent);
+  if (!firstMetaSend(eventId)) return;
+  trackMetaEvent(metaPixelIds, standardEvent, standardEvent === "Purchase" ? { ...data, order_id: token } : data, { eventId });
 };
 
 const adminAppOrigin = () => {
@@ -541,6 +628,13 @@ const card = reactive({
 });
 
 const themeClass = computed(() => (config.value?.theme_mode === "light" ? "checkout-theme-light" : "checkout-theme-dark"));
+// Modelo "Banner no topo" (estilo Viaje On): banner, cabeçalho da compra, etapas e resumo/barra fixa.
+const isBannerModel = computed(() => config.value?.layout === "banner");
+const bannerDesktopUrl = computed(() => resolveMediaUrl(config.value?.desktop_image_url) || "");
+const bannerMobileUrl = computed(() => resolveMediaUrl(config.value?.mobile_banner_url) || "");
+const brandLogoSrc = computed(() => (config.value?.theme_mode === "light" ? ColoredLogo : WhiteLogo));
+const progressStep = computed(() => (step.value === "details" ? 1 : step.value === "success" || step.value === "password" ? 3 : 2));
+const progressLabels = computed(() => ["Seus dados", "Pagamento", isUpgradeFlow.value ? "Pronto" : "Acesso"]);
 const effectiveAmount = computed(() => Number(session.value?.amount ?? couponPreview.value?.amount ?? config.value?.offer.amount ?? 0));
 const effectiveOriginalAmount = computed(() => Number(session.value?.original_amount ?? couponPreview.value?.original_amount ?? config.value?.offer.amount ?? 0));
 const effectiveDiscountAmount = computed(() => Number(session.value?.discount_amount ?? couponPreview.value?.discount_amount ?? 0));
@@ -550,6 +644,63 @@ const formattedAmount = computed(() => {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 });
 const hasAppliedCoupon = computed(() => Boolean(effectiveAppliedCouponCode.value && effectiveDiscountAmount.value > 0));
+const money = (value: number | string) => Number(value || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const billingCycle = computed(() => session.value?.billing_cycle || config.value?.offer.billing_cycle || "monthly");
+// 1ª mensalidade promocional: depois da compra começar vale o que o servidor travou na sessão;
+// antes, a da oferta (só para quem assina pela primeira vez e enquanto a promoção está no prazo).
+const promoAmount = computed(() => {
+  if (session.value) return Number(session.value.first_payment_amount || 0);
+  const offer = config.value?.offer;
+  if (!offer || offer.billing_cycle !== "monthly" || isUpgradeFlow.value || !offer.first_payment_amount) return 0;
+  if (offer.first_payment_ends_at && new Date(offer.first_payment_ends_at).getTime() <= Date.now()) return 0;
+  const value = Number(offer.first_payment_amount);
+  return value > 0 && value < effectiveAmount.value ? value : 0;
+});
+// Parcelas do cartão (anual): as do servidor quando a compra já começou; antes, a prévia da oferta.
+const installmentOptions = computed<CheckoutInstallmentOption[]>(() => {
+  if (session.value?.installment_options?.length) return session.value.installment_options;
+  const offer = config.value?.offer;
+  if (!offer || offer.billing_cycle !== "annual" || (offer.max_installments || 1) <= 1 || hasAppliedCoupon.value) return [];
+  return installmentPreview(effectiveAmount.value, offer.max_installments || 1, offer.installment_fixed_values || {}).map(row => ({
+    count: row.count,
+    value: String(row.value),
+    total: String(row.total),
+    no_interest: row.count === 1
+  }));
+});
+const topInstallment = computed(() => (installmentOptions.value.length > 1 ? installmentOptions.value[installmentOptions.value.length - 1] : null));
+const selectedInstallment = computed(() => installmentOptions.value.find(option => option.count === card.installment_count) || null);
+const installmentOptionLabel = (option: CheckoutInstallmentOption) =>
+  option.count === 1
+    ? `À vista: ${money(option.value)}`
+    : `${option.count}x de ${money(option.value)} (total ${money(option.total)})`;
+const footerPrice = computed(() => {
+  if (promoAmount.value) return money(promoAmount.value);
+  if (step.value === "card" && selectedInstallment.value && selectedInstallment.value.count > 1) {
+    return `${selectedInstallment.value.count}x ${money(selectedInstallment.value.value)}`;
+  }
+  return formattedAmount.value;
+});
+const footerSuffix = computed(() => {
+  if (promoAmount.value) return "no 1º mês";
+  if (step.value === "card" && selectedInstallment.value && selectedInstallment.value.count > 1) return "";
+  return billingCycle.value === "annual" ? "/ ano" : "/ mês";
+});
+const footerNote = computed(() => {
+  if (promoAmount.value) return `Depois, ${formattedAmount.value}/mês. Sem fidelidade.`;
+  if (step.value === "card" && selectedInstallment.value && selectedInstallment.value.count > 1) {
+    return `Total de ${money(selectedInstallment.value.total)} no cartão`;
+  }
+  if (topInstallment.value) return `ou até ${topInstallment.value.count}x de ${money(topInstallment.value.value)} no cartão`;
+  return "";
+});
+const paidAmountLabel = computed(() => {
+  const count = Number(card.installment_count || 1);
+  const option = installmentOptions.value.find(item => item.count === count);
+  if (session.value?.payment_method === "card" && option && option.count > 1) return `${option.count}x de ${money(option.value)}`;
+  if (promoAmount.value) return money(promoAmount.value);
+  return formattedAmount.value;
+});
 const appliedCouponLabel = computed(() => {
   if (!effectiveAppliedCouponCode.value) return "";
   return `Cupom ${effectiveAppliedCouponCode.value}`;
@@ -572,6 +723,24 @@ const originalAmountLabel = computed(() => {
   return original.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 });
 const paymentMethodLabel = computed(() => (session.value?.payment_method === "card" ? "Cartão de crédito" : "PIX Automático"));
+// Modelo com banner: ao trocar de etapa com a etapa acima da tela (ex.: depois do botão da barra fixa),
+// a página volta para as etapas.
+watch(step, async () => {
+  if (!isBannerModel.value || typeof window === "undefined") return;
+  await nextTick();
+  const steps = document.querySelector(".cb-steps");
+  if (steps && steps.getBoundingClientRect().top < 0) steps.scrollIntoView({ block: "start", behavior: "smooth" });
+});
+// Modelo com banner, no celular: o botão da etapa fica na barra fixa do rodapé (envia o formulário da etapa).
+const barAction = computed(() => {
+  if (loading.value || errorMessage.value) return null;
+  if (step.value === "details") return { form: "checkout-details-form", label: submitting.value ? "Prosseguindo..." : "Prosseguir" };
+  if (step.value === "card") {
+    const label = submitting.value ? "Processando..." : cardAwaitingConfirmation.value ? "Aguardando confirmação..." : "Pagar agora";
+    return { form: "checkout-card-form", label };
+  }
+  return null;
+});
 const paidAtLabel = computed(() => {
   if (!session.value?.paid_at) return "--";
   return new Date(session.value.paid_at).toLocaleString("pt-BR");
@@ -661,7 +830,7 @@ const loadConfig = async () => {
   loading.value = true;
   errorMessage.value = "";
   try {
-    config.value = await getCheckoutConfig(offerKey.value);
+    config.value = isLegacyRenewal.value ? await getLegacyRenewalCheckoutConfig() : await getCheckoutConfig(offerKey.value);
     initializeMetaPixels();
   } catch (error) {
     console.error(error);
@@ -793,7 +962,8 @@ const trackEvent = async (
       payment_method: extra.payment_method ?? session.value?.payment_method ?? null,
       duration_ms: duration,
       error_message: extra.error_message ?? null,
-      metadata: extra.metadata ?? null,
+      // Cookies do Meta e a página: o servidor manda os mesmos eventos pela API de Conversões.
+      metadata: { ...(extra.metadata || {}), ...metaBrowserContext() },
     });
   } catch (error) {
     console.debug("tracking_error", error);
@@ -823,7 +993,9 @@ const submitDetails = async () => {
         customer_document: form.customer_document,
         customer_phone: form.customer_phone,
         customer_zipcode: form.customer_zipcode,
-        coupon_code: form.coupon_code
+        coupon_code: form.coupon_code,
+        // Origem da compra (UTMs do anúncio, guardadas desde a LP): vai para o cadastro da empresa.
+        utm: currentAttribution()
       });
     }
     await trackEvent("details_submit_success", {
@@ -863,7 +1035,7 @@ const submitDetails = async () => {
 };
 
 const applyCoupon = async () => {
-  if (!config.value) return;
+  if (!config.value || isLegacyRenewal.value || isLegacyUpgrade.value) return;
   const coupon = form.coupon_code.trim();
   if (!coupon) return;
   submitting.value = true;
@@ -1001,7 +1173,7 @@ const submitCard = async () => {
       expiry_month: month,
       expiry_year: year,
       ccv: card.ccv,
-      installment_count: 1
+      installment_count: installmentOptions.value.some(option => option.count === card.installment_count) ? card.installment_count : 1
     });
     if (session.value.status === "paid") {
       step.value = "success";
@@ -1071,6 +1243,9 @@ const goToPasswordStep = async () => {
 };
 
 const chooseCard = () => {
+  if (topInstallment.value && !installmentOptions.value.some(option => option.count === card.installment_count && option.count > 1)) {
+    card.installment_count = topInstallment.value.count;
+  }
   stopPolling();
   cardAwaitingConfirmation.value = false;
   clearCardAwaitingTimeout();
@@ -1273,6 +1448,8 @@ const stopPolling = () => {
 };
 
 onMounted(async () => {
+  // UTMs do anúncio (vindas no endereço, da LP ou de um link direto para o checkout).
+  captureAttribution();
   await loadConfig();
   const token = String(route.query.token || "");
   let loadedByToken = false;
@@ -1295,7 +1472,11 @@ onMounted(async () => {
 
   if (isUpgradeFlow.value && config.value) {
     try {
-      session.value = await createUpgradeCheckoutSession(config.value.offer.key, form.coupon_code || null);
+      session.value = isLegacyRenewal.value
+        ? await createLegacyRenewalCheckoutSession()
+        : isLegacyUpgrade.value
+          ? await createLegacyUpgradeCheckoutSession(config.value.offer.billing_cycle === "annual" ? "annual" : "monthly")
+          : await createUpgradeCheckoutSession(config.value.offer.key, form.coupon_code || null);
       fillFormFromSession(session.value);
       lockUpgradePrefilledFields(session.value);
       router.replace({ query: { ...route.query, token: session.value.token, upgrade: "1" } }).catch(() => {});
@@ -2239,6 +2420,22 @@ onBeforeUnmount(() => {
   opacity: 0.72;
 }
 
+.checkout-footer-note {
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.75;
+}
+
+.checkout-select {
+  width: 100%;
+}
+
+/* A lista aberta do seletor usa o fundo do sistema: texto escuro para não sumir no tema escuro. */
+.checkout-select option {
+  color: #0f172a;
+}
+
 .checkout-footer-original-price {
   font-size: 16px;
   color: rgba(255,255,255,.62);
@@ -2556,15 +2753,679 @@ onBeforeUnmount(() => {
     font-size: 24px;
   }
 }
+
+/* Enquanto a configuração carrega (o modelo ainda não é conhecido): só o carregamento, centralizado. */
+.checkout-pending.checkout-shell .checkout-layout {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* ===== Modelo "Banner no topo" (mobile first, inspirado no checkout do Viaje On) ===== */
+.cb-shell {
+  --cb-bg: #edf1ee;
+  --cb-card: #ffffff;
+  --cb-ink: #111814;
+  --cb-muted: #66706b;
+  --cb-border: #e4e9e5;
+  --cb-field: #ffffff;
+  --cb-soft: #f4f7f5;
+  --cb-accent: #e3f5ec;
+  --cb-accent-ink: #0a7a55;
+  --cb-primary: #0b8059;
+  --cb-primary-deep: #07684a;
+  --cb-on-primary: #ffffff;
+  --cb-shadow: 0 1px 2px rgba(17, 24, 20, 0.05), 0 12px 32px -22px rgba(12, 31, 24, 0.35);
+  min-height: 100dvh;
+  overflow-x: hidden;
+  background: var(--cb-bg);
+  color: var(--cb-ink);
+}
+.cb-shell.checkout-theme-dark {
+  --cb-bg: #0b100e;
+  --cb-card: #141b18;
+  --cb-ink: #eef3f0;
+  --cb-muted: #9aa6a0;
+  --cb-border: #24302b;
+  --cb-field: #0f1513;
+  --cb-soft: #1a2320;
+  --cb-accent: #16302a;
+  --cb-accent-ink: #5cf0bb;
+  --cb-primary: #1fd497;
+  --cb-primary-deep: #13b57f;
+  --cb-on-primary: #06140e;
+  --cb-shadow: 0 16px 36px -24px rgba(0, 0, 0, 0.7);
+}
+.cb-shell :deep(button:focus-visible),
+.cb-shell :deep(input:focus-visible),
+.cb-shell :deep(select:focus-visible),
+.cb-shell :deep(a:focus-visible) {
+  outline: 2px solid var(--cb-primary);
+  outline-offset: 2px;
+}
+.cb-page {
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 12px 16px calc(132px + env(safe-area-inset-bottom));
+}
+.cb-main {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.cb-banner {
+  display: block;
+}
+.cb-banner img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 9 / 5;
+  max-height: 46vh;
+  border-radius: 18px;
+  object-fit: cover;
+  background: var(--cb-soft);
+}
+.cb-head,
+.cb-stage,
+.cb-summary-card {
+  border-radius: 22px;
+  background: var(--cb-card);
+  box-shadow: var(--cb-shadow);
+}
+.cb-head {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+}
+/* O arquivo do logo tem margem transparente: o recorte é o mesmo do menu do painel. */
+.cb-head-logo {
+  width: 124px;
+  height: 37px;
+  object-fit: cover;
+}
+.cb-head-title {
+  margin: 4px 0 0;
+  font-family: var(--font-display, inherit);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+.cb-head-sub {
+  margin: 0;
+  color: var(--cb-muted);
+  font-size: 14px;
+  line-height: 1.45;
+}
+.cb-head-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 4px;
+}
+.cb-head-chips span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--cb-soft);
+  color: var(--cb-muted);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+.cb-head-chips span.is-ok {
+  background: var(--cb-accent);
+  color: var(--cb-accent-ink);
+}
+.cb-head-chips svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* Etapas: número em círculo, a etapa atual em pílula com o nome, traço entre elas. */
+.cb-steps {
+  scroll-margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 0;
+  padding: 0 4px;
+  list-style: none;
+}
+.cb-steps li {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+}
+.cb-steps li:last-child {
+  flex: none;
+}
+.cb-steps li:not(:last-child)::after {
+  flex: 1;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--cb-border);
+  content: "";
+}
+.cb-steps li.is-done:not(:last-child)::after {
+  background: var(--cb-primary);
+}
+.cb-step-dot {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--cb-card);
+  box-shadow: inset 0 0 0 1.5px var(--cb-border);
+  color: var(--cb-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.cb-step-dot svg {
+  width: 14px;
+  height: 14px;
+}
+.cb-steps li.is-active .cb-step-dot,
+.cb-steps li.is-done .cb-step-dot {
+  background: linear-gradient(135deg, var(--cb-primary), var(--cb-primary-deep));
+  box-shadow: none;
+  color: var(--cb-on-primary);
+}
+.cb-step-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.cb-step-pill {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+}
+.cb-steps li.is-active .cb-step-pill {
+  padding: 3px 14px 3px 3px;
+  background: var(--cb-accent);
+}
+.cb-steps li.is-active .cb-step-label {
+  position: static;
+  width: auto;
+  height: auto;
+  clip: auto;
+  color: var(--cb-accent-ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* A etapa num cartão. */
+.cb-stage {
+  position: relative;
+  padding: 20px 18px 22px;
+}
+.cb-stage .checkout-copy,
+.cb-stage .checkout-form,
+.cb-stage .checkout-methods,
+.cb-stage .checkout-pix-card,
+.cb-stage .checkout-note-box,
+.cb-stage .checkout-summary-card,
+.cb-stage .checkout-success,
+.cb-stage .checkout-secondary.mt-8 {
+  width: 100%;
+}
+.cb-stage .checkout-copy {
+  margin-bottom: 18px;
+}
+.cb-stage .checkout-eyebrow {
+  margin-bottom: 6px;
+  color: var(--cb-accent-ink);
+  font-size: 12.5px;
+  font-weight: 700;
+  opacity: 1;
+}
+.cb-stage .checkout-title {
+  font-family: var(--font-display, inherit);
+  font-size: 21px;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  white-space: normal;
+}
+.cb-stage .checkout-subtitle {
+  margin-top: 6px;
+  color: var(--cb-muted);
+  font-size: 14px;
+  opacity: 1;
+}
+.cb-stage .checkout-form {
+  gap: 14px;
+}
+.cb-stage .checkout-field {
+  min-width: 0;
+}
+.cb-stage .checkout-field input,
+.cb-stage .checkout-field select {
+  width: 100%;
+  min-width: 0;
+}
+.cb-stage .checkout-field span {
+  color: var(--cb-muted);
+  font-size: 13px;
+  font-weight: 600;
+  opacity: 1;
+}
+.cb-stage .checkout-field input,
+.cb-stage .checkout-field select,
+.cb-stage .checkout-password-wrap input {
+  height: 48px;
+  border: 1px solid var(--cb-border);
+  border-radius: 14px;
+  background: var(--cb-field);
+  color: var(--cb-ink);
+  font-size: 16px;
+}
+.cb-stage .checkout-field input:focus,
+.cb-stage .checkout-field select:focus {
+  border-color: var(--cb-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--cb-primary) 18%, transparent);
+  outline: none;
+}
+.cb-stage .checkout-field-row {
+  grid-template-columns: minmax(0, 1fr);
+}
+.cb-stage .checkout-coupon-apply,
+.cb-stage .checkout-link-help {
+  color: var(--cb-accent-ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+.cb-stage .checkout-primary,
+.cb-bar-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 52px;
+  border: 0;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--cb-primary), var(--cb-primary-deep));
+  color: var(--cb-on-primary);
+  font-size: 16px;
+  font-weight: 700;
+  transition: filter 0.2s ease;
+}
+.cb-stage .checkout-primary:hover:not(:disabled),
+.cb-bar-cta:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+.cb-stage .checkout-primary:disabled,
+.cb-bar-cta:disabled {
+  opacity: 0.7;
+}
+.cb-stage .checkout-secondary {
+  height: 48px;
+  border: 1px solid var(--cb-border);
+  border-radius: 14px;
+  background: var(--cb-card);
+  color: var(--cb-ink);
+  font-size: 15px;
+}
+
+/* Formas de pagamento em cartões deitados, como as opções do Viaje On. */
+.cb-stage .checkout-methods {
+  gap: 10px;
+}
+.cb-stage .checkout-method-card {
+  height: 72px;
+  gap: 14px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--cb-card);
+  box-shadow: inset 0 0 0 1.5px var(--cb-border);
+  color: var(--cb-ink);
+  font-size: 15px;
+  font-weight: 700;
+  text-align: left;
+}
+.cb-stage .checkout-method-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 9px;
+  border-radius: 12px;
+  background: var(--cb-accent);
+  color: var(--cb-accent-ink);
+}
+@media (hover: hover) and (pointer: fine) {
+  .cb-stage .checkout-method-card:hover {
+    background: var(--cb-accent);
+    box-shadow: inset 0 0 0 2px var(--cb-primary);
+    color: var(--cb-ink);
+    transform: none;
+  }
+}
+@media (hover: none) {
+  .cb-stage .checkout-method-card:active {
+    background: var(--cb-accent);
+    box-shadow: inset 0 0 0 2px var(--cb-primary);
+    color: var(--cb-ink);
+  }
+}
+.cb-stage .checkout-card-info,
+.cb-stage .checkout-pix-card,
+.cb-stage .checkout-note-box,
+.cb-stage .checkout-summary-card {
+  border: 0;
+  border-radius: 16px;
+  background: var(--cb-soft);
+}
+.cb-stage .checkout-card-info {
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 12px;
+  padding: 14px 16px;
+}
+.cb-stage .checkout-card-info-icon {
+  width: 40px;
+  height: 40px;
+  padding: 9px;
+  border-radius: 12px;
+  background: var(--cb-accent);
+  color: var(--cb-accent-ink);
+}
+.cb-stage .checkout-card-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: end;
+  gap: 12px;
+}
+.cb-stage .checkout-pix-card {
+  grid-template-columns: minmax(0, 1fr);
+}
+.cb-stage .checkout-pix-qr {
+  width: min(100%, 260px);
+  height: auto;
+  margin: 0 auto;
+  aspect-ratio: 1;
+}
+.cb-stage .checkout-access-transition {
+  border-radius: 22px;
+}
+.cb-main .checkout-protected-footer {
+  width: 100%;
+  margin: 0;
+  padding: 0 8px;
+  color: var(--cb-muted);
+  opacity: 1;
+}
+
+/* Resumo: barra fixa no rodapé do celular (total e botão da etapa). */
+.cb-summary {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 30;
+  padding: 10px 16px calc(env(safe-area-inset-bottom) + 10px);
+  border-top: 1px solid var(--cb-border);
+  background: color-mix(in srgb, var(--cb-card) 95%, transparent);
+  box-shadow: 0 -8px 24px -16px rgba(12, 31, 24, 0.35);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+.cb-summary-card {
+  display: grid;
+  grid-template-areas:
+    "coupon"
+    "total"
+    "note";
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  gap: 6px 12px;
+  max-width: 640px;
+  margin: 0 auto;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+.cb-summary-card.has-cta {
+  grid-template-areas:
+    "coupon coupon"
+    "total cta"
+    "note note";
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.cb-summary-title,
+.cb-summary-item,
+.cb-summary-guarantee {
+  display: none;
+}
+.cb-summary-coupon {
+  display: flex;
+  grid-area: coupon;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: var(--cb-accent);
+  color: var(--cb-accent-ink);
+  font-size: 12.5px;
+}
+.cb-summary-coupon svg {
+  flex: none;
+  width: 15px;
+  height: 15px;
+}
+.cb-summary-coupon span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cb-summary-coupon button {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--cb-card);
+  color: var(--cb-ink);
+  font-size: 15px;
+  line-height: 1;
+}
+.cb-summary-total {
+  grid-area: total;
+  min-width: 0;
+}
+.cb-summary-total small {
+  display: block;
+  color: var(--cb-muted);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.cb-summary-price {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 6px;
+}
+.cb-summary-total small s {
+  margin-left: 4px;
+  font-weight: 500;
+}
+.cb-summary-price strong {
+  font-family: var(--font-display, inherit);
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.cb-summary-price span {
+  color: var(--cb-muted);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.cb-summary-note {
+  grid-area: note;
+  margin: 0;
+  color: var(--cb-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+.cb-bar-cta {
+  grid-area: cta;
+  min-width: 132px;
+  height: 50px;
+  padding: 0 18px;
+  white-space: nowrap;
+}
+
+/* No celular o botão da etapa fica só na barra fixa. */
+@media (max-width: 1023px) {
+  .cb-shell #checkout-details-form > .checkout-primary,
+  .cb-shell #checkout-card-form > .checkout-primary {
+    display: none;
+  }
+}
+
+@media (min-width: 768px) {
+  .cb-page {
+    padding: 24px 24px calc(132px + env(safe-area-inset-bottom));
+  }
+  .cb-main {
+    gap: 16px;
+  }
+  .cb-banner img {
+    aspect-ratio: 16 / 5;
+    border-radius: 22px;
+  }
+  .cb-head {
+    padding: 22px 24px;
+  }
+  .cb-head-title {
+    font-size: 26px;
+  }
+  .cb-stage {
+    padding: 26px 26px 28px;
+  }
+  .cb-stage .checkout-title {
+    font-size: 23px;
+  }
+}
+
+/* Computador: conteúdo à esquerda e o resumo do pedido fixo à direita. */
+@media (min-width: 1024px) {
+  .cb-page {
+    padding-bottom: 40px;
+  }
+  .cb-main {
+    display: grid;
+    grid-template-areas:
+      "banner banner"
+      "head summary"
+      "steps summary"
+      "stage summary"
+      "protected summary";
+    grid-template-columns: minmax(0, 1fr) 340px;
+    align-items: start;
+    gap: 18px 24px;
+  }
+  .cb-banner {
+    grid-area: banner;
+  }
+  .cb-head {
+    grid-area: head;
+  }
+  .cb-steps {
+    grid-area: steps;
+  }
+  .cb-stage {
+    grid-area: stage;
+  }
+  .cb-main .checkout-protected-footer {
+    grid-area: protected;
+    justify-content: flex-start;
+  }
+  .cb-summary {
+    position: sticky;
+    top: 24px;
+    grid-area: summary;
+    grid-row: 2 / span 4;
+    align-self: start;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .cb-summary-card,
+  .cb-summary-card.has-cta {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+    max-width: none;
+    padding: 22px;
+    border-radius: 22px;
+    background: var(--cb-card);
+    box-shadow: var(--cb-shadow);
+  }
+  .cb-summary-title {
+    display: block;
+    margin: 0;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--cb-border);
+    font-size: 15px;
+    font-weight: 700;
+  }
+  .cb-summary-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 14px;
+  }
+  .cb-summary-item span:last-child {
+    color: var(--cb-muted);
+  }
+  .cb-summary-total {
+    padding-top: 12px;
+    border-top: 1px solid var(--cb-border);
+  }
+  .cb-summary-price strong {
+    font-size: 26px;
+  }
+  .cb-summary-note {
+    margin-top: -8px;
+  }
+  .cb-bar-cta {
+    display: none;
+  }
+  .cb-summary-guarantee {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    margin: 0;
+    color: var(--cb-muted);
+    font-size: 12.5px;
+    line-height: 1.4;
+  }
+  .cb-summary-guarantee svg {
+    flex: none;
+    width: 15px;
+    height: 15px;
+    margin-top: 1px;
+    color: var(--cb-accent-ink);
+  }
+}
 </style>
-
-
-
-
-
-
-
-
-
-
-

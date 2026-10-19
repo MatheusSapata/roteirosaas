@@ -61,6 +61,16 @@ def prepare_database():
     Base.metadata.drop_all(bind=engine)
 
 
+@pytest.fixture(autouse=True)
+def no_real_push(monkeypatch):
+    """Teste nunca manda aviso de verdade (Pushover); quem quer conferir o envio troca de novo."""
+    from app.services import pushover, webhook_notifications
+
+    monkeypatch.setattr(webhook_notifications, "RUN_IN_BACKGROUND", False)
+    monkeypatch.setattr(pushover, "send_message", lambda **kwargs: None)
+    monkeypatch.setattr(pushover, "validate_user", lambda **kwargs: None)
+
+
 @pytest.fixture
 def client():
     with TestClient(app) as c:

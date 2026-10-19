@@ -212,7 +212,7 @@
         <p class="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">{{ viewCopy.overlay.eyebrow }}</p>
         <h2 class="mt-2 font-display text-2xl font-semibold text-foreground">{{ viewCopy.overlay.title }}</h2>
         <p class="mt-2 text-sm text-muted-foreground">
-          {{ viewCopy.overlay.description }}
+          {{ isLegacyLimitedPlan(auth.user?.plan) ? viewCopy.overlay.descriptionLegacy : viewCopy.overlay.description }}
         </p>
         <button
           type="button"
@@ -243,6 +243,7 @@ import ImageUploadField from "../../components/admin/inputs/ImageUploadField.vue
 import api from "../../services/api";
 import { useAgencyStore } from "../../store/useAgencyStore";
 import { useAuthStore } from "../../store/useAuthStore";
+import { isLegacyLimitedPlan } from "../../utils/planLabels";
 import { createAdminLocalizer } from "../../utils/adminI18n";
 import { canAccessPermission } from "../../utils/permissions";
 
@@ -410,6 +411,11 @@ const viewCopy = {
     description: t({
       pt: "O domínio próprio vem na assinatura do Roteiro Online. Assine para configurar seu host.",
       es: "El dominio propio viene en la suscripción de Roteiro Online. Suscríbete para configurar tu host."
+    }),
+    // Planos antigos (Profissional e Agência): sem oferecer o plano novo.
+    descriptionLegacy: t({
+      pt: "O domínio próprio não está incluído no seu plano atual.",
+      es: "El dominio propio no está incluido en tu plan actual."
     }),
     cta: t({ pt: "Ver assinatura", es: "Ver suscripción" })
   },

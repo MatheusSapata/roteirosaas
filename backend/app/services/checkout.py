@@ -1,8 +1,10 @@
 ﻿from __future__ import annotations
 
 import hashlib
+import logging
 import secrets
 import json
+import threading
 from ipaddress import ip_address
 from urllib.request import Request, urlopen
 from datetime import date, datetime, timedelta, timezone
@@ -10,6 +12,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 from zoneinfo import ZoneInfo
 
+import httpx
 from fastapi import HTTPException
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, object_session, joinedload
@@ -18,6 +21,7 @@ from app.core.config import get_settings
 from app.models.checkout import CheckoutLead, CheckoutSession, CheckoutSettings, CheckoutTrackingEvent
 from app.models.subscription import Subscription
 from app.models.user import User
+from app.models.user_tracking import UserTracking
 from app.schemas.checkout import (
     CheckoutAppearanceOut,
     CheckoutCouponOut,
@@ -30,17 +34,21 @@ from app.schemas.checkout import (
 )
 from app.services import auth as auth_service
 from app.services.asaas import AsaasAPIError, AsaasClient, build_default_split_payload
+from app.services.card_installments import InstallmentOption, installment_options, option_for
 from app.services.company_status import mark_subscription_overdue
-from app.services.ntfy import SubscriptionPushScenario, publish_subscription_notification
+from app.services.legacy_renewal import is_legacy_renewal_session, legacy_renewal_info
+from app.services.hub_funnel import send_hub_event
+from app.services.subscription_notifications import SubscriptionPushScenario, format_brl, publish_subscription_notification
 from app.services.trial import end_trial
 from app.services.trial import republish_all_user_pages
-from app.services.webhook_notifications import send_notification
+from app.services.webhook_notifications import contact_context, notify_payment_overdue, notify_safely, send_notification
 from app.services.viajechat_checkout_flow import (
     ensure_checkout_contact_at_payment_step,
     mark_signed as mark_viajechat_signed,
 )
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 TEMP_DISABLE_CHECKOUT_SPLIT = False
 ASAAS_CUSTOMER_GROUP_NAME = "Roteiro Online"
 
@@ -202,6 +210,9 @@ def _extract_checkout_session_token(external_reference: str) -> str | None:
         return reference.split("checkout_upgrade:", 1)[1].strip() or None
     if reference.startswith("co:"):
         return reference.split("co:", 1)[1].strip() or None
+    if reference.startswith("checkout_renewal:"):
+        # checkout_renewal:<token>:<vencimento renovado> (renovação do anual parcelado).
+        return reference.split("checkout_renewal:", 1)[1].split(":", 1)[0].strip() or None
     return None
 
 
@@ -287,9 +298,94 @@ def _notify_checkout_subscription_push(
             previous_plan_name=previous_plan_name,
             upgraded_plan_name=upgraded_plan_name,
             cancelled_item=cancelled_item,
+            customer_email=session.customer_email or user.email,
+            customer_phone=session.customer_phone or user.whatsapp,
         )
     except Exception:  # pragma: no cover - alerta não pode quebrar o checkout
         pass
+
+
+UTM_KEYS = ("utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content")
+
+
+def _session_utm(session: CheckoutSession) -> dict[str, str]:
+    """Origem da compra (UTMs do anúncio, guardadas desde a LP, e o site de onde a pessoa veio)."""
+    raw = (session.metadata_json or {}).get("utm")
+    if not isinstance(raw, dict):
+        return {}
+    return {key: str(value).strip() for key, value in raw.items() if key in (*UTM_KEYS, "referrer") and str(value or "").strip()}
+
+
+def _record_checkout_origin(db: Session, user: User, session: CheckoutSession) -> None:
+    """A conta criada pela compra guarda a origem dela, como o cadastro grátis (Admin Master ›
+    Empresas mostra as UTMs do dono)."""
+    utm = _session_utm(session)
+    if not utm:
+        return
+    db.add(
+        UserTracking(
+            user_id=user.id,
+            utm_source=utm.get("utm_source"),
+            utm_medium=utm.get("utm_medium"),
+            utm_campaign=utm.get("utm_campaign"),
+            utm_term=utm.get("utm_term"),
+            utm_content=utm.get("utm_content"),
+            referrer=utm.get("referrer"),
+        )
+    )
+
+
+def _notify_checkout_started(session: CheckoutSession) -> None:
+    """Checkout iniciado (dados preenchidos, sem pagar). A mesma pessoa voltando à mesma oferta em
+    até 3 horas não gera outro aviso."""
+    metadata = dict(session.metadata_json or {})
+    first = metadata.get("first_payment_amount")
+    utm = _session_utm(session)
+    send_hub_event(
+        "checkout_started",
+        email=session.customer_email,
+        name=session.customer_name,
+        phone=session.customer_phone,
+        utm={key: utm.get(key) for key in UTM_KEYS},
+        payload={
+            "checkout_session_id": session.token,
+            "plan": session.product_name or session.offer_key,
+            "billing_cycle": session.billing_cycle,
+            "amount": float(first or session.amount or 0) or None,
+            "upgrade": bool(metadata.get("upgrade_mode")),
+        },
+        external_id=f"ro-checkout-{session.token}",
+    )
+    notify_safely(
+        event_key="checkout_started",
+        context={
+            "event_label": "Checkout iniciado",
+            "user_name": session.customer_name or "Não informado",
+            "plan_name": session.product_name or session.offer_key or "Plano",
+            "offer_name": session.offer_key or "",
+            "amount": format_brl(first or session.amount),
+            "payment_method": "",
+            "purchase_kind": "Upgrade" if metadata.get("upgrade_mode") else "Nova compra",
+            **contact_context(session.customer_email, session.customer_phone),
+        },
+        dedupe_key=f"{(session.customer_email or session.customer_document or session.token).lower()}:{session.offer_key}",
+        dedupe_seconds=3 * 3600,
+    )
+
+
+def _notify_checkout_payment_overdue(session: CheckoutSession, payment: dict[str, Any], kind: str) -> None:
+    user = session.user
+    notify_payment_overdue(
+        user_name=session.customer_name or (user.name if user else None),
+        plan_name=session.product_name or session.offer_key,
+        amount=payment.get("value") or session.amount,
+        due_date=payment.get("dueDate"),
+        payment_method=_humanize_payment_method(payment.get("billingType") or session.payment_method),
+        kind=kind,
+        email=session.customer_email or (user.email if user else None),
+        phone=session.customer_phone or (user.whatsapp if user else None),
+        dedupe_key=str(payment.get("id") or f"{session.token}:{payment.get('dueDate')}"),
+    )
 
 
 def _notify_gateway_modified_cakto_to_asaas(user: User) -> None:
@@ -301,7 +397,7 @@ def _notify_gateway_modified_cakto_to_asaas(user: User) -> None:
             },
         )
     except Exception:  # pragma: no cover - alerta não pode quebrar o checkout
-        logger.exception("Falha ao enviar notificação ntfy de mudança de gateway.")
+        logger.exception("Falha ao enviar o aviso de mudança de gateway.")
 
 
 def _resolve_target_subscription_for_upgrade(db: Session, session: CheckoutSession) -> Subscription | None:
@@ -336,13 +432,69 @@ def _should_upgrade_session_in_place(db: Session, session: CheckoutSession) -> b
     return _can_upgrade_subscription_in_place(_resolve_target_subscription_for_upgrade(db, session))
 
 
+def checkout_purchase_scenario(
+    session: CheckoutSession, previous_plan: str | None = None, previous_cycle: str | None = None
+) -> SubscriptionPushScenario:
+    """Que compra foi esta, para o aviso. O checkout público é assinatura nova. O fluxo de upgrade
+    (cliente logado) serve a coisas diferentes: quem sai do teste grátis está assinando (nova); a
+    renovação do plano antigo pelo painel e quem paga de novo o mesmo plano e ciclo estão renovando;
+    só a troca de plano ou de ciclo é upgrade."""
+    metadata = dict(session.metadata_json or {})
+    if not metadata.get("upgrade_mode"):
+        return SubscriptionPushScenario.NEW
+    if metadata.get("legacy_renewal"):
+        return SubscriptionPushScenario.RENEWED
+    if metadata.get("legacy_upgrade"):
+        return SubscriptionPushScenario.UPGRADED
+    if metadata.get("first_subscription"):
+        return SubscriptionPushScenario.NEW
+    plan = str(previous_plan or metadata.get("current_plan") or "").strip().lower()
+    cycle = str(previous_cycle or metadata.get("current_billing_cycle") or "").strip().lower()
+    same_plan = plan == str(session.plan_key or "").strip().lower()
+    same_cycle = not cycle or cycle == str(session.billing_cycle or "").strip().lower()
+    return SubscriptionPushScenario.RENEWED if same_plan and same_cycle else SubscriptionPushScenario.UPGRADED
+
+
+def _announce_checkout_purchase(
+    session: CheckoutSession, user: User, scenario: SubscriptionPushScenario, previous_plan: str | None
+) -> None:
+    """Um aviso por compra (compra aprovada, renovação ou upgrade), venha a confirmação do cartão na
+    hora, do polling ou do webhook do Asaas: fica marcado na sessão."""
+    metadata = dict(session.metadata_json or {})
+    if metadata.get("purchase_notified_at"):
+        return
+    metadata["purchase_notified_at"] = _utcnow().isoformat()
+    session.metadata_json = metadata
+    upgraded = scenario == SubscriptionPushScenario.UPGRADED
+    _notify_checkout_subscription_push(
+        scenario=scenario,
+        session=session,
+        user=user,
+        previous_plan_name=previous_plan if upgraded else None,
+        upgraded_plan_name=session.plan_key if upgraded else None,
+    )
+
+
 def _complete_paid_checkout_session(db: Session, session: CheckoutSession) -> User:
+    """Libera o que foi pago e avisa a compra. Todo caminho que confirma o pagamento passa aqui
+    (cartão na hora, polling e webhook do Asaas)."""
+    # O plano e o ciclo de antes da compra decidem se é renovação ou upgrade.
+    metadata = dict(session.metadata_json or {})
+    previous_user = session.user or _find_existing_user(db, session.customer_email, session.customer_document)
+    previous_subscription = previous_user.subscription if previous_user else None
+    previous_plan = str(metadata.get("current_plan") or (previous_user.plan if previous_user else "") or "").strip().lower() or None
+    previous_cycle = metadata.get("current_billing_cycle") or (previous_subscription.billing_cycle if previous_subscription else None)
+    scenario = checkout_purchase_scenario(session, previous_plan, previous_cycle)
     if _should_upgrade_session_in_place(db, session):
-        user, _previous_plan = _apply_upgrade_after_payment(db, session)
-        return user
-    if _is_upgrade_session(session) and session.payment_method == "pix":
-        _cancel_replaced_asaas_subscription_after_pix_upgrade(db, session)
-    return _upsert_paid_user_and_subscription(db, session)
+        user, applied_previous_plan = _apply_upgrade_after_payment(db, session)
+        previous_plan = applied_previous_plan or previous_plan
+    else:
+        if _is_upgrade_session(session):
+            # Plano novo pago: encerra a cobrança do plano anterior (assinatura no cartão ou Pix automático).
+            _cancel_replaced_contracts_after_upgrade(db, session)
+        user = _upsert_paid_user_and_subscription(db, session)
+    _announce_checkout_purchase(session, user, scenario, previous_plan)
+    return user
 
 
 def _extract_card_last4(number: str | None) -> str | None:
@@ -422,6 +574,7 @@ def _apply_upgrade_after_payment(db: Session, session: CheckoutSession) -> tuple
         if session.billing_cycle == "annual"
         else _parse_decimal(session.amount)
     )
+    _leave_legacy_plan_after_purchase(session, subscription)
     end_trial(user, db, keep_plan=session.plan_key)
     if not _is_comeco_like_plan(session.plan_key):
         republish_all_user_pages(user, db)
@@ -440,7 +593,7 @@ def _apply_upgrade_after_payment(db: Session, session: CheckoutSession) -> tuple
     return user, previous_plan
 
 
-def _cancel_replaced_asaas_subscription_after_pix_upgrade(db: Session, session: CheckoutSession) -> None:
+def _cancel_replaced_contracts_after_upgrade(db: Session, session: CheckoutSession) -> None:
     metadata = dict(session.metadata_json or {})
     previous_subscription_id = str(metadata.get("replaced_asaas_subscription_id") or "").strip()
     current_subscription_id = str(metadata.get("asaas_subscription_id") or "").strip()
@@ -512,6 +665,10 @@ def _cancel_replaced_asaas_subscription_after_pix_upgrade(db: Session, session: 
     db.add(session)
     db.commit()
     db.refresh(session)
+
+
+# Nome antigo (o upgrade substituía o contrato anterior só no Pix); hoje vale para qualquer forma de pagamento.
+_cancel_replaced_asaas_subscription_after_pix_upgrade = _cancel_replaced_contracts_after_upgrade
 
 
 def _legacy_checkout_payload(record: CheckoutSettings) -> dict[str, Any]:
@@ -605,22 +762,27 @@ def _meta_api_version() -> str:
     return value or "v20.0"
 
 
-def _build_meta_event_id(
-    *,
-    session: CheckoutSession,
-    event_name: str,
-    step: str | None = None,
-    status: str | None = None,
-    payment_method: str | None = None,
-) -> str:
-    parts = [
-        session.token,
-        (event_name or "").strip().lower(),
-        (step or "").strip().lower(),
-        (status or "").strip().lower(),
-        (payment_method or "").strip().lower(),
-    ]
-    return "|".join(part or "-" for part in parts)
+# Eventos do Meta no checkout. Os padrão saem uma vez por compra, com o mesmo event_id no navegador
+# (Pixel, CustomCheckoutView) e aqui (API de Conversões): o Meta junta os dois e conta um só.
+# InitiateCheckout é o "checkout iniciado" (dados preenchidos, na etapa de pagamento) e Purchase é a
+# compra aprovada (pagamento confirmado), mesmo que a pessoa já tenha fechado a página: o Pix pago
+# depois chega pelo webhook do Asaas.
+META_STANDARD_EVENTS: dict[str, str] = {
+    "details_submit_success": "Lead",
+    "details_completed": "Lead",
+    "step_method_view": "InitiateCheckout",
+    "payment_method_click": "AddPaymentInfo",
+    "pix_started": "AddPaymentInfo",
+    "card_processing": "AddPaymentInfo",
+    "payment_success": "Purchase",
+}
+# O pagamento não espera a resposta do Meta (os testes enviam na hora).
+META_CAPI_IN_BACKGROUND = True
+
+
+def meta_standard_event_id(token: str, standard_event: str) -> str:
+    """O mesmo event_id do navegador: "<token da sessão>|<evento em minúsculas>"."""
+    return f"{token}|{standard_event.lower()}"
 
 
 def _hash_meta_value(value: str | None) -> str | None:
@@ -630,19 +792,75 @@ def _hash_meta_value(value: str | None) -> str | None:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
-def _meta_user_data(session: CheckoutSession, ip_address_value: str | None, user_agent: str | None) -> dict[str, Any]:
-    email = _hash_meta_value(session.customer_email)
-    phone = _hash_meta_value(_normalize_digits(session.customer_phone))
-    user_data: dict[str, Any] = {
-        "client_ip_address": ip_address_value,
-        "client_user_agent": (user_agent or "").strip()[:2000] or None,
-        "external_id": _hash_meta_value(session.token),
+def _meta_client(session: CheckoutSession) -> dict[str, str]:
+    raw = (session.metadata_json or {}).get("meta_client")
+    return dict(raw) if isinstance(raw, dict) else {}
+
+
+def remember_meta_client(
+    session: CheckoutSession, *, ip_address_value: str | None, user_agent: str | None, metadata: dict[str, Any] | None
+) -> None:
+    """Guarda o que o Meta usa para reconhecer a pessoa (IP, navegador, cookies _fbp/_fbc e a página do
+    checkout), para os eventos que saem depois sem ela na página (o Pix pago depois)."""
+    metadata = metadata or {}
+    page_url = str(metadata.get("page_url") or "").strip()
+    updates = {
+        "ip": ip_address_value,
+        "user_agent": user_agent,
+        "fbp": metadata.get("fbp"),
+        "fbc": metadata.get("fbc"),
+        "page_url": page_url if page_url.startswith(("https://", "http://")) else None,
     }
-    if email:
-        user_data["em"] = [email]
-    if phone:
-        user_data["ph"] = [phone]
+    current = _meta_client(session)
+    changed = False
+    for key, value in updates.items():
+        text = str(value or "").strip()[:1000]
+        if key in {"fbp", "fbc"} and not text.startswith("fb."):
+            continue
+        if text and current.get(key) != text:
+            current[key] = text
+            changed = True
+    if changed:
+        session_metadata = dict(session.metadata_json or {})
+        session_metadata["meta_client"] = current
+        session.metadata_json = session_metadata
+
+
+def _meta_phone(value: str | None) -> str | None:
+    digits = _normalize_digits(value)
+    if len(digits) in {10, 11}:
+        digits = f"55{digits}"
+    return digits or None
+
+
+def _meta_user_data(session: CheckoutSession, ip_address_value: str | None, user_agent: str | None) -> dict[str, Any]:
+    client = _meta_client(session)
+    names = (session.customer_name or "").strip().lower().split()
+    user_data: dict[str, Any] = {
+        "client_ip_address": ip_address_value or client.get("ip"),
+        "client_user_agent": (user_agent or client.get("user_agent") or "").strip()[:2000] or None,
+        "external_id": _hash_meta_value(session.token),
+        "fbp": client.get("fbp"),
+        "fbc": client.get("fbc"),
+    }
+    for key, raw in (
+        ("em", session.customer_email),
+        ("ph", _meta_phone(session.customer_phone)),
+        ("fn", names[0] if names else None),
+        ("ln", names[-1] if len(names) > 1 else None),
+        ("zp", _normalize_digits(session.customer_zipcode)),
+        ("country", "br"),
+    ):
+        hashed = _hash_meta_value(raw)
+        if hashed:
+            user_data[key] = [hashed]
     return {key: value for key, value in user_data.items() if value}
+
+
+def meta_event_value(session: CheckoutSession) -> float:
+    """Valor da compra para o Meta: o que a pessoa paga agora (1ª mensalidade promocional, ou o valor
+    com cupom). O navegador usa o mesmo (first_payment_amount ou amount da sessão)."""
+    return float(session_first_payment_amount(session) or session.amount or 0)
 
 
 def _meta_custom_data(
@@ -656,10 +874,12 @@ def _meta_custom_data(
 ) -> dict[str, Any]:
     custom_data: dict[str, Any] = {
         "currency": "BRL",
-        "value": float(session.amount or 0),
+        "value": meta_event_value(session),
         "content_name": session.product_name,
         "content_ids": [session.offer_key],
-        "checkout_event_name": event_name,
+        "content_type": "product",
+        "num_items": 1,
+        "order_id": session.token if event_name == "Purchase" else None,
         "checkout_step": step,
         "checkout_status": status,
         "checkout_payment_method": payment_method,
@@ -671,6 +891,14 @@ def _meta_custom_data(
     return {key: value for key, value in custom_data.items() if value is not None and value != ""}
 
 
+def _meta_event_source_url(session: CheckoutSession) -> str:
+    page_url = _meta_client(session).get("page_url") or ""
+    if page_url:
+        return page_url
+    base = (settings.webapp_base_url or "https://app.roteiroonline.com").rstrip("/")
+    return f"{base}/checkout/{session.offer_key}"
+
+
 def _meta_events_for_checkout_event(
     *,
     session: CheckoutSession,
@@ -679,81 +907,37 @@ def _meta_events_for_checkout_event(
     status: str | None,
     payment_method: str | None,
 ) -> list[tuple[str, str]]:
-    normalized_event = (event_name or "").strip().lower()
-    normalized_status = (status or "").strip().lower()
-    normalized_step = (step or "").strip().lower()
-    normalized_payment = (payment_method or "").strip().lower()
-
-    events: list[tuple[str, str]] = [("CheckoutStatus", _build_meta_event_id(
-        session=session,
-        event_name=normalized_event or "checkout_status",
-        step=normalized_step,
-        status=normalized_status,
-        payment_method=normalized_payment,
-    ))]
-
-    if normalized_event in {"details_submit_success", "details_completed"}:
-        events.append(("Lead", _build_meta_event_id(session=session, event_name="lead", step=normalized_step, status=normalized_status, payment_method=normalized_payment)))
-    elif normalized_event in {"step_method_view"}:
-        events.append(("Lead", _build_meta_event_id(session=session, event_name="lead", step=normalized_step, status=normalized_status, payment_method=normalized_payment)))
-        events.append(("InitiateCheckout", _build_meta_event_id(session=session, event_name="initiate_checkout", step=normalized_step, status=normalized_status, payment_method=normalized_payment)))
-    elif normalized_event in {"payment_method_click", "pix_started", "card_processing"}:
-        events.append(("AddPaymentInfo", _build_meta_event_id(session=session, event_name="add_payment_info", step=normalized_step, status=normalized_status, payment_method=normalized_payment)))
-    elif normalized_event in {"payment_success"} or normalized_status == "paid":
-        events.append(("Purchase", _build_meta_event_id(session=session, event_name="purchase", step=normalized_step, status="paid", payment_method=normalized_payment)))
-
-    return events
+    """Evento padrão do Meta para este passo do checkout (só pelo nome do passo: o status "pago" de
+    outros passos, como a tela de senha, não é outra compra)."""
+    standard = META_STANDARD_EVENTS.get((event_name or "").strip().lower())
+    return [(standard, meta_standard_event_id(session.token, standard))] if standard else []
 
 
-def _send_meta_pixel_event(
-    *,
-    pixel: dict[str, Any],
-    event_name: str,
-    event_id: str,
-    session: CheckoutSession,
-    step: str | None,
-    status: str | None,
-    payment_method: str | None,
-    metadata: dict[str, Any] | None,
-    ip_address_value: str | None,
-    user_agent: str | None,
-) -> None:
-    pixel_id = str(pixel.get("pixel_id") or "").strip()
-    access_token = str(pixel.get("access_token") or "").strip()
-    if not pixel_id or not access_token:
+def _post_meta_events(requests: list[tuple[str, str, dict[str, Any]]]) -> None:
+    """Manda cada evento (pixel, token de acesso, evento) à API de Conversões; erro só vai para o log."""
+
+    def run() -> None:
+        for pixel_id, access_token, event in requests:
+            url = f"https://graph.facebook.com/{_meta_api_version()}/{pixel_id}/events"
+            try:
+                response = httpx.post(url, params={"access_token": access_token}, json={"data": [event]}, timeout=10)
+                if response.status_code >= 400:
+                    logger.error(
+                        "Meta CAPI retornou erro para pixel_id=%s evento=%s status=%s body=%s",
+                        pixel_id,
+                        event.get("event_name"),
+                        response.status_code,
+                        response.text[:1000],
+                    )
+            except Exception:  # noqa: BLE001
+                logger.exception("Erro ao enviar evento Meta CAPI para pixel_id=%s", pixel_id)
+
+    if not requests:
         return
-
-    payload = {
-        "data": [
-            {
-                "event_name": event_name,
-                "event_time": int(datetime.now(timezone.utc).timestamp()),
-                "event_id": event_id,
-                "action_source": "website",
-                "user_data": _meta_user_data(session, ip_address_value, user_agent),
-                "custom_data": _meta_custom_data(
-                    session,
-                    event_name=event_name,
-                    step=step,
-                    status=status,
-                    payment_method=payment_method,
-                    metadata=metadata,
-                ),
-            }
-        ]
-    }
-    url = f"https://graph.facebook.com/{_meta_api_version()}/{pixel_id}/events"
-    try:
-        response = httpx.post(url, params={"access_token": access_token}, json=payload, timeout=10)
-        if response.status_code >= 400:
-            logger.error(
-                "Meta CAPI retornou erro para pixel_id=%s status=%s body=%s",
-                pixel_id,
-                response.status_code,
-                response.text[:1000],
-            )
-    except Exception:  # noqa: BLE001
-        logger.exception("Erro ao enviar evento Meta CAPI para pixel_id=%s", pixel_id)
+    if META_CAPI_IN_BACKGROUND:
+        threading.Thread(target=run, name="meta-capi", daemon=True).start()
+    else:
+        run()
 
 
 def _dispatch_meta_checkout_events(
@@ -768,11 +952,19 @@ def _dispatch_meta_checkout_events(
     ip_address_value: str | None,
     user_agent: str | None,
 ) -> None:
+    """Evento padrão do passo para os pixels da oferta com token da API de Conversões, uma vez por
+    compra (fica marcado na sessão: o webhook e o navegador avisando o mesmo pagamento não repetem)."""
     settings_record = get_checkout_settings(db)
-    pixels = _active_pixels_for_offer(settings_record, session.offer_key)
+    pixels = [
+        (str(pixel.get("pixel_id") or "").strip(), str(pixel.get("access_token") or "").strip())
+        for pixel in _active_pixels_for_offer(settings_record, session.offer_key)
+    ]
+    pixels = [(pixel_id, token) for pixel_id, token in pixels if pixel_id and token]
     if not pixels:
         return
-
+    session_metadata = dict(session.metadata_json or {})
+    sent = list(session_metadata.get("meta_events_sent") or [])
+    requests: list[tuple[str, str, dict[str, Any]]] = []
     for meta_event_name, event_id in _meta_events_for_checkout_event(
         session=session,
         event_name=event_name,
@@ -780,19 +972,33 @@ def _dispatch_meta_checkout_events(
         status=status,
         payment_method=payment_method,
     ):
-        for pixel in pixels:
-            _send_meta_pixel_event(
-                pixel=pixel,
+        if meta_event_name in sent:
+            continue
+        event = {
+            "event_name": meta_event_name,
+            "event_time": int(datetime.now(timezone.utc).timestamp()),
+            "event_id": event_id,
+            "action_source": "website",
+            "event_source_url": _meta_event_source_url(session),
+            "user_data": _meta_user_data(session, ip_address_value, user_agent),
+            "custom_data": _meta_custom_data(
+                session,
                 event_name=meta_event_name,
-                event_id=event_id,
-                session=session,
                 step=step,
                 status=status,
                 payment_method=payment_method,
                 metadata=metadata,
-                ip_address_value=ip_address_value,
-                user_agent=user_agent,
-            )
+            ),
+        }
+        requests.extend((pixel_id, token, event) for pixel_id, token in pixels)
+        sent.append(meta_event_name)
+    if not requests:
+        return
+    session_metadata["meta_events_sent"] = sent
+    session.metadata_json = session_metadata
+    db.add(session)
+    db.flush()
+    _post_meta_events(requests)
 
 
 def _serialize_coupons(record: CheckoutSettings) -> list[dict[str, Any]]:
@@ -858,6 +1064,39 @@ def _validate_sales_slots(offers: list[CheckoutOfferIn]) -> None:
         seen[slot] = offer.key
 
 
+def _validate_offer_prices(offers: list[CheckoutOfferIn]) -> None:
+    """A 1ª mensalidade promocional precisa ficar abaixo do valor cheio da oferta."""
+    for offer in offers:
+        if offer.first_payment_amount is None:
+            continue
+        if _quantize_money(_parse_decimal(offer.first_payment_amount)) >= _quantize_money(_parse_decimal(offer.amount)):
+            raise HTTPException(
+                status_code=400,
+                detail=f"A 1ª mensalidade promocional da oferta {offer.key} precisa ser menor que o valor cheio.",
+            )
+
+
+def offer_first_payment_promo(offer: CheckoutOfferIn, now: datetime | None = None) -> Decimal | None:
+    """Valor da 1ª mensalidade promocional em vigor (só ofertas mensais); None sem promoção ou depois do fim."""
+    if offer.billing_cycle != "monthly" or offer.first_payment_amount is None:
+        return None
+    promo = _quantize_money(_parse_decimal(offer.first_payment_amount))
+    if promo <= 0 or promo >= _quantize_money(_parse_decimal(offer.amount)):
+        return None
+    ends_at = offer.first_payment_ends_at
+    if ends_at is not None:
+        if ends_at.tzinfo is None:
+            ends_at = ends_at.replace(tzinfo=ZoneInfo("America/Sao_Paulo"))
+        if (now or _utcnow()) >= ends_at:
+            return None
+    return promo
+
+
+def offer_installment_options(offer: CheckoutOfferIn) -> list[InstallmentOption]:
+    top = offer.max_installments if offer.billing_cycle == "annual" else 1
+    return installment_options(offer.amount, top, offer.installment_fixed_values)
+
+
 def get_public_sales_plan(db: Session) -> dict[str, Any]:
     """Ofertas do plano único (mensal e anual) para a página de vendas e a tela de planos.
     Vale a oferta ativa marcada no Admin Master; sem marcação, a primeira oferta ativa do plano
@@ -876,7 +1115,19 @@ def get_public_sales_plan(db: Session) -> dict[str, Any]:
                 None,
             )
         if chosen is not None:
-            result[slot] = {"key": chosen.key, "title": chosen.title, "billing_cycle": chosen.billing_cycle, "amount": chosen.amount}
+            options = offer_installment_options(chosen)
+            top = options[-1] if options else None
+            promo = offer_first_payment_promo(chosen)
+            result[slot] = {
+                "key": chosen.key,
+                "title": chosen.title,
+                "billing_cycle": chosen.billing_cycle,
+                "amount": chosen.amount,
+                "max_installments": top.count if top else 1,
+                "installment_value": top.value if top and top.count > 1 else None,
+                "first_payment_amount": promo,
+                "first_payment_ends_at": chosen.first_payment_ends_at if promo is not None else None,
+            }
     return result
 
 
@@ -890,6 +1141,7 @@ def update_checkout_settings(db: Session, payload: CheckoutSettingsUpdate) -> Ch
 
     fallback_checkout_key = active_checkouts[0]["key"] if active_checkouts else "default"
     _validate_sales_slots(payload.offers)
+    _validate_offer_prices(payload.offers)
     offers = []
     for item in payload.offers:
         raw_offer = item.model_dump(mode="json")
@@ -1099,6 +1351,7 @@ def create_checkout_session(
     coupon_code: str | None,
     metadata: dict[str, Any] | None,
     allow_existing_user: bool = False,
+    plan_key: str | None = None,
 ) -> CheckoutSession:
     settings_record = get_checkout_settings(db)
     coupon = resolve_coupon(settings_record, coupon_code, offer.key)
@@ -1123,11 +1376,26 @@ def create_checkout_session(
             "applied_coupon_code": coupon.code if coupon else None,
         }
     )
+    # Parcelas do cartão e promoção da 1ª mensalidade valem pelo que a oferta tinha quando a compra
+    # começou. Com cupom, a parcela fixa (ex.: 12x de R$ 97) não vale: as parcelas seguem a tabela.
+    metadata_payload["max_installments"] = offer.max_installments if offer.billing_cycle == "annual" else 1
+    metadata_payload["installment_fixed_values"] = (
+        {} if discount_amount else {count: str(value) for count, value in offer.installment_fixed_values.items()}
+    )
+    # A promoção é para quem assina pela primeira vez: migração de quem já paga um plano é no valor cheio.
+    migrating = bool(metadata_payload.get("upgrade_mode")) and not metadata_payload.get("first_subscription")
+    promo = None if migrating else offer_first_payment_promo(offer)
+    if promo is not None and promo < final_amount:
+        metadata_payload["first_payment_amount"] = str(promo)
+        metadata_payload["first_payment_ends_at"] = (
+            offer.first_payment_ends_at.isoformat() if offer.first_payment_ends_at else None
+        )
     session = CheckoutSession(
         token=token,
         offer_key=offer.key,
         product_name=offer.title,
-        plan_key=_normalize_plan_key(offer.plan_key),
+        # A renovação dos planos antigos mantém o plano como está na assinatura (ex.: "essencial").
+        plan_key=plan_key or _normalize_plan_key(offer.plan_key),
         billing_cycle=offer.billing_cycle,
         amount=final_amount,
         status="details_completed",
@@ -1144,6 +1412,7 @@ def create_checkout_session(
     db.add(session)
     db.commit()
     db.refresh(session)
+    _notify_checkout_started(session)
     return session
 
 
@@ -1153,14 +1422,30 @@ def create_upgrade_checkout_session(
     offer: CheckoutOfferOut,
     user: User,
     coupon_code: str | None = None,
+    plan_key: str | None = None,
+    extra_metadata: dict[str, Any] | None = None,
 ) -> CheckoutSession:
     document = user.cnpj or user.cpf or ""
     phone = user.whatsapp or ""
     zipcode = user.address_zipcode or ""
+    subscription = user.subscription
     metadata = {
         "upgrade_mode": True,
         "target_user_id": user.id,
         "current_plan": user.plan,
+        # Com o plano, decide no aviso se a compra é renovação (mesmo plano e ciclo) ou upgrade.
+        "current_billing_cycle": subscription.billing_cycle if subscription else None,
+        # Assina pela primeira vez (teste grátis ou conta sem plano pago): vale a promoção da 1ª mensalidade.
+        # Cliente dos planos antigos nunca é primeira assinatura, mesmo inativo ou vindo da Cakto: o
+        # upgrade dele é no valor cheio.
+        "first_subscription": subscription is None
+        or (
+            not legacy_renewal_info(subscription).legacy
+            and _parse_decimal(subscription.mrr_amount or 0) <= 0
+            and not subscription.asaas_subscription_id
+            and not subscription.cakto_subscription_code
+            and str(subscription.status or "").strip().lower() not in {"active", "past_due", "cancel_at_period_end"}
+        ),
         "locked_profile_fields": {
             "customer_name": bool((user.name or "").strip()),
             "customer_email": bool((user.email or "").strip()),
@@ -1169,6 +1454,7 @@ def create_upgrade_checkout_session(
             "customer_zipcode": bool((zipcode or "").strip()),
         },
     }
+    metadata.update(extra_metadata or {})
     return create_checkout_session(
         db,
         offer=offer,
@@ -1180,6 +1466,7 @@ def create_upgrade_checkout_session(
         coupon_code=coupon_code,
         metadata=metadata,
         allow_existing_user=True,
+        plan_key=plan_key,
     )
 
 
@@ -1341,6 +1628,8 @@ def track_checkout_event(
         created_at=_utcnow(),
     )
     db.add(event)
+    remember_meta_client(session, ip_address_value=ip_address_value, user_agent=user_agent, metadata=metadata)
+    db.add(session)
 
     lead = _find_or_create_checkout_lead(db, session)
     if event.event_name == "step_method_view":
@@ -1383,6 +1672,7 @@ def track_checkout_event(
         ip_address_value=ip_address_value,
         user_agent=user_agent,
     )
+    db.commit()
 
 
 def list_checkout_tracking(db: Session, offer_key: str | None = None, limit: int = 200) -> list[dict[str, Any]]:
@@ -1601,6 +1891,26 @@ def get_checkout_session_by_token(db: Session, token: str) -> CheckoutSession:
     return session
 
 
+def session_first_payment_amount(session: CheckoutSession) -> Decimal | None:
+    """1ª cobrança promocional desta compra (mensal), ou None quando ela é o valor cheio."""
+    raw = (session.metadata_json or {}).get("first_payment_amount")
+    if raw in (None, "") or session.billing_cycle != "monthly":
+        return None
+    value = _quantize_money(_parse_decimal(raw))
+    return value if Decimal("0") < value < _quantize_money(_parse_decimal(session.amount)) else None
+
+
+def session_installment_options(session: CheckoutSession) -> list[InstallmentOption]:
+    metadata = session.metadata_json or {}
+    top = 1
+    if session.billing_cycle == "annual":
+        try:
+            top = int(metadata.get("max_installments") or 1)
+        except (TypeError, ValueError):
+            top = 1
+    return installment_options(session.amount, top, metadata.get("installment_fixed_values") or {})
+
+
 def serialize_checkout_session(db: Session, session: CheckoutSession) -> dict[str, Any]:
     user = session.user or _find_existing_user(db, session.customer_email, session.customer_document)
     requires_password_setup = not bool(user and user.hashed_password and session.password_defined_at)
@@ -1639,7 +1949,11 @@ def serialize_checkout_session(db: Session, session: CheckoutSession) -> dict[st
         "user_exists": user_exists,
         "requires_password_setup": False if _is_upgrade_session(session) else requires_password_setup,
         "is_upgrade": _is_upgrade_session(session),
+        "is_legacy_renewal": bool(metadata.get("legacy_renewal")),
+        "is_legacy_upgrade": bool(metadata.get("legacy_upgrade")),
         "locked_profile_fields": metadata.get("locked_profile_fields"),
+        "first_payment_amount": session_first_payment_amount(session),
+        "installment_options": [option.as_dict() for option in session_installment_options(session)],
     }
 
 
@@ -1674,7 +1988,9 @@ def start_pix_payment(db: Session, session: CheckoutSession) -> CheckoutSession:
         "value": float(session.amount),
         "description": session.product_name[:35],
         "immediateQrCode": {
-            "originalValue": float(session.amount),
+            # Com a promoção da 1ª mensalidade, só o pagamento de agora sai mais barato; as
+            # renovações (value) seguem no valor cheio.
+            "originalValue": float(session_first_payment_amount(session) or session.amount),
             "expirationSeconds": 3600,
             "description": session.product_name[:35],
         },
@@ -1723,10 +2039,48 @@ def start_pix_payment(db: Session, session: CheckoutSession) -> CheckoutSession:
     db.refresh(session)
     return session
 
+def _saved_card_token(
+    client: AsaasClient,
+    payment: dict[str, Any],
+    *,
+    customer_id: str,
+    credit_card: dict[str, Any],
+    holder_info: dict[str, Any],
+    remote_ip: str,
+) -> str | None:
+    """Token do cartão no Asaas, para cobrar a renovação do anual parcelado sem pedir o cartão de
+    novo. Vem na resposta da cobrança quando a tokenização está ligada; senão, salva à parte."""
+    card = payment.get("creditCard") if isinstance(payment.get("creditCard"), dict) else {}
+    token = str(card.get("creditCardToken") or "").strip()
+    if token:
+        return token
+    try:
+        result = client.tokenize_credit_card(
+            {
+                "customer": customer_id,
+                "creditCard": credit_card,
+                "creditCardHolderInfo": holder_info,
+                "remoteIp": remote_ip,
+            }
+        )
+    except Exception:  # noqa: BLE001 - a compra já foi feita; sem token, só a renovação fica manual
+        logger.exception("Cartão não foi salvo no Asaas para a renovação do anual parcelado (cliente %s).", customer_id)
+        return None
+    return str((result or {}).get("creditCardToken") or "").strip() or None
+
+
 def start_card_payment(db: Session, session: CheckoutSession, payload: dict[str, Any]) -> CheckoutSession:
     if session.asaas_payment_id and session.payment_method == "card" and session.status in {"awaiting_payment", "processing", "paid"}:
         return refresh_session_status(db, session) if session.status != "paid" else session
     _raise_if_registered_checkout_identity(db, session)
+    try:
+        requested_installments = int(payload.get("installment_count") or 1)
+    except (TypeError, ValueError):
+        requested_installments = 1
+    # O valor vem sempre do servidor: o número de parcelas escolhido precisa ser uma das opções.
+    option = option_for(session_installment_options(session), requested_installments)
+    if option is None:
+        raise HTTPException(status_code=400, detail="Escolha uma das parcelas oferecidas.")
     client = _ensure_asaas_client()
     customer_id = session.asaas_customer_id or _find_or_create_asaas_customer(
         client,
@@ -1739,80 +2093,94 @@ def start_card_payment(db: Session, session: CheckoutSession, payload: dict[str,
     amount = Decimal(str(session.amount))
     card_last4 = _extract_card_last4(payload.get("card_number"))
     card_brand = _infer_card_brand(payload.get("card_number"))
+    remote_ip = payload.get("remote_ip") or "127.0.0.1"
     metadata = dict(session.metadata_json or {})
     if card_last4:
         metadata["card_last4"] = card_last4
     if card_brand:
         metadata["card_brand"] = card_brand
+    metadata["remote_ip"] = remote_ip
     is_upgrade = _is_upgrade_session(session)
-    upgrade_target_subscription = _resolve_target_subscription_for_upgrade(db, session) if is_upgrade else None
-    can_upgrade_in_place = _can_upgrade_subscription_in_place(upgrade_target_subscription)
     if is_upgrade:
-        metadata["upgrade_in_place"] = can_upgrade_in_place
+        # Migração de plano: o plano novo é um contrato novo (assinatura ou cobrança parcelada) e o
+        # anterior é cancelado depois que o pagamento é confirmado. A assinatura antiga não é mais
+        # atualizada "no lugar": ela mantinha a data de vencimento antiga e cobrava o plano novo de
+        # novo dias depois.
+        metadata["upgrade_in_place"] = False
+        target_subscription = _resolve_target_subscription_for_upgrade(db, session)
+        if target_subscription and target_subscription.asaas_subscription_id:
+            metadata["replaced_asaas_subscription_id"] = target_subscription.asaas_subscription_id
     session.metadata_json = metadata
     external_reference = f"checkout_upgrade:{session.token}" if is_upgrade else f"checkout:{session.token}"
     session.asaas_customer_id = customer_id
     session.payment_method = "card"
     session.status = "processing"
-    payment_id = None
+    credit_card = {
+        "holderName": payload["holder_name"],
+        "number": _normalize_digits(payload["card_number"]),
+        "expiryMonth": str(payload["expiry_month"]),
+        "expiryYear": str(payload["expiry_year"]),
+        "ccv": str(payload["ccv"]),
+    }
+    holder_info = {
+        "name": session.customer_name,
+        "email": session.customer_email,
+        "cpfCnpj": session.customer_document,
+        "postalCode": session.customer_zipcode,
+        "addressNumber": "S/N",
+        "phone": session.customer_phone,
+        "mobilePhone": session.customer_phone,
+    }
     first_payment: dict[str, Any] = {}
-    if is_upgrade and can_upgrade_in_place:
-        payment_payload: dict[str, Any] = _with_optional_split({
+    if option.count > 1:
+        # Anual parcelado: uma cobrança parcelada no cartão (não é assinatura do Asaas). A
+        # renovação, daqui a 12 meses, é cobrada pelo job horário no cartão salvo, nas mesmas parcelas.
+        installment_payload: dict[str, Any] = _with_optional_split({
             "customer": customer_id,
             "billingType": "CREDIT_CARD",
-            "value": float(amount),
+            "installmentCount": option.count,
+            "installmentValue": float(option.value),
             "dueDate": _billing_today(),
-            "description": f"Upgrade {session.product_name}",
+            "description": f"{session.product_name} ({option.count}x)",
             "externalReference": external_reference,
             "split": build_default_split_payload(),
-            "creditCard": {
-                "holderName": payload["holder_name"],
-                "number": _normalize_digits(payload["card_number"]),
-                "expiryMonth": str(payload["expiry_month"]),
-                "expiryYear": str(payload["expiry_year"]),
-                "ccv": str(payload["ccv"]),
-            },
-            "creditCardHolderInfo": {
-                "name": session.customer_name,
-                "email": session.customer_email,
-                "cpfCnpj": session.customer_document,
-                "postalCode": session.customer_zipcode,
-                "addressNumber": "S/N",
-                "phone": session.customer_phone,
-                "mobilePhone": session.customer_phone,
-            },
-            "remoteIp": payload.get("remote_ip") or "127.0.0.1",
+            "creditCard": credit_card,
+            "creditCardHolderInfo": holder_info,
+            "remoteIp": remote_ip,
         })
-        created_payment = client.create_payment(payment_payload)
-        payment_id = created_payment.get("id")
-        first_payment = created_payment
+        first_payment = client.create_payment(installment_payload)
+        metadata = dict(session.metadata_json or {})
+        metadata.update(
+            {
+                "card_installments": option.count,
+                "card_installment_value": str(option.value),
+                "card_total": str(option.total),
+                "asaas_installment_id": _extract_asaas_resource_id(first_payment.get("installment")),
+                "card_token": _saved_card_token(
+                    client,
+                    first_payment,
+                    customer_id=customer_id,
+                    credit_card=credit_card,
+                    holder_info=holder_info,
+                    remote_ip=remote_ip,
+                ),
+            }
+        )
+        session.metadata_json = metadata
     else:
+        first_value = session_first_payment_amount(session) or amount
         subscription_payload: dict[str, Any] = _with_optional_split({
             "customer": customer_id,
             "billingType": "CREDIT_CARD",
             "nextDueDate": _billing_today(),
             "cycle": _resolve_asaas_cycle(session.billing_cycle),
-            "value": float(amount),
+            "value": float(first_value),
             "description": session.product_name,
             "externalReference": external_reference,
             "split": build_default_split_payload(),
-            "creditCard": {
-                "holderName": payload["holder_name"],
-                "number": _normalize_digits(payload["card_number"]),
-                "expiryMonth": str(payload["expiry_month"]),
-                "expiryYear": str(payload["expiry_year"]),
-                "ccv": str(payload["ccv"]),
-            },
-            "creditCardHolderInfo": {
-                "name": session.customer_name,
-                "email": session.customer_email,
-                "cpfCnpj": session.customer_document,
-                "postalCode": session.customer_zipcode,
-                "addressNumber": "S/N",
-                "phone": session.customer_phone,
-                "mobilePhone": session.customer_phone,
-            },
-            "remoteIp": payload.get("remote_ip") or "127.0.0.1",
+            "creditCard": credit_card,
+            "creditCardHolderInfo": holder_info,
+            "remoteIp": remote_ip,
         })
         subscription = client.create_subscription(subscription_payload)
         subscription_id = _extract_asaas_resource_id(subscription.get("id"))
@@ -1820,22 +2188,30 @@ def start_card_payment(db: Session, session: CheckoutSession, payload: dict[str,
             raise HTTPException(status_code=502, detail="Asaas nao retornou assinatura de cartao.")
         payments = client.list_subscription_payments(subscription_id)
         first_payment = _pick_checkout_subscription_payment(payments)
-        payment_id = first_payment.get("id")
         metadata = dict(session.metadata_json or {})
         metadata["asaas_subscription_id"] = subscription_id
+        if first_value != amount:
+            # 1ª mensalidade promocional: a assinatura nasce no valor da promoção (a cobrança de
+            # agora) e passa ao valor cheio para as próximas. updatePendingPayments=False não mexe
+            # na 1ª cobrança, mesmo que ela ainda esteja em análise. Se falhar, o job horário tenta de novo.
+            metadata["pending_subscription_value"] = str(amount)
+            session.metadata_json = metadata
+            _apply_pending_subscription_value(client, session, update_pending_payments=False)
+            metadata = dict(session.metadata_json or {})
         session.metadata_json = metadata
 
+    payment_id = first_payment.get("id")
     if payment_id:
+        metadata = dict(session.metadata_json or {})
+        metadata.setdefault("first_payment_id", str(payment_id))
+        session.metadata_json = metadata
         session.asaas_payment_id = str(payment_id)
         mapped = _map_asaas_payment_status(first_payment.get("status"))
         if mapped:
             session.status = mapped
         if session.status == "paid":
             session.paid_at = _utcnow()
-            if _is_upgrade_session(session) and can_upgrade_in_place:
-                _apply_upgrade_after_payment(db, session)
-            else:
-                _upsert_paid_user_and_subscription(db, session)
+            _complete_paid_checkout_session(db, session)
             _dispatch_meta_checkout_events(
                 db,
                 session=session,
@@ -1852,6 +2228,55 @@ def start_card_payment(db: Session, session: CheckoutSession, payload: dict[str,
     db.commit()
     db.refresh(session)
     return session
+
+
+def _apply_pending_subscription_value(
+    client: AsaasClient, session: CheckoutSession, *, update_pending_payments: bool
+) -> bool:
+    """Passa a assinatura do Asaas para o valor cheio depois da 1ª mensalidade promocional."""
+    metadata = dict(session.metadata_json or {})
+    pending = str(metadata.get("pending_subscription_value") or "").strip()
+    subscription_id = str(metadata.get("asaas_subscription_id") or "").strip()
+    if not pending or not subscription_id:
+        return False
+    try:
+        client.update_subscription(
+            subscription_id,
+            {"value": float(_parse_decimal(pending)), "updatePendingPayments": update_pending_payments},
+        )
+    except Exception:  # noqa: BLE001 - a compra já foi feita; o job horário tenta de novo
+        logger.exception("Assinatura %s não passou para o valor cheio depois da 1ª mensalidade.", subscription_id)
+        return False
+    metadata.pop("pending_subscription_value", None)
+    metadata["subscription_value_updated_at"] = _utcnow().isoformat()
+    session.metadata_json = metadata
+    return True
+
+
+def _leave_legacy_plan_after_purchase(session: CheckoutSession, subscription: Subscription) -> None:
+    """Compra paga que não é a renovação do plano antigo (ex.: upgrade para o plano único): o
+    cliente deixa de ser dos planos antigos. Sem isso, um plano Escala novo com o valor antigo
+    gravado seria tratado como Escala antigo e renovaria pelo valor de antes. Só vale na conclusão
+    da compra; as renovações automáticas do mesmo contrato não passam por aqui."""
+    if is_legacy_renewal_session(session):
+        return
+    subscription.legacy_renewal_amount = None
+
+
+def _detach_cakto_after_legacy_renewal(session: CheckoutSession, subscription: Subscription) -> None:
+    """Plano antigo da Cakto renovado ou com upgrade, agora cobrado no Asaas: os códigos da Cakto
+    saem da assinatura (avisos atrasados da Cakto não mexem mais nela) e ficam guardados na compra."""
+    metadata = dict(session.metadata_json or {})
+    metadata["replaced_cakto"] = {
+        "subscription_code": subscription.cakto_subscription_code,
+        "order_id": subscription.cakto_order_id,
+        "offer_id": subscription.cakto_offer_id,
+        "status": subscription.status,
+    }
+    session.metadata_json = metadata
+    subscription.cakto_subscription_code = None
+    subscription.cakto_order_id = None
+
 
 def _upsert_paid_user_and_subscription(db: Session, session: CheckoutSession) -> User:
     user = session.user or _find_existing_user(db, session.customer_email, session.customer_document)
@@ -1874,6 +2299,7 @@ def _upsert_paid_user_and_subscription(db: Session, session: CheckoutSession) ->
         )
         db.add(user)
         db.flush()
+        _record_checkout_origin(db, user, session)
     else:
         user.name = session.customer_name or user.name
         user.whatsapp = session.customer_phone or user.whatsapp
@@ -1892,6 +2318,11 @@ def _upsert_paid_user_and_subscription(db: Session, session: CheckoutSession) ->
         user.subscription_id = subscription.id
 
     previous_provider = (subscription.provider or "").strip().lower()
+    # Cakto antiga já encerrada (renova pela tela): renovando ou fazendo upgrade, passa para o Asaas.
+    if previous_provider == "cakto" and (
+        is_legacy_renewal_session(session) or legacy_renewal_info(subscription).mode == "panel"
+    ):
+        _detach_cakto_after_legacy_renewal(session, subscription)
     subscription.provider = "asaas"
     subscription.plan = session.plan_key
     subscription.status = "active"
@@ -1916,6 +2347,7 @@ def _upsert_paid_user_and_subscription(db: Session, session: CheckoutSession) ->
         if session.billing_cycle == "annual"
         else _parse_decimal(session.amount)
     )
+    _leave_legacy_plan_after_purchase(session, subscription)
 
     session.user_id = user.id
     session.updated_at = _utcnow()
@@ -2073,6 +2505,17 @@ def refresh_session_status(db: Session, session: CheckoutSession) -> CheckoutSes
                 ).isoformat()
                 session.metadata_json = metadata
             _complete_paid_checkout_session(db, session)
+            _dispatch_meta_checkout_events(
+                db,
+                session=session,
+                event_name="payment_success",
+                step="success",
+                status="paid",
+                payment_method=session.payment_method,
+                metadata=dict(session.metadata_json or {}),
+                ip_address_value=None,
+                user_agent=None,
+            )
         elif authorization_status in {"CANCELLED", "REFUSED"} and session.status != "paid":
             session.status = "failed"
         elif authorization_status == "EXPIRED" and session.status != "paid":
@@ -2149,6 +2592,17 @@ def refresh_session_status(db: Session, session: CheckoutSession) -> CheckoutSes
     if mapped == "paid" and not session.paid_at:
         session.paid_at = _utcnow()
         _complete_paid_checkout_session(db, session)
+        _dispatch_meta_checkout_events(
+            db,
+            session=session,
+            event_name="payment_success",
+            step="success",
+            status="paid",
+            payment_method=session.payment_method,
+            metadata=dict(session.metadata_json or {}),
+            ip_address_value=None,
+            user_agent=None,
+        )
     session.updated_at = _utcnow()
     db.add(session)
     db.commit()
@@ -2167,6 +2621,272 @@ def _mark_checkout_subscription_overdue(session: CheckoutSession, payment: dict[
     if not same_contract or (subscription.status or "").strip().lower() not in {"active", "past_due"}:
         return
     mark_subscription_overdue(subscription, payment.get("dueDate"))
+    _notify_checkout_payment_overdue(session, payment, "Renovação")
+
+
+RENEWAL_PAID_EVENTS = {"PAYMENT_CONFIRMED", "PAYMENT_RECEIVED"}
+RENEWAL_FAILED_EVENTS = {
+    "PAYMENT_CREDIT_CARD_CAPTURE_REFUSED",
+    "PAYMENT_REPROVED_BY_RISK_ANALYSIS",
+    "PAYMENT_DELETED",
+    "PAYMENT_REFUNDED",
+}
+
+
+def _payment_due_date(payment: dict[str, Any]) -> date | None:
+    raw = str(payment.get("dueDate") or "").strip()[:10]
+    try:
+        return date.fromisoformat(raw) if raw else None
+    except ValueError:
+        return None
+
+
+def _session_contract_subscription_ids(db: Session, session: CheckoutSession) -> set[str]:
+    """Assinaturas do Asaas que pertencem a esta compra: a criada nela e, nos upgrades antigos feitos
+    "no lugar", a assinatura do cliente que passou a apontar para esta compra."""
+    ids = {str((session.metadata_json or {}).get("asaas_subscription_id") or "").strip()}
+    user = session.user or _find_existing_user(db, session.customer_email, session.customer_document)
+    subscription = user.subscription if user else None
+    if subscription is not None and str(subscription.external_reference or "") in {
+        f"checkout:{session.token}",
+        f"checkout_upgrade:{session.token}",
+    }:
+        ids.add(str(subscription.asaas_subscription_id or "").strip())
+    ids.discard("")
+    return ids
+
+
+def _is_card_subscription_renewal(db: Session, session: CheckoutSession, payment: dict[str, Any]) -> bool:
+    """Cobrança de renovação da assinatura no cartão: do mesmo contrato do Asaas e vencendo depois
+    da compra. Não conta o pagamento da compra (nem o aviso de "recebido" dele, uns 30 dias depois)."""
+    if session.payment_method != "card" or not session.paid_at or payment.get("installment"):
+        return False
+    metadata = session.metadata_json or {}
+    remote = _extract_asaas_resource_id(payment.get("subscription"))
+    payment_id = str(payment.get("id") or "").strip()
+    if not remote or not payment_id or remote not in _session_contract_subscription_ids(db, session):
+        return False
+    if payment_id == str(metadata.get("first_payment_id") or ""):
+        return False
+    due = _payment_due_date(payment)
+    paid_at = session.paid_at if session.paid_at.tzinfo else session.paid_at.replace(tzinfo=timezone.utc)
+    return due is not None and due > paid_at.astimezone(ZoneInfo("America/Sao_Paulo")).date() + timedelta(days=7)
+
+
+def _extend_checkout_subscription(db: Session, session: CheckoutSession, *, renewed_from: date | None) -> bool:
+    """Renovação paga: estende a assinatura do contrato desta compra por mais um ciclo, contado do
+    vencimento renovado (pagar atrasado não encurta o período). Repetir é inofensivo."""
+    user = session.user or _find_existing_user(db, session.customer_email, session.customer_document)
+    subscription = user.subscription if user else None
+    if subscription is None:
+        return False
+    # O cliente pode ter migrado de plano depois: só mexe se a assinatura ainda é desta compra.
+    if str(subscription.external_reference or "") not in {f"checkout:{session.token}", f"checkout_upgrade:{session.token}"}:
+        return False
+    period = _duration_from_cycle(session.billing_cycle)
+    now = _utcnow()
+    current = subscription.valid_until
+    if current is not None and current.tzinfo is None:
+        current = current.replace(tzinfo=timezone.utc)
+    if renewed_from is not None:
+        start = datetime(renewed_from.year, renewed_from.month, renewed_from.day, 23, 59, tzinfo=ZoneInfo("America/Sao_Paulo"))
+        new_valid_until = start + period
+    else:
+        new_valid_until = max(current or now, now) + period
+    if current is not None and current > new_valid_until:
+        new_valid_until = current
+    subscription.valid_until = new_valid_until
+    subscription.status = "active"
+    subscription.failed_attempts = 0
+    user.plan = session.plan_key
+    user.is_active = True
+    db.add_all([user, subscription])
+    _notify_checkout_subscription_push(scenario=SubscriptionPushScenario.RENEWED, session=session, user=user)
+    return True
+
+
+def _handle_card_subscription_renewal(db: Session, session: CheckoutSession, payment: dict[str, Any], event: str) -> None:
+    metadata = dict(session.metadata_json or {})
+    payment_id = str(payment.get("id") or "").strip()
+    if event in RENEWAL_PAID_EVENTS:
+        renewed = [str(item) for item in (metadata.get("card_renewed_payment_ids") or [])]
+        if payment_id not in renewed and _extend_checkout_subscription(db, session, renewed_from=_payment_due_date(payment)):
+            renewed.append(payment_id)
+            metadata["card_renewed_payment_ids"] = renewed[-36:]
+    elif event == "PAYMENT_OVERDUE":
+        # Renovação não paga: inadimplente (no ar por 3 dias, cobrança segue por 30).
+        _mark_checkout_subscription_overdue(session, payment)
+    session.metadata_json = metadata
+    session.updated_at = _utcnow()
+    db.add(session)
+    db.commit()
+
+
+def _renewal_key_from_reference(reference: str) -> str:
+    parts = str(reference or "").split(":")
+    return parts[2] if len(parts) >= 3 else ""
+
+
+def _apply_installment_renewal(db: Session, session: CheckoutSession, key: str) -> None:
+    metadata = dict(session.metadata_json or {})
+    renewal = dict(metadata.get("installment_renewal") or {})
+    paid_keys = [str(item) for item in (metadata.get("installment_renewal_paid_keys") or [])]
+    if key and key not in paid_keys:
+        try:
+            renewed_from = date.fromisoformat(key)
+        except ValueError:
+            renewed_from = None
+        if _extend_checkout_subscription(db, session, renewed_from=renewed_from):
+            paid_keys.append(key)
+            metadata["installment_renewal_paid_keys"] = paid_keys[-12:]
+    if renewal.get("key") == key:
+        renewal["state"] = "paid"
+        metadata["installment_renewal"] = renewal
+    session.metadata_json = metadata
+
+
+def _handle_installment_renewal_payment(db: Session, session: CheckoutSession, payment: dict[str, Any], event: str) -> None:
+    """Avisos da cobrança de renovação do anual parcelado (criada pelo job horário)."""
+    key = _renewal_key_from_reference(str(payment.get("externalReference") or ""))
+    status = _map_asaas_payment_status(payment.get("status"))
+    if event in RENEWAL_PAID_EVENTS or (status == "paid" and not event.startswith("PAYMENT_REFUND")):
+        _apply_installment_renewal(db, session, key)
+    elif event in RENEWAL_FAILED_EVENTS or status in {"failed", "refunded"}:
+        metadata = dict(session.metadata_json or {})
+        renewal = dict(metadata.get("installment_renewal") or {})
+        if renewal.get("key") == key and renewal.get("state") != "paid":
+            renewal["state"] = "failed"
+            metadata["installment_renewal"] = renewal
+            session.metadata_json = metadata
+    session.updated_at = _utcnow()
+    db.add(session)
+    db.commit()
+
+
+def _existing_renewal_payment(client: AsaasClient, reference: str) -> dict[str, Any] | None:
+    """Cobrança de renovação que já existe no Asaas para esta referência (evita cobrar duas vezes)."""
+    rows = (client.list_payments(externalReference=reference, limit=20) or {}).get("data") or []
+    alive = [row for row in rows if str(row.get("status") or "").upper() not in {"REFUSED", "CREDIT_CARD_CAPTURE_REFUSED", "REFUNDED", "DELETED"} and not row.get("deleted")]
+    if not alive:
+        return None
+    paid = [row for row in alive if _map_asaas_payment_status(row.get("status")) == "paid"]
+    return (paid or alive)[0]
+
+
+def renew_due_installment_subscriptions(db: Session, client: AsaasClient, now: datetime | None = None) -> int:
+    """Renovação do anual parcelado: no vencimento, cobra de novo no cartão salvo, nas mesmas
+    parcelas e no mesmo valor da compra. Uma tentativa por dia; recusado, a assinatura segue a
+    regra de inadimplência (3 dias no ar, 30 cobrando). Cancelada, não renova (o status deixa de
+    ser ativo/inadimplente). Antes de cobrar, trava a compra e confere no Asaas se a cobrança daquele
+    vencimento já existe, para nunca cobrar duas vezes (os dois servidores rodam este job)."""
+    now = now or _utcnow()
+    today = now.astimezone(ZoneInfo("America/Sao_Paulo")).date()
+    candidates = (
+        db.query(Subscription)
+        .filter(
+            Subscription.provider == "asaas",
+            Subscription.status.in_(("active", "past_due")),
+            Subscription.valid_until.isnot(None),
+            Subscription.valid_until <= now,
+            Subscription.asaas_subscription_id.is_(None),
+            or_(Subscription.external_reference.like("checkout:%"), Subscription.external_reference.like("checkout_upgrade:%")),
+        )
+        .all()
+    )
+    charged = 0
+    for subscription in candidates:
+        token = _extract_checkout_session_token(str(subscription.external_reference or ""))
+        if not token:
+            continue
+        session = (
+            db.query(CheckoutSession)
+            .filter(CheckoutSession.token == token)
+            .with_for_update(skip_locked=True)
+            .populate_existing()
+            .first()
+        )
+        if session is None:
+            db.rollback()
+            continue
+        metadata = dict(session.metadata_json or {})
+        try:
+            count = int(metadata.get("card_installments") or 0)
+        except (TypeError, ValueError):
+            count = 0
+        card_token = str(metadata.get("card_token") or "").strip()
+        value = str(metadata.get("card_installment_value") or "").strip()
+        if count < 2 or not card_token or not value:
+            db.rollback()
+            continue
+        valid_until = subscription.valid_until if subscription.valid_until.tzinfo else subscription.valid_until.replace(tzinfo=timezone.utc)
+        key = valid_until.astimezone(ZoneInfo("America/Sao_Paulo")).date().isoformat()
+        renewal = dict(metadata.get("installment_renewal") or {})
+        if renewal.get("key") == key:
+            if renewal.get("state") == "paid" or renewal.get("last_attempt") == today.isoformat():
+                db.rollback()
+                continue
+        else:
+            renewal = {"key": key, "attempts": 0}
+        renewal.update(state="charging", last_attempt=today.isoformat(), attempts=int(renewal.get("attempts") or 0) + 1)
+        metadata["installment_renewal"] = renewal
+        session.metadata_json = metadata
+        db.add(session)
+        db.commit()  # libera a trava já marcando a tentativa de hoje
+
+        reference = f"checkout_renewal:{session.token}:{key}"
+        try:
+            payment = _existing_renewal_payment(client, reference)
+            if payment is None:
+                payment = client.create_payment(
+                    _with_optional_split({
+                        "customer": session.asaas_customer_id,
+                        "billingType": "CREDIT_CARD",
+                        "installmentCount": count,
+                        "installmentValue": float(_parse_decimal(value)),
+                        "dueDate": today.isoformat(),
+                        "description": f"Renovação {session.product_name} ({count}x)",
+                        "externalReference": reference,
+                        "split": build_default_split_payload(),
+                        "creditCardToken": card_token,
+                        "remoteIp": str(metadata.get("remote_ip") or "127.0.0.1"),
+                    })
+                )
+            status = _map_asaas_payment_status(payment.get("status"))
+        except Exception:  # noqa: BLE001 - cartão recusado ou Asaas fora: tenta de novo amanhã
+            logger.exception("Renovação do anual parcelado não cobrada (checkout %s).", session.token)
+            status = "failed"
+        metadata = dict(session.metadata_json or {})
+        renewal = dict(metadata.get("installment_renewal") or {})
+        renewal["state"] = {"paid": "paid", "awaiting_payment": "pending"}.get(status, "failed")
+        metadata["installment_renewal"] = renewal
+        session.metadata_json = metadata
+        if status == "paid":
+            _apply_installment_renewal(db, session, key)
+            charged += 1
+        session.updated_at = _utcnow()
+        db.add(session)
+        db.commit()
+    return charged
+
+
+def apply_pending_subscription_values(db: Session, client: AsaasClient) -> int:
+    """Assinaturas que ficaram no valor da 1ª mensalidade promocional (a troca falhou na compra):
+    passa para o valor cheio, inclusive na próxima cobrança se ela já foi gerada."""
+    updated = 0
+    sessions = (
+        db.query(CheckoutSession)
+        .filter(CheckoutSession.payment_method == "card", CheckoutSession.status == "paid", CheckoutSession.metadata_json.isnot(None))
+        .all()
+    )
+    for session in sessions:
+        if not (session.metadata_json or {}).get("pending_subscription_value"):
+            continue
+        if _apply_pending_subscription_value(client, session, update_pending_payments=True):
+            session.updated_at = _utcnow()
+            db.add(session)
+            db.commit()
+            updated += 1
+    return updated
 
 
 def handle_asaas_checkout_webhook(db: Session, payload: dict[str, Any]) -> bool:
@@ -2190,6 +2910,17 @@ def handle_asaas_checkout_webhook(db: Session, payload: dict[str, Any]) -> bool:
                     break
     if not session:
         return False
+    event_name = str(payload.get("event") or "").upper()
+    if external_reference.startswith("checkout_renewal:"):
+        _handle_installment_renewal_payment(db, session, payment, event_name)
+        return True
+    if session.paid_at and payment.get("installment"):
+        # Parcelas da compra parcelada (o Asaas avisa cada uma, e de novo quando recebe): a compra
+        # já foi confirmada e nenhuma delas muda a assinatura.
+        return True
+    if _is_card_subscription_renewal(db, session, payment):
+        _handle_card_subscription_renewal(db, session, payment, event_name)
+        return True
     was_already_paid = session.status == "paid" and bool(session.paid_at)
     session.asaas_payment_id = payment.get("id") or session.asaas_payment_id
     session.asaas_customer_id = payment.get("customer") or authorization.get("customerId") or session.asaas_customer_id
@@ -2273,28 +3004,7 @@ def handle_asaas_checkout_webhook(db: Session, payload: dict[str, Any]) -> bool:
         if not session.paid_at:
             session.paid_at = _utcnow()
         session.status = "paid"
-        if _is_upgrade_session(session):
-            if _should_upgrade_session_in_place(db, session):
-                user, previous_plan = _apply_upgrade_after_payment(db, session)
-            else:
-                if session.payment_method == "pix":
-                    _cancel_replaced_asaas_subscription_after_pix_upgrade(db, session)
-                previous_plan = str((dict(session.metadata_json or {}).get("current_plan") or "")).strip().lower() or None
-                user = _upsert_paid_user_and_subscription(db, session)
-            _notify_checkout_subscription_push(
-                scenario=SubscriptionPushScenario.UPGRADED,
-                session=session,
-                user=user,
-                previous_plan_name=previous_plan,
-                upgraded_plan_name=session.plan_key,
-            )
-        else:
-            user = _upsert_paid_user_and_subscription(db, session)
-            _notify_checkout_subscription_push(
-                scenario=SubscriptionPushScenario.NEW,
-                session=session,
-                user=user,
-            )
+        _complete_paid_checkout_session(db, session)
         _dispatch_meta_checkout_events(
             db,
             session=session,
@@ -2311,6 +3021,9 @@ def handle_asaas_checkout_webhook(db: Session, payload: dict[str, Any]) -> bool:
         if event == "PAYMENT_OVERDUE" and session.paid_at:
             # Renovação de quem já pagava: inadimplente (no ar por 3 dias, cobrança segue por 30).
             _mark_checkout_subscription_overdue(session, payment)
+        elif event == "PAYMENT_OVERDUE":
+            # Pix ou boleto da compra que venceu sem pagamento: a pessoa não concluiu a compra.
+            _notify_checkout_payment_overdue(session, payment, "Primeira cobrança (compra não concluída)")
     elif event in {"PAYMENT_REPROVED_BY_RISK_ANALYSIS", "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_CANCELLED"}:
         session.status = "failed"
     session.updated_at = _utcnow()

@@ -719,22 +719,37 @@ export const HELP_ARTICLES: HelpArticle[] = [
     id: "plano-e-assinatura",
     modulo: "conta",
     titulo: "Assinatura",
-    resumo: "Plano único com tudo incluso, pago por mês ou por ano.",
-    atualizado: "2026-10-14",
+    resumo: "Sua assinatura, o valor, a validade e como renovar.",
+    atualizado: "2026-10-15",
     rota: "/admin/planos",
     rotaRotulo: "Ver assinatura",
-    busca: "plano assinatura mensal anual upgrade renovar cancelar preco profissional agencia escala",
+    busca: "plano assinatura mensal anual upgrade migrar renovar reativar mesmo valor plano antigo fazer upgrade trocar de plano 137 cancelar preco parcelar parcelas cartao profissional agencia escala",
     passos: [
       { titulo: "Veja sua assinatura", texto: "No Perfil, com a próxima renovação e a forma de pagamento.", tela: 1 },
       { titulo: "Clique em Ver assinatura", tela: 2 },
-      { titulo: "Escolha mensal ou anual", texto: "Os recursos são os mesmos: muda só a forma de pagar. No anual você economiza.", tela: 3 }
+      { titulo: "Escolha mensal ou anual", texto: "Os recursos são os mesmos: muda só a forma de pagar. No anual você economiza. Nos planos antigos, a tela mostra o seu plano e o botão de renovar; no Profissional e no Agência, mostra também o upgrade para o plano de R$ 137.", tela: 3 }
     ],
     blocos: [
       {
         tipo: "texto",
-        texto: "A assinatura inclui tudo: roteiros ilimitados, Módulo Leads, domínio próprio, caixa de entrada do WhatsApp, pixels, Assistente IA e equipe com até 5 usuários."
+        texto: "A assinatura inclui tudo: roteiros ilimitados, Módulo Leads, domínio próprio, notificações inteligentes, pixels, Assistente IA e equipe com até 5 usuários."
       },
-      { tipo: "texto", texto: "Quem está num plano antigo (Profissional ou Agência) continua nele, com o mesmo valor, até assinar." },
+      {
+        tipo: "texto",
+        texto: "O anual pode ser pago à vista ou parcelado no cartão. Quem parcela renova no ano seguinte do mesmo jeito: nas mesmas parcelas, no cartão usado na compra."
+      },
+      {
+        tipo: "texto",
+        texto: "Quem assinou o plano Profissional, Agência ou Escala antes de 15/10/2026 vê em **Ver assinatura** só o próprio plano, o valor que já paga e a validade. **Renovar assinatura** (ou **Reativar assinatura**, se ela estiver inativa) cobra o mesmo valor, no mesmo plano e no mesmo ciclo, no cartão ou no Pix automático. Depois do pagamento, a cobrança anterior é encerrada e a nova validade conta a partir do dia do pagamento."
+      },
+      {
+        tipo: "texto",
+        texto: "No Profissional e no Agência, você também pode trocar para a assinatura atual do Roteiro Online: em **Ver assinatura**, abaixo da renovação, escolha mensal ou anual e clique em **Fazer upgrade**. O valor é o cheio da assinatura (R$ 137 por mês no mensal), sem o desconto do 1º mês. Os dias que ainda restam no plano antigo não viram desconto: a nova validade conta a partir do pagamento. Depois do upgrade, sua assinatura passa a ser a do Roteiro Online e renova pelo valor dela, não mais pelo valor do plano antigo. No Escala antigo, a tela mostra só a renovação."
+      },
+      {
+        tipo: "texto",
+        texto: "Se a assinatura foi contratada por outro canal, a tela avisa que a renovação é gerida pelo local onde ela foi contratada. Se a tela pedir para falar com o suporte, é por ele que a renovação é feita."
+      },
       { tipo: "texto", texto: "Ao cancelar a renovação, a assinatura segue ativa até o fim do período pago." }
     ],
     relacionados: ["faturas", "perfil-e-senha"]

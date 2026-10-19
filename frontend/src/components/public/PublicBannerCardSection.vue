@@ -93,9 +93,11 @@ const gradientLuminance = computed(() => {
   return 0.2126 * rLin + 0.7152 * gLin + 0.0722 * bLin;
 });
 
-const backgroundImage = computed(
-  () => resolveMediaUrl(props.section.backgroundImage || "") || props.section.backgroundImage || ""
-);
+// Só a imagem do celular (editor antigo): ela vale também no computador.
+const backgroundImage = computed(() => {
+  const photo = props.section.backgroundImage || props.section.mobileBackgroundImage || "";
+  return resolveMediaUrl(photo) || photo;
+});
 
 const backgroundImageStyle = computed(() =>
   backgroundImage.value

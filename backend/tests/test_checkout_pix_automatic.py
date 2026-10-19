@@ -154,6 +154,8 @@ def test_pix_polling_activates_checkout_from_authorization(monkeypatch: pytest.M
     configure_pix_dependencies(monkeypatch, client)
     completed: list[CheckoutSession] = []
     monkeypatch.setattr(checkout, "_complete_paid_checkout_session", lambda _db, item: completed.append(item))
+    meta_events: list[str] = []
+    monkeypatch.setattr(checkout, "_dispatch_meta_checkout_events", lambda _db, **kwargs: meta_events.append(kwargs["event_name"]))
     session = make_session()
     session.payment_method = "pix"
     session.status = "awaiting_payment"
@@ -167,6 +169,8 @@ def test_pix_polling_activates_checkout_from_authorization(monkeypatch: pytest.M
     assert result.status == "paid"
     assert result.metadata_json["asaas_pix_automatic_authorization_status"] == "ACTIVE"
     assert completed == [session]
+    # Compra aprovada também vai ao Meta (Purchase), como no cartão e no webhook.
+    assert meta_events == ["payment_success"]
 
 
 def test_pix_checkout_never_falls_back_to_conventional_pix(monkeypatch: pytest.MonkeyPatch) -> None:

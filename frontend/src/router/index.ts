@@ -3,6 +3,7 @@ import PublicPageView from "../views/public/PublicPageView.vue";
 import { useAuthStore } from "../store/useAuthStore";
 import { canAccessPermission, PermissionKey } from "../utils/permissions";
 import { resolveCurrentLanguage, setCurrentLanguage } from "../utils/i18n";
+import { isStaleBuildError, reloadForNewBuild } from "../utils/staleBuild";
 
 // Só a página pública (o que o visitante abre) vai no arquivo principal; as telas do painel
 // e do login são baixadas quando alguém entra nelas.
@@ -426,6 +427,11 @@ const router = createRouter({
   routes
 });
 
+// Aba aberta antes de um deploy: a tela pedida não existe mais no servidor; recarrega já no destino.
+router.onError((error, to) => {
+  if (isStaleBuildError(error)) reloadForNewBuild(to?.fullPath);
+});
+
 const resolveFirstAllowedAdminRoute = (auth: ReturnType<typeof useAuthStore>) => {
   if (!auth.user) return { name: "dashboard" as const };
 
@@ -571,6 +577,11 @@ router.beforeEach(async (to, _from, next) => {
         next();
         return;
       }
+    }
+    // Logado, o checkout vira a assinatura/upgrade da própria conta (antes caía no painel).
+    if (to.name === "custom-checkout") {
+      next({ name: "custom-checkout", params: to.params, query: { ...to.query, upgrade: "1" }, replace: true });
+      return;
     }
     if (auth.user?.trial_blocked) {
       next({ name: "plans" });
