@@ -356,10 +356,10 @@ RESUMO DO PACOTE: Etiqueta, Título, Subtítulo (opcional), depois a linha "Incl
 
 ARTIGO: Título, Texto, Busca de imagem.
 
-ROTEIRO DIA A DIA: Etiqueta, Título, Subtítulo, e um bloco por dia:
-Dia 1: título curto do dia (até 7 palavras)
-descrição do dia na linha seguinte, em 1 a 3 frases
-(Sem dias definidos, use "Dia 1", "Dia 2"... na ordem das etapas. Nunca liste os dias duas vezes.)
+ROTEIRO DIA A DIA: Etiqueta, Título, Subtítulo, e um bloco por dia, sempre assim (exemplo de formato; o conteúdo é o da viagem):
+Dia 1: Chegada e primeiro passeio
+Chegada ao destino, traslado ao hotel e tarde livre para conhecer a orla.
+Regras (são para você, nunca escreva estas regras nem parênteses de orientação na página): o título do dia é curto, até 7 palavras; a descrição vai na linha seguinte ao título e tem de 1 a 3 frases. Sem dias definidos, use "Dia 1", "Dia 2"... na ordem das etapas. Nunca liste os dias duas vezes.
 
 VOOS (só com dados aéreos enviados): Título, e um trecho por linha, sempre neste formato: "Ida: 12/07/2026, voo LA3456, São Paulo (GRU) 08:00 → Recife (REC) 11:15, LATAM, voo direto". Escreva o código do voo ("voo LA3456") sempre que o usuário informar: com ele, o editor busca os dados oficiais do voo; sem código, monta com o que foi escrito (cidade, código do aeroporto entre parênteses e horários). Conexão é outra linha: "Ida 2: ..." ou "Volta 2: ...". Chegada no dia seguinte leva "+1" depois do horário. Por último, "Bagagem: ..." e observações.
 
@@ -775,11 +775,36 @@ def _split_price_text(value: str) -> tuple[str, str]:
     return label, after
 
 
+# Orientações do prompt que o modelo às vezes copia para o conteúdo do dia ("descrição do dia na
+# linha seguinte, em 1 a 3 frases", "(até 7 palavras)"). Não são texto da página.
+_INSTRUCTION_LEAK_LINE_RE = re.compile(
+    r"^[\s(\[*_-]*(?:descri[cç][aã]o(?:\s+do\s+dia)?|texto(?:\s+do\s+dia)?|t[ií]tulo(?:\s+curto)?(?:\s+do\s+dia)?)?"
+    r"[^.!?\n]{0,60}?\b(?:na\s+linha\s+seguinte|de\s+1\s+a\s+3\s+(?:frases|linhas)|em\s+1\s+a\s+3\s+(?:frases|linhas)|1\s*[-–a]\s*3\s+(?:frases|linhas))\b[^\n]*$",
+    re.I,
+)
+_INSTRUCTION_LEAK_HINT_RE = re.compile(
+    r"\s*[(\[]\s*(?:at[eé]\s+\d+\s+palavras|\d+\s*(?:a|-|–)\s*\d+\s+(?:frases|linhas|palavras))\s*[)\]]",
+    re.I,
+)
+
+
+def _strip_instruction_leaks(line: str) -> str:
+    """Remove do texto do dia as orientações do prompt que vazaram para a resposta do modelo."""
+    stripped = line.strip()
+    if _INSTRUCTION_LEAK_LINE_RE.match(stripped) or re.fullmatch(r"[\s(\[*_-]*t[ií]tulo\s+curto(?:\s+do\s+dia)?[\s)\]*_.-]*", stripped, re.I):
+        return ""
+    return _INSTRUCTION_LEAK_HINT_RE.sub("", line).strip()
+
+
 def _itinerary_day_content(body: str) -> tuple[str, str]:
     lines = [
-        _strip_markdown_emphasis(line.strip())
-        for line in body.splitlines()
-        if line.strip() and not re.fullmatch(r"\s*(?:[-*_]\s*){3,}", line)
+        cleaned
+        for cleaned in (
+            _strip_instruction_leaks(_strip_markdown_emphasis(line.strip()))
+            for line in body.splitlines()
+            if line.strip() and not re.fullmatch(r"\s*(?:[-*_]\s*){3,}", line)
+        )
+        if cleaned
     ]
     if not lines:
         return "Programação do dia", ""
