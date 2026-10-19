@@ -1,13 +1,17 @@
 ﻿<template>
   <Teleport to="body">
     <transition name="fade">
+      <!-- A área rola por conta própria: com vários campos ou o teclado aberto no celular, o
+           formulário passa da altura da tela e a página atrás fica travada (sem isso, o botão
+           Enviar ficava inalcançável). -->
       <div
         v-if="modelValue && form"
-        class="fixed inset-0 z-[140] flex min-h-screen items-center justify-center px-4 py-6"
+        class="fixed inset-0 z-[140] overflow-y-auto overscroll-contain"
       >
-        <div class="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"></div>
+        <div class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm"></div>
+        <div class="relative z-10 flex min-h-full items-center justify-center px-4 py-6">
         <div
-          class="relative z-10 w-full max-w-md rounded-[24px] border border-white/10 bg-white/95 p-5 text-slate-900 shadow-2xl backdrop-blur-sm dark:bg-slate-900/95 dark:text-white"
+          class="relative w-full max-w-md rounded-[24px] border border-white/10 bg-white/95 p-5 text-slate-900 shadow-2xl backdrop-blur-sm dark:bg-slate-900/95 dark:text-white"
           role="dialog"
           aria-modal="true"
           :aria-labelledby="modalTitleId"
@@ -79,6 +83,7 @@
               {{ privacyNotice }}
             </p>
           </div>
+        </div>
         </div>
       </div>
     </transition>
@@ -203,9 +208,18 @@ const validate = () => {
   return valid;
 };
 
+// Trava a rolagem da página só enquanto o formulário está de fato na tela, e devolve o valor
+// que o body tinha antes (em vez de apagar o que outro componente tenha definido).
+let previousBodyOverflow: string | null = null;
 const lockScroll = (lock: boolean) => {
   if (typeof document === "undefined") return;
-  document.body.style.overflow = lock ? "hidden" : "";
+  if (lock) {
+    if (previousBodyOverflow === null) previousBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+  } else if (previousBodyOverflow !== null) {
+    document.body.style.overflow = previousBodyOverflow;
+    previousBodyOverflow = null;
+  }
 };
 
 const handleSubmit = async () => {
@@ -260,9 +274,14 @@ const inputMode = (type: string) => {
 };
 
 watch(
+  () => props.modelValue && !!props.form,
+  visible => lockScroll(visible),
+  { immediate: true }
+);
+
+watch(
   () => props.modelValue,
   value => {
-    lockScroll(value);
     if (value) {
       setupFields();
     } else {
