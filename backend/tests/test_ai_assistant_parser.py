@@ -1165,3 +1165,22 @@ def test_sent_photos_fill_story_carousel_and_ignore_invalid_addresses():
     # Sem endereço válido, segue a busca no banco de fotos.
     assert no_url["sections"][0].get("aiStockPhoto") is None
     assert "aiImageQuery" in no_url["sections"][0]
+
+
+def test_itinerary_day_drops_leaked_prompt_instructions():
+    block = (
+        "ITINERÁRIO\n"
+        "Título: Dia a dia\n"
+        "Dia 1: Chegada em Recife (até 7 palavras)\n"
+        "descrição do dia na linha seguinte, em 1 a 3 frases\n"
+        "Chegada, traslado ao hotel e tarde livre na praia.\n"
+        "Dia 2: título curto do dia\n"
+        "Passeio de jangada pelas piscinas naturais.\n"
+        "(1 a 3 frases)\n"
+    )
+    config, _ = build_page_base_config_from_reply(reply_with("🟩 SEÇÃO: ROTEIRO DIA A DIA\n" + block), strict=False)
+    days = next(section for section in config["sections"] if section["type"] == "itinerary")["days"]
+    assert days[0]["title"] == "Chegada em Recife"
+    assert days[0]["description"] == "Chegada, traslado ao hotel e tarde livre na praia."
+    assert days[1]["description"] == "Passeio de jangada pelas piscinas naturais."
+    assert all("1 a 3" not in day["description"] and "linha seguinte" not in day["description"] for day in days)
