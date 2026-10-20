@@ -39,7 +39,6 @@
             :fallback-url="modelValue.backgroundImage ? '' : modelValue.mobileBackgroundImage || ''"
             @update:model-value="setPhoto('desktop', $event)"
           />
-          <button v-if="modelValue.backgroundImage" type="button" class="ved-inline-btn" @click="openFocus('desktop')">Ajustar encaixe</button>
           <ImageUploadField
             :model-value="modelValue.mobileBackgroundImage || ''"
             label="Foto do celular"
@@ -52,7 +51,6 @@
             :fallback-url="modelValue.mobileBackgroundImage ? '' : modelValue.backgroundImage || ''"
             @update:model-value="setPhoto('mobile', $event)"
           />
-          <button v-if="modelValue.mobileBackgroundImage" type="button" class="ved-inline-btn" @click="openFocus('mobile')">Ajustar encaixe</button>
           <ImageFocusDialog
             :open="focusDialog.open"
             :src="focusDialog.src"
