@@ -65,6 +65,7 @@ import { resolvePageDesign } from "../../utils/pageDesign";
 import { pickSectionComponent, v2Components } from "../../components/public/v2/registry";
 import { DEFAULT_ACCENT, PAGE_DESIGN_KEY } from "../../components/public/v2/designContext";
 import { LIVE_PAGE_KEY } from "../../components/public/v2/livePage";
+import { SECTION_PLACEHOLDER_KEY, lazySection } from "../../components/public/lazySection";
 import type { LeadForm } from "../../types/leads";
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 import { PHOTO_CREDITS_KEY, buildPhotoCredits } from "../../components/public/v2/photoCredits";
@@ -76,27 +77,27 @@ import { createLocalizer, getCurrentLanguage, getLocalizedValue, type LocalizedS
 
 // Seções do visual antigo e o modal de captura: baixadas só quando a página usa. Assim o
 // visitante de uma página no visual novo não baixa as duas versões de cada seção.
-const PublicHeroSection = defineAsyncComponent(() => import("../../components/public/PublicHeroSection.vue"));
-const PublicHeaderSection = defineAsyncComponent(() => import("../../components/public/PublicHeaderSection.vue"));
-const PublicBannerCardSection = defineAsyncComponent(() => import("../../components/public/PublicBannerCardSection.vue"));
-const PublicPricesSection = defineAsyncComponent(() => import("../../components/public/PublicPricesSection.vue"));
-const PublicItinerarySection = defineAsyncComponent(() => import("../../components/public/PublicItinerarySection.vue"));
-const PublicFaqSection = defineAsyncComponent(() => import("../../components/public/PublicFaqSection.vue"));
-const PublicTestimonialsSection = defineAsyncComponent(() => import("../../components/public/PublicTestimonialsSection.vue"));
-const PublicFeaturedVideoSection = defineAsyncComponent(() => import("../../components/public/PublicFeaturedVideoSection.vue"));
-const PublicVideoVslSection = defineAsyncComponent(() => import("../../components/public/PublicVideoVslSection.vue"));
-const PublicCtaSection = defineAsyncComponent(() => import("../../components/public/PublicCtaSection.vue"));
-const PublicStorySection = defineAsyncComponent(() => import("../../components/public/PublicStorySection.vue"));
-const PublicReasonsSection = defineAsyncComponent(() => import("../../components/public/PublicReasonsSection.vue"));
-const PublicLinksSection = defineAsyncComponent(() => import("../../components/public/PublicLinksSection.vue"));
-const PublicCountdownSection = defineAsyncComponent(() => import("../../components/public/PublicCountdownSection.vue"));
-const PublicAgencyFooterSection = defineAsyncComponent(() => import("../../components/public/PublicAgencyFooterSection.vue"));
-const PublicFlightDetailsSection = defineAsyncComponent(() => import("../../components/public/PublicFlightDetailsSection.vue"));
+const PublicHeroSection = lazySection(() => import("../../components/public/PublicHeroSection.vue"));
+const PublicHeaderSection = lazySection(() => import("../../components/public/PublicHeaderSection.vue"));
+const PublicBannerCardSection = lazySection(() => import("../../components/public/PublicBannerCardSection.vue"));
+const PublicPricesSection = lazySection(() => import("../../components/public/PublicPricesSection.vue"));
+const PublicItinerarySection = lazySection(() => import("../../components/public/PublicItinerarySection.vue"));
+const PublicFaqSection = lazySection(() => import("../../components/public/PublicFaqSection.vue"));
+const PublicTestimonialsSection = lazySection(() => import("../../components/public/PublicTestimonialsSection.vue"));
+const PublicFeaturedVideoSection = lazySection(() => import("../../components/public/PublicFeaturedVideoSection.vue"));
+const PublicVideoVslSection = lazySection(() => import("../../components/public/PublicVideoVslSection.vue"));
+const PublicCtaSection = lazySection(() => import("../../components/public/PublicCtaSection.vue"));
+const PublicStorySection = lazySection(() => import("../../components/public/PublicStorySection.vue"));
+const PublicReasonsSection = lazySection(() => import("../../components/public/PublicReasonsSection.vue"));
+const PublicLinksSection = lazySection(() => import("../../components/public/PublicLinksSection.vue"));
+const PublicCountdownSection = lazySection(() => import("../../components/public/PublicCountdownSection.vue"));
+const PublicAgencyFooterSection = lazySection(() => import("../../components/public/PublicAgencyFooterSection.vue"));
+const PublicFlightDetailsSection = lazySection(() => import("../../components/public/PublicFlightDetailsSection.vue"));
 const PublicLeadCaptureModal = defineAsyncComponent(() => import("../../components/public/PublicLeadCaptureModal.vue"));
-const PublicPhotoSection = defineAsyncComponent(() => import("../../components/public/PublicPhotoSection.vue"));
-const PublicBiographySection = defineAsyncComponent(() => import("../../components/public/PublicBiographySection.vue"));
-const PublicViajeonCheckoutSection = defineAsyncComponent(() => import("../../components/public/PublicViajeonCheckoutSection.vue"));
-const PublicInternalFormSection = defineAsyncComponent(() => import("../../components/public/PublicInternalFormSection.vue"));
+const PublicPhotoSection = lazySection(() => import("../../components/public/PublicPhotoSection.vue"));
+const PublicBiographySection = lazySection(() => import("../../components/public/PublicBiographySection.vue"));
+const PublicViajeonCheckoutSection = lazySection(() => import("../../components/public/PublicViajeonCheckoutSection.vue"));
+const PublicInternalFormSection = lazySection(() => import("../../components/public/PublicInternalFormSection.vue"));
 
 interface PublicPageResponse {
   id: number;
@@ -174,6 +175,8 @@ const statsApi = computed(() => (isPlatformHost.value ? api : platformApi));
 provide(PUBLIC_BRANDING_KEY, brandingInfo);
 // Página publicada de verdade: só aqui o Redirecionamento conta e leva ao destino.
 provide(LIVE_PAGE_KEY, true);
+// Seção ainda baixando já ocupa espaço: dá para rolar a página antes de tudo chegar.
+provide(SECTION_PLACEHOLDER_KEY, true);
 // Crédito das fotos de bancos gratuitos ("©" no canto de cada foto).
 provide(PHOTO_CREDITS_KEY, computed(() => buildPhotoCredits(sections.value)));
 const pageConfigDesign = ref<PageConfig["design"]>(undefined);
