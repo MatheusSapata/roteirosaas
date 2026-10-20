@@ -971,10 +971,10 @@ const viewCopy = {
       eyebrow: t({ pt: "Pagamento pendente", es: "Pago pendiente" }),
       title: t({ pt: "Regularize o pagamento para voltar a editar", es: "Regulariza el pago para volver a editar" }),
       description: t({
-        pt: "Não conseguimos confirmar o pagamento da sua assinatura. Pague a fatura em aberto (em Faturas ou pelo link que chegou por e-mail) e o acesso volta sozinho.",
-        es: "No pudimos confirmar el pago de tu suscripción. Paga la factura pendiente (en Facturas o por el enlace que llegó por correo) y el acceso vuelve solo."
+        pt: "Não conseguimos confirmar o pagamento da sua assinatura. Abra sua assinatura para pagar a fatura em aberto (ou use o link que chegou por e-mail) e o acesso volta sozinho.",
+        es: "No pudimos confirmar el pago de tu suscripción. Abre tu suscripción para pagar la factura pendiente (o usa el enlace que llegó por correo) y el acceso vuelve solo."
       }),
-      action: t({ pt: "Ver faturas", es: "Ver facturas" })
+      action: t({ pt: "Ver assinatura", es: "Ver suscripción" })
     }
   },
   cookies: {
@@ -2119,11 +2119,8 @@ const goToPlans = () => {
   router.push("/admin/planos");
 };
 
+// Pagamento pendente ou plano expirado: os dois levam à página da assinatura.
 const goToPlansFromSubscriptionBlock = () => {
-  if (subscriptionOverdue.value) {
-    router.push({ name: "agency-invoices" });
-    return;
-  }
   goToPlans();
 };
 
