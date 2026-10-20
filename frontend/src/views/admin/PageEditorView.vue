@@ -6294,6 +6294,8 @@ const saveUnsavedSectionChanges = async () => {
 const requestLeaveWithUnsavedSectionDraft = () => {
   requestUnsavedSectionConfirmation(async () => {
     const target = pendingNavigationPath.value;
+    // Fecha o rascunho antes de navegar; senão o guarda de saída vê a seção ainda alterada e pergunta de novo.
+    forceCloseSectionEditor();
     if (!target) return;
     pendingNavigationPath.value = null;
     await router.push(target).catch(() => undefined);
