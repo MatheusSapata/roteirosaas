@@ -32,6 +32,10 @@
             label="Foto do computador"
             :hint="desktopHint"
             layout="compact"
+            enable-crop
+            edit-label="Cortar"
+            editor-title="Cortar foto do computador"
+            :crop-aspect="frameAspect(frames.desktop)"
             :fallback-url="modelValue.backgroundImage ? '' : modelValue.mobileBackgroundImage || ''"
             @update:model-value="setPhoto('desktop', $event)"
           />
@@ -41,6 +45,10 @@
             label="Foto do celular"
             :hint="mobileHint"
             layout="compact"
+            enable-crop
+            edit-label="Cortar"
+            editor-title="Cortar foto do celular"
+            :crop-aspect="frameAspect(frames.mobile)"
             :fallback-url="modelValue.mobileBackgroundImage ? '' : modelValue.backgroundImage || ''"
             @update:model-value="setPhoto('mobile', $event)"
           />
@@ -207,6 +215,11 @@ const mobileHint = computed(() =>
     ? "Opcional. Melhor quase quadrada; sem ela, usa a do computador."
     : "Usando a do computador. Envie uma quase quadrada se quiser outra no celular."
 );
+// Proporção numérica de uma moldura ("16 / 9" vira 1,77), para o recorte seguir o quadro.
+const frameAspect = (frame: string) => {
+  const [w, h] = frame.split("/").map(n => parseFloat(n));
+  return w && h ? w / h : undefined;
+};
 // Molduras da prévia do encaixe, na proporção que a capa tem em cada tela.
 const frames = computed(() => {
   if (layout.value === "split") return { desktop: "4 / 5", mobile: "4 / 5", focus: "50% 50%" };

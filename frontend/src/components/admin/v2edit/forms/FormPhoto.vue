@@ -2,7 +2,7 @@
   <V2EditShell>
     <template #content>
       <EdGroup title="Foto">
-        <ImageUploadField :model-value="modelValue.image || ''" label="Foto" hint="Ideal 2400 × 1350 px." layout="compact" @update:model-value="patch({ image: $event || '' })" />
+        <ImageUploadField :model-value="modelValue.image || ''" label="Foto" hint="Ideal 2400 × 1350 px." layout="compact" enable-crop edit-label="Cortar" editor-title="Cortar foto" @update:model-value="patch({ image: $event || '' })" />
         <EdText :model-value="caption" label="Legenda" hint="Aparece embaixo da foto. Opcional." @update:model-value="caption = $event" />
         <EdText :model-value="altText" label="Descrição da foto" hint="Não aparece na página: é lida por leitores de tela e pelo Google." @update:model-value="altText = $event" />
       </EdGroup>

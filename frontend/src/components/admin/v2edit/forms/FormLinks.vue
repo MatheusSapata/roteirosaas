@@ -37,7 +37,7 @@
               </button>
               <p v-if="fetchError" class="ved-hint">{{ fetchError }}</p>
             </template>
-            <ImageUploadField layout="compact" :model-value="item.image || ''" label="Foto" @update:model-value="update({ image: $event || '' })" />
+            <ImageUploadField layout="compact" enable-crop edit-label="Cortar" editor-title="Cortar foto" :model-value="item.image || ''" label="Foto" @update:model-value="update({ image: $event || '' })" />
             <EdText :model-value="readText(item.title)" label="Título" @update:model-value="update({ title: writeText(item.title, $event) })" />
             <EdText :model-value="readText(item.description)" label="Texto" multiline @update:model-value="update({ description: writeText(item.description, $event) })" />
             <EdToggle :model-value="!!item.showDates" label="Mostrar datas" @update:model-value="update({ showDates: $event })" />
