@@ -192,6 +192,11 @@ export interface ItineraryDay {
   image?: string;
   /** Data deste dia (AAAA-MM-DD). Vazio: segue a sequência do roteiro. */
   date?: string;
+  /** Textos do calendário do dia. Ausente: segue a conta por data; vazio: não aparece. */
+  badge?: LocalizedString;
+  number?: LocalizedString;
+  numberNote?: LocalizedString;
+  kicker?: LocalizedString;
 }
 
 export interface ItinerarySection extends SectionBase {

@@ -2,34 +2,45 @@
   <V2EditShell>
     <template #content>
       <EdHeading :value="modelValue" type="itinerary" title-placeholder="Dia a dia da viagem" @patch="patch" />
-      <EdGroup title="Datas">
-        <EdText
-          :model-value="modelValue.startDate || ''"
-          label="Primeiro dia"
-          type="date"
-          hint="Vazio: usa a data de saída da Capa. Os dias seguintes contam a partir daqui; dá para escolher a data de um dia abaixo."
-          @update:model-value="patch({ startDate: $event })"
-        />
-      </EdGroup>
-      <EdGroup title="Dias" :count="`${days.length} ${days.length === 1 ? 'dia' : 'dias'}`">
+      <EdGroup title="Cronograma" :count="`${days.length} ${days.length === 1 ? 'etapa' : 'etapas'}`">
         <EdList
           :items="days"
           :item-title="(day, index) => `${index + 1}. ${readText(day.title)}`"
           :new-item="newDay"
-          add-label="Adicionar dia"
-          item-label="Dia"
+          add-label="Adicionar etapa"
+          item-label="Etapa"
           @update:items="setDays"
         >
           <template #default="{ item, update, index }">
-            <EdText :model-value="readText(item.title)" label="Título" placeholder="Chegada e traslado ao hotel" @update:model-value="update({ title: writeText(item.title, $event) })" />
             <EdText
-              :model-value="item.date || ''"
-              label="Data do dia"
-              type="date"
-              :hint="item.date ? 'Os dias seguintes continuam a partir desta data.' : autoDateHint(index)"
-              @update:model-value="update({ date: $event || undefined })"
+              :model-value="partOf(index, 'badge')"
+              label="Selo (faixa de cima)"
+              placeholder="Dia 1"
+              hint="Apague para o calendário ficar de uma cor só."
+              @update:model-value="update({ badge: writeText(item.badge, $event) })"
             />
-            <EdRich :model-value="readText(item.description)" label="Texto" @update:model-value="update({ description: writeText(item.description, $event) })" />
+            <EdText
+              :model-value="partOf(index, 'number')"
+              label="Número grande"
+              placeholder="12"
+              hint="Pode ser a data ou só o número da etapa."
+              @update:model-value="update({ number: writeText(item.number, $event) })"
+            />
+            <EdText
+              :model-value="partOf(index, 'note')"
+              label="Texto embaixo do número"
+              placeholder="Fev"
+              hint="Opcional. Apague para ficar só o número."
+              @update:model-value="update({ numberNote: writeText(item.numberNote, $event) })"
+            />
+            <EdText
+              :model-value="partOf(index, 'kicker')"
+              label="Texto acima do título"
+              placeholder="Quinta-feira"
+              @update:model-value="update({ kicker: writeText(item.kicker, $event) })"
+            />
+            <EdText :model-value="readText(item.title)" label="Título" placeholder="Chegada e traslado ao hotel" @update:model-value="update({ title: writeText(item.title, $event) })" />
+            <EdRich :model-value="readText(item.description)" label="Descrição" @update:model-value="update({ description: writeText(item.description, $event) })" />
             <ImageUploadField :model-value="item.image || ''" label="Foto do dia" hint="Opcional." layout="compact" @update:model-value="update({ image: $event || '' })" />
           </template>
         </EdList>
@@ -69,7 +80,7 @@ import EdRich from "../EdRich.vue";
 import EdText from "../EdText.vue";
 import V2EditShell from "../V2EditShell.vue";
 import { readText, useDraft, writeText } from "../useDraft";
-import { addDays, formatDayMonth, parseTripDate } from "../../../../utils/tripDates";
+import { itineraryDayParts } from "../../../../utils/itineraryDay";
 
 const props = defineProps<{ modelValue: ItinerarySection }>();
 const emit = defineEmits<{ (e: "update:modelValue", value: ItinerarySection): void }>();
@@ -79,20 +90,9 @@ const newId = () => `${Date.now().toString(36)}${Math.random().toString(36).slic
 const newDay = (): ItineraryDay => ({ id: newId(), day: "", title: "", description: "", image: "" });
 // O rótulo automático "Dia N" segue a posição ao reordenar; rótulos escritos à mão ficam como estão.
 const isAutoLabel = (value: ItineraryDay["day"]) => !readText(value).trim() || /^(dia|día)\s*\d+$/i.test(readText(value).trim());
-// Mesma conta da página: data própria do dia, senão a do dia anterior + 1, senão o início + posição.
-const autoDates = computed(() => {
-  const start = parseTripDate(props.modelValue.startDate);
-  let previous: Date | null = null;
-  return days.value.map((day, idx) => {
-    const date = parseTripDate(day.date) || (previous ? addDays(previous, 1) : start ? addDays(start, idx) : null);
-    previous = date;
-    return date;
-  });
-});
-const autoDateHint = (index: number) => {
-  const date = autoDates.value[index];
-  return date ? `Vazio: ${formatDayMonth(date)}, seguindo a sequência.` : "Vazio: segue a sequência do roteiro.";
-};
+// Mesma conta da página: o que nunca foi escrito mostra o valor automático, e o que foi escrito vale como está.
+const parts = computed(() => itineraryDayParts(props.modelValue, undefined, "Dia", "Dia", readText));
+const partOf = (index: number, key: "badge" | "number" | "note" | "kicker") => parts.value[index]?.[key] ?? "";
 const setDays = (next: ItineraryDay[]) =>
   patch({ days: next.map((day, index) => (isAutoLabel(day.day) ? { ...day, day: `Dia ${index + 1}` } : day)) });
 </script>
