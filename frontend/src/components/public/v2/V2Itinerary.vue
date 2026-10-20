@@ -7,12 +7,12 @@
     <ol v-if="isStatic" class="v2-it-static">
       <li v-for="(day, idx) in days" :key="idx">
         <span class="v2-it-static-cal">
-          <small>{{ copy.day }} {{ day.number }}</small>
-          <b>{{ day.date ? day.date.day : day.number }}</b>
-          <small v-if="day.date">{{ day.date.month }}</small>
+          <small v-if="day.badge">{{ day.badge }}</small>
+          <b>{{ day.number }}</b>
+          <small v-if="day.note">{{ day.note }}</small>
         </span>
         <div>
-          <span v-if="day.date" class="v2-it-static-week">{{ day.date.weekday }}</span>
+          <span v-if="day.kicker && (day.custom || day.shortDate)" class="v2-it-static-week">{{ day.kicker }}</span>
           <h3>{{ day.title }}</h3>
           <div v-if="day.descriptionHtml" class="v2-rich" v-html="day.descriptionHtml"></div>
         </div>
@@ -27,13 +27,13 @@
         <li v-for="(day, idx) in days" :key="idx" class="v2-jr-day v2-in" :class="[`v2-d${Math.min(idx + 3, 7)}`, { 'is-open': open[idx] }]">
           <article class="v2-jr-card">
             <button type="button" class="v2-jr-head" :aria-expanded="!!open[idx]" @click="toggle(idx)">
-              <span class="v2-jr-cal" :style="{ animationDelay: `${0.3 + idx * 0.08}s` }">
-                <span class="v2-jr-cal-band">{{ copy.day }} {{ day.number }}</span>
-                <b>{{ day.date ? day.date.day : day.number }}</b>
-                <span v-if="day.date" class="v2-jr-cal-month">{{ day.date.month }}</span>
+              <span class="v2-jr-cal" :class="{ 'is-solid': !day.badge }" :style="{ animationDelay: `${0.3 + idx * 0.08}s` }">
+                <span v-if="day.badge" class="v2-jr-cal-band">{{ day.badge }}</span>
+                <b>{{ day.number }}</b>
+                <span v-if="day.note" class="v2-jr-cal-month">{{ day.note }}</span>
               </span>
               <span class="v2-jr-titles">
-                <span class="v2-jr-label">{{ day.date ? day.date.weekday : day.label }}</span>
+                <span v-if="day.kicker" class="v2-jr-label">{{ day.kicker }}</span>
                 <span class="v2-jr-title">{{ day.title }}</span>
               </span>
               <V2Img v-if="day.image" :src="day.image" alt="" class="v2-jr-thumb" sizes="160px" />
@@ -60,17 +60,17 @@
       <ol class="v2-it-list">
         <li v-for="(day, idx) in days" :key="idx" class="v2-it-day v2-in" :class="`v2-d${Math.min(idx + 3, 7)}`">
           <div class="v2-it-rail">
-            <span class="v2-it-date" :class="{ 'is-open': open[idx], 'has-date': !!day.date }">
-              <span class="v2-it-date-band">{{ copy.day }} {{ day.date ? day.number : "" }}</span>
-              <b>{{ day.date ? day.date.day : day.number }}</b>
-              <span v-if="day.date" class="v2-it-date-month">{{ day.date.month }}</span>
+            <span class="v2-it-date" :class="{ 'is-open': open[idx], 'has-date': !!day.note, 'is-solid': !day.badge }">
+              <span v-if="day.badge" class="v2-it-date-band">{{ day.badge }}</span>
+              <b>{{ day.number }}</b>
+              <span v-if="day.note" class="v2-it-date-month">{{ day.note }}</span>
             </span>
             <span v-if="idx < days.length - 1" class="v2-it-line" aria-hidden="true"></span>
           </div>
           <article class="v2-it-card" :class="{ 'is-open': open[idx] }">
             <button type="button" class="v2-it-head" :aria-expanded="!!open[idx]" @click="toggle(idx)">
               <span class="v2-it-titles">
-                <span class="v2-it-label">{{ day.date ? `${day.label} · ${day.date.weekday}` : day.label }}</span>
+                <span v-if="day.kicker" class="v2-it-label">{{ day.kicker }}</span>
                 <span class="v2-it-title">{{ day.title }}</span>
               </span>
               <V2Img v-if="day.image && !open[idx]" :src="day.image" alt="" class="v2-it-thumb" sizes="160px" />
@@ -90,7 +90,7 @@
       <article v-for="(day, idx) in days" :key="idx" class="v2-card v2-it-tile v2-in" :class="`v2-d${Math.min(idx + 3, 7)}`">
         <V2Img v-if="day.image" :src="day.image" :alt="day.title" sizes="(max-width: 640px) 100vw, 50vw" />
         <div class="v2-it-tile-body">
-          <span class="v2-it-chip">{{ day.date ? `${day.label} · ${day.date.short}` : day.label }}</span>
+          <span class="v2-it-chip">{{ day.chip }}</span>
           <h3>{{ day.title }}</h3>
           <div v-if="day.descriptionHtml" class="v2-rich" v-html="day.descriptionHtml"></div>
         </div>
@@ -108,7 +108,7 @@ import V2Section from "./V2Section.vue";
 import V2Img from "./V2Img.vue";
 import V2Head from "./V2Head.vue";
 import { html, localize, text, useHeading } from "./useHeading";
-import { addDays, formatDayMonth, formatMonthShort, formatWeekday, parseTripDate } from "../../../utils/tripDates";
+import { itineraryDayParts } from "../../../utils/itineraryDay";
 
 const props = defineProps<{ section: ItinerarySection; previewDevice?: "desktop" | "mobile"; tripStartDate?: string }>();
 const { label, title, subtitleHtml, align } = useHeading(toRef(props, "section"), "itinerary");
@@ -122,32 +122,23 @@ const isStatic = inject(STATIC_RENDER_KEY, false);
 // "minimal" e "steps" entram na linha do tempo e nos cartões, respectivamente.
 const isCards = computed(() => props.section.layout === "cards" || props.section.layout === "steps");
 const isJourney = computed(() => props.section.layout === "journey");
-// Data de cada dia: início do roteiro, ou a saída da Capa quando ele fica vazio.
-const start = computed(() => parseTripDate(props.section.startDate) || parseTripDate(props.tripStartDate));
-// Um dia com data própria muda a sequência: os seguintes continuam a partir dela.
-const dayDates = computed(() => {
-  let previous: Date | null = null;
-  return (props.section.days || []).map((day, idx) => {
-    const own = parseTripDate(day.date);
-    const date = own || (previous ? addDays(previous, 1) : start.value ? addDays(start.value, idx) : null);
-    previous = date;
-    return date;
-  });
-});
+// Os textos do calendário vêm do que foi escrito em cada dia; dias antigos seguem a conta por data.
+const parts = computed(() => itineraryDayParts(props.section, props.tripStartDate, copy.day, copy.dayPrefix, text));
 const days = computed(() =>
   (props.section.days || []).map((day, idx) => {
-    const date = dayDates.value[idx];
-    const labelText = text(day.day) || `${copy.dayPrefix} ${idx + 1}`;
-    const match = labelText.match(/\d+/);
+    const part = parts.value[idx];
+    const label = text(day.day) || `${copy.dayPrefix} ${idx + 1}`;
+    const chip = part.custom
+      ? [part.badge, [part.number, part.note].filter(Boolean).join(" "), part.kicker].filter(Boolean).join(" · ")
+      : part.shortDate
+        ? `${label} · ${part.shortDate}`
+        : label;
     return {
-      label: labelText,
-      number: match ? match[0] : String(idx + 1),
+      ...part,
+      chip,
       title: text(day.title) || `${copy.dayPrefix} ${idx + 1}`,
       descriptionHtml: text(day.description) ? html(day.description) : "",
-      image: resolveMediaUrl(day.image) || "",
-      date: date
-        ? { day: String(date.getDate()), month: formatMonthShort(date), weekday: formatWeekday(date), short: formatDayMonth(date) }
-        : null
+      image: resolveMediaUrl(day.image) || ""
     };
   })
 );
@@ -245,6 +236,13 @@ watch(
   text-transform: uppercase;
   letter-spacing: 0.04em;
   opacity: 0.75;
+}
+.v2-it-date.is-solid {
+  background: var(--v2-accent);
+  color: var(--v2-on-accent);
+}
+.v2-it-date.is-solid b {
+  padding-top: 10px;
 }
 .v2-it-date.is-open {
   background: var(--v2-accent);
@@ -495,6 +493,13 @@ watch(
   font-weight: 700;
   text-transform: uppercase;
   opacity: 0.75;
+}
+.v2-jr-cal.is-solid {
+  background: var(--v2-accent);
+  color: var(--v2-on-accent);
+}
+.v2-jr-cal.is-solid b {
+  padding-top: 9px;
 }
 .is-open .v2-jr-cal {
   background: var(--v2-accent);
