@@ -50,6 +50,9 @@
         <ImageUploadField
           layout="compact"
           :model-value="modelValue.backgroundType === 'image' ? modelValue.backgroundImage || '' : ''"
+          enable-crop
+          edit-label="Cortar"
+          editor-title="Cortar foto"
           label="Foto de fundo"
           hint="Opcional. Com foto, ela aparece escurecida atrás do formulário."
           @update:model-value="setPhoto"

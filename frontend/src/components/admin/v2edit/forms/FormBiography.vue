@@ -13,8 +13,8 @@
         />
       </EdGroup>
       <EdGroup title="Foto de capa">
-        <ImageUploadField :model-value="modelValue.image || ''" label="Foto do computador" hint="Ideal 2400 × 1000 px." layout="compact" @update:model-value="patch({ image: $event || '' })" />
-        <ImageUploadField :model-value="modelValue.mobileImage || ''" label="Foto do celular" hint="Opcional. Sem ela, usa a do computador." layout="compact" @update:model-value="patch({ mobileImage: $event || '' })" />
+        <ImageUploadField :model-value="modelValue.image || ''" label="Foto do computador" hint="Ideal 2400 × 1000 px." layout="compact" enable-crop edit-label="Cortar" editor-title="Cortar foto" @update:model-value="patch({ image: $event || '' })" />
+        <ImageUploadField :model-value="modelValue.mobileImage || ''" label="Foto do celular" hint="Opcional. Sem ela, usa a do computador." layout="compact" enable-crop edit-label="Cortar" editor-title="Cortar foto" @update:model-value="patch({ mobileImage: $event || '' })" />
       </EdGroup>
     </template>
     <template #look>

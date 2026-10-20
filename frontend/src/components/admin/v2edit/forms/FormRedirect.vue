@@ -44,7 +44,7 @@
           :hint="modelValue.logoUrl ? 'Só nesta página.' : 'Logo da agência (Minha Agência). Trocar vale só para esta página.'"
           @update:model-value="patch({ logoUrl: $event || '' })"
         />
-        <ImageUploadField layout="compact" label="Imagem" hint="Opcional. Ideal 1600 × 1000 px." :model-value="modelValue.image || ''" @update:model-value="patch({ image: $event || '' })" />
+        <ImageUploadField layout="compact" enable-crop edit-label="Cortar" editor-title="Cortar foto" label="Imagem" hint="Opcional. Ideal 1600 × 1000 px." :model-value="modelValue.image || ''" @update:model-value="patch({ image: $event || '' })" />
       </EdGroup>
 
       <EdGroup title="Botão e aviso">
