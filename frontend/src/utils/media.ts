@@ -194,9 +194,9 @@ export const removeImageBackground = async (source: string, agencyId: number): P
 const VARIANT_RE = /_2400\.webp(?=$|[?#])/;
 const VARIANT_WIDTHS = [640, 1280, 2400];
 
-// Teste: só estes endereços recebem versões leves também das fotos antigas (o servidor gera sob
+// Teste: só estes endereços (ecoarturismo e destinosol) recebem versões leves também das fotos antigas (o servidor gera sob
 // demanda em /public/img). Com ?optimg=1 na página, qualquer endereço usa, para comparar antes e depois.
-const LEGACY_IMAGE_HOSTS = ["ecoarturismo.com.br", "www.ecoarturismo.com.br"];
+const LEGACY_IMAGE_HOSTS = ["ecoarturismo.com.br", "www.ecoarturismo.com.br", "destinosol.com", "www.destinosol.com"];
 const LEGACY_IMAGE_RE = /^https:\/\/[^/]+\.blob\.core\.windows\.net\/.+\/[0-9a-f-]{36}\.(png|jpe?g)$/i;
 
 const legacyImagesEnabled = () => {
