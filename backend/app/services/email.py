@@ -95,6 +95,88 @@ def _cycle_label(cycle: str | None) -> str:
     return f"ciclo {cycle}"
 
 
+def send_in_background(func, /, **kwargs) -> None:
+    """Envia sem segurar a resposta (webhook, formulário): o SMTP pode levar segundos e falha só no log."""
+
+    def run() -> None:
+        try:
+            func(**kwargs)
+        except Exception:  # pragma: no cover - envio de e-mail nunca quebra o fluxo de quem chamou
+            logger.exception("Falha ao enviar e-mail em segundo plano (%s)", getattr(func, "__name__", "?"))
+
+    threading.Thread(target=run, daemon=True).start()
+
+
+# ---------------------------------------------------------------------------
+# Visual dos e-mails: tabelas e estilos inline (é o que os leitores de e-mail aceitam).
+# ---------------------------------------------------------------------------
+_BRAND_GREEN = "#41ce5f"
+_FONT = "Arial,Helvetica,sans-serif"
+
+
+def _logo_url() -> str:
+    return f"{get_settings().resolved_webapp_base_url}/email/logo-roteiro-online.png"
+
+
+def _paragraph(html: str) -> str:
+    return f'<p style="margin:0 0 14px;font-size:16px;line-height:1.55;color:#33423a;">{html}</p>'
+
+
+def _email_layout(
+    *,
+    eyebrow: str,
+    title: str,
+    body_html: str,
+    button_url: str,
+    button_label: str,
+    note_html: str,
+    highlight: str | None = None,
+    show_link: bool = True,
+) -> str:
+    """Moldura única dos e-mails: faixa verde com a logo, cartão branco, botão e aviso no rodapé."""
+
+    settings = get_settings()
+    support = settings.smtp_reply_to or settings.smtp_from_email or "suporte@roteiroonline.com"
+    highlight_html = (
+        f'<div style="background:#f1f8f3;border-radius:12px;padding:14px 16px;margin:6px 0 18px;'
+        f'font-size:15px;color:#1f3a2a;">{highlight}</div>'
+        if highlight
+        else ""
+    )
+    link_html = (
+        '<p style="margin:18px 0 0;font-size:13px;line-height:1.5;color:#6b7a72;">'
+        "Se o botão não funcionar, copie e cole este link no navegador:<br>"
+        f'<a href="{button_url}" style="color:#0e7a55;word-break:break-all;">{button_url}</a></p>'
+        if show_link
+        else ""
+    )
+    return f"""<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#eef2ee;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef2ee;"><tr><td align="center" style="padding:28px 12px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:18px;overflow:hidden;font-family:{_FONT};color:#17201b;">
+    <tr><td align="center" style="background:{_BRAND_GREEN};padding:26px 32px;">
+      <img src="{_logo_url()}" alt="Roteiro Online" width="170" style="display:block;width:170px;max-width:100%;height:auto;border:0;">
+    </td></tr>
+    <tr><td style="padding:34px 32px 8px;">
+      <p style="margin:0 0 10px;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#6b7a72;font-weight:700;">{eyebrow}</p>
+      <h1 style="margin:0 0 14px;font-size:25px;line-height:1.25;color:#0f1f14;">{title}</h1>
+      {body_html}
+      {highlight_html}
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:10px 0 4px;">
+        <a href="{button_url}" style="display:inline-block;background:{_BRAND_GREEN};color:#0f1f14;text-decoration:none;font-weight:700;font-size:16px;padding:15px 34px;border-radius:999px;">{button_label}</a>
+      </td></tr></table>
+      {link_html}
+    </td></tr>
+    <tr><td style="background:#fafbfa;border-top:1px solid #e6ece8;padding:18px 32px;font-size:13px;line-height:1.5;color:#6b7a72;">{note_html}</td></tr>
+  </table>
+  <p style="max-width:560px;margin:16px auto 0;font-family:{_FONT};font-size:12px;line-height:1.6;color:#7a8780;text-align:center;">
+    Roteiro Online · Suporte: {escape(support)}<br>Você recebeu este e-mail porque há uma conta com este endereço no Roteiro Online.
+  </p>
+</td></tr></table>
+</body></html>"""
+
+
 def send_cakto_onboarding_email(
     *,
     user: "User",
@@ -114,30 +196,26 @@ def send_cakto_onboarding_email(
     plan_label = _plan_label(plan_key)
     cycle_label = _cycle_label(cycle)
     greeting_name = user.name or user.email
+    plan_text = f"{plan_label} ({cycle_label})" if cycle_label else plan_label
 
     subject = "Bem-vindo ao Roteiro Online"
     text_body = (
-        f"Ola {greeting_name},\n\n"
-        f"Seu {plan_label} ja esta ativo{(' (' + cycle_label + ')') if cycle_label else ''}.\n"
+        f"Olá, {greeting_name}.\n\n"
+        f"Seu {plan_text} já está ativo.\n"
         "Para acessar o painel, finalize seu cadastro criando uma senha segura neste link:\n"
         f"{password_url}\n\n"
-        "Se precisar de ajuda basta responder este e-mail.\n"
+        "Se precisar de ajuda, basta responder este e-mail.\n"
         "Equipe Roteiro Online"
     )
-    html_body = f"""
-        <p>Ola {greeting_name},</p>
-        <p>Seu {plan_label} {cycle_label or ''} ja esta liberado. Para acessar o painel, finalize seu cadastro criando uma senha:</p>
-        <p style="margin: 24px 0;">
-            <a href="{password_url}" style="background-color:#41ce5f;color:#fff;padding:12px 20px;border-radius:999px;font-weight:bold;text-decoration:none;">
-                Definir minha senha
-            </a>
-        </p>
-        <p>Se o botao nao funcionar, copie e cole o link abaixo no navegador:</p>
-        <p style="word-break:break-all;"><a href="{password_url}">{password_url}</a></p>
-        <p>Qualquer duvida, basta responder este e-mail.</p>
-        <p>Equipe Roteiro Online</p>
-    """
-
+    html_body = _email_layout(
+        eyebrow="Compra confirmada",
+        title=f"Bem-vindo ao Roteiro Online, {escape(greeting_name)}!",
+        body_html=_paragraph("A sua assinatura já está ativa. Falta só um passo: criar a sua senha para entrar no painel."),
+        highlight=f"<b>{escape(plan_label.capitalize())}</b>" + (f" · {escape(cycle_label)}" if cycle_label else ""),
+        button_url=password_url,
+        button_label="Criar minha senha",
+        note_html="Precisa de ajuda? É só responder este e-mail que a nossa equipe te atende.",
+    )
     client.send_email(to_email=user.email, subject=subject, html_body=html_body, text_body=text_body)
 
 
@@ -161,46 +239,25 @@ def send_team_invite_email(
     safe_inviter = inviter_name or "Administrador"
     app_name = settings.app_name or "Roteiro Online"
     text_body = (
-        f"Ola, {safe_invitee}.\n\n"
-        f"Voce foi convidado por {safe_inviter} para fazer parte da equipe da {agency_name} no {app_name}.\n\n"
+        f"Olá, {safe_invitee}.\n\n"
+        f"Você foi convidado por {safe_inviter} para fazer parte da equipe da {agency_name} no {app_name}.\n\n"
         "Clique no link abaixo para criar sua senha e acessar sua conta:\n"
         f"{invite_url}\n\n"
         f"Este convite expira em {expires_days} dias.\n"
-        "Se voce nao esperava este convite, ignore este e-mail."
+        "Se você não esperava este convite, ignore este e-mail."
     )
-    html_body = f"""
-      <p>Olá, {safe_invitee}.</p>
-      <p>Você foi convidado por <strong>{safe_inviter}</strong> para fazer parte da equipe da <strong>{agency_name}</strong> no {app_name}.</p>
-      <p style="margin:24px 0;">
-        <a href="{invite_url}" style="background-color:#41ce5f;color:#0f1f14;padding:12px 20px;border-radius:999px;font-weight:700;text-decoration:none;">
-          Aceitar convite
-        </a>
-      </p>
-      <p>Este convite expira em {expires_days} dias.</p>
-      <p>Se você não esperava este convite, ignore este e-mail.</p>
-    """
+    html_body = _email_layout(
+        eyebrow="Convite de equipe",
+        title=f"Olá, {escape(safe_invitee)}. Você foi convidado!",
+        body_html=_paragraph(
+            f"<b>{escape(safe_inviter)}</b> convidou você para fazer parte da equipe da "
+            f"<b>{escape(agency_name)}</b> no {escape(app_name)}. Aceite o convite para criar a sua senha e acessar a conta."
+        ),
+        button_url=invite_url,
+        button_label="Aceitar convite",
+        note_html=f"<b>O convite vale por {expires_days} dias.</b> Se você não esperava este convite, pode ignorar este e-mail.",
+    )
     client.send_email(to_email=to_email, subject=subject, html_body=html_body, text_body=text_body)
-
-
-def send_in_background(func, /, **kwargs) -> None:
-    """Envia sem segurar a resposta (webhook, formulário): o SMTP pode levar segundos e falha só no log."""
-
-    def run() -> None:
-        try:
-            func(**kwargs)
-        except Exception:  # pragma: no cover - envio de e-mail nunca quebra o fluxo de quem chamou
-            logger.exception("Falha ao enviar e-mail em segundo plano (%s)", getattr(func, "__name__", "?"))
-
-    threading.Thread(target=run, daemon=True).start()
-
-
-def _button(url: str, label: str) -> str:
-    return (
-        f'<p style="margin:24px 0;"><a href="{url}" style="background-color:#41ce5f;color:#0f1f14;'
-        f'padding:12px 20px;border-radius:999px;font-weight:700;text-decoration:none;">{label}</a></p>'
-        f'<p>Se o botão não funcionar, copie e cole este link no navegador:</p>'
-        f'<p style="word-break:break-all;"><a href="{url}">{url}</a></p>'
-    )
 
 
 def send_checkout_welcome_email(
@@ -230,13 +287,17 @@ def send_checkout_welcome_email(
         "Se precisar de ajuda, basta responder este e-mail.\n"
         "Equipe Roteiro Online"
     )
-    html_body = (
-        f"<p>Olá, {escape(greeting)}.</p>"
-        f"<p>Recebemos o seu pagamento e o <strong>{escape(plan_text)}</strong> já está ativo. "
-        "Para acessar o painel, crie a sua senha:</p>"
-        f"{_button(password_url, 'Criar minha senha')}"
-        "<p>Se precisar de ajuda, basta responder este e-mail.</p>"
-        "<p>Equipe Roteiro Online</p>"
+    html_body = _email_layout(
+        eyebrow="Pagamento confirmado",
+        title=f"Bem-vindo ao Roteiro Online, {escape(greeting)}!",
+        body_html=_paragraph(
+            "Recebemos o seu pagamento e a sua assinatura já está ativa. "
+            "Falta só um passo: criar a sua senha para entrar no painel e montar o seu primeiro roteiro."
+        ),
+        highlight=f"<b>{escape(plan_label.capitalize())}</b>" + (f" · {escape(cycle_label)}" if cycle_label else ""),
+        button_url=password_url,
+        button_label="Criar minha senha",
+        note_html="Precisa de ajuda? É só responder este e-mail que a nossa equipe te atende.",
     )
     client.send_email(to_email=to_email, subject=subject, html_body=html_body, text_body=text_body)
 
@@ -257,11 +318,12 @@ def send_password_reset_email(*, to_email: str, name: str | None, reset_url: str
         f"O link vale por {validity}. Se você não pediu, ignore este e-mail: a sua senha continua a mesma.\n"
         "Equipe Roteiro Online"
     )
-    html_body = (
-        f"<p>Olá, {escape(greeting)}.</p>"
-        "<p>Recebemos um pedido para redefinir a sua senha.</p>"
-        f"{_button(reset_url, 'Redefinir senha')}"
-        f"<p>O link vale por {validity}. Se você não pediu, ignore este e-mail: a sua senha continua a mesma.</p>"
-        "<p>Equipe Roteiro Online</p>"
+    html_body = _email_layout(
+        eyebrow="Recuperar acesso",
+        title=f"Olá, {escape(greeting)}. Vamos criar uma nova senha?",
+        body_html=_paragraph("Recebemos um pedido para redefinir a senha da sua conta. Clique no botão abaixo para escolher uma nova."),
+        button_url=reset_url,
+        button_label="Redefinir minha senha",
+        note_html=f"<b>O link vale por {validity}.</b> Se você não pediu a redefinição, pode ignorar este e-mail: a sua senha continua a mesma.",
     )
     client.send_email(to_email=to_email, subject=subject, html_body=html_body, text_body=text_body)
