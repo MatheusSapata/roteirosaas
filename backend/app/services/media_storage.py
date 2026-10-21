@@ -74,6 +74,26 @@ class MediaStorage:
         urls = {width: self.save_as(data, variant_name(stem, width), "image/webp") for width, data in variants.items()}
         return urls[max(urls)]
 
+    def blob_name_from_url(self, url: str) -> Optional[str]:
+        """Nome do arquivo quando o endereço é do nosso armazenamento no Azure (senão, None)."""
+        if not self.is_remote or not self._base_url:
+            return None
+        prefix = f"{self._base_url}/"
+        if not url.startswith(prefix):
+            return None
+        name = url[len(prefix):].split("?", 1)[0].split("#", 1)[0]
+        return name if name and "/" not in name else None
+
+    def public_url(self, blob_name: str) -> str:
+        assert self._base_url
+        return f"{self._base_url}/{blob_name}"
+
+    def exists(self, blob_name: str) -> bool:
+        return self.is_remote and self._build_blob_client(blob_name).exists()
+
+    def read_bytes(self, blob_name: str) -> bytes:
+        return self._build_blob_client(blob_name).download_blob().readall()
+
     def save_as(self, data: bytes, blob_name: str, content_type: Optional[str] = None) -> str:
         if self.is_remote:
             blob_client = self._build_blob_client(blob_name)

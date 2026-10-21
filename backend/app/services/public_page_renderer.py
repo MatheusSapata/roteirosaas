@@ -7,7 +7,7 @@ import hashlib
 import re
 from pathlib import Path
 from typing import Optional
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import quote, urlsplit, urlunsplit
 from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
 
@@ -16,6 +16,7 @@ from PIL import Image, UnidentifiedImageError
 from sqlalchemy.orm import Session
 
 from app.api.v1.endpoints import public_pages
+from app.core.config import get_settings
 from app.schemas.page import PublicPageOut
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -234,15 +235,27 @@ _HERO_SIZES = {"split": "(max-width: 640px) 100vw, 50vw"}
 _HERO_MOBILE_MEDIA = "(max-width: 640px)"
 
 
-def _responsive_srcset(url: str) -> str:
-    if not _VARIANT_RE.search(url):
+# Teste: só estes endereços recebem versões leves das fotos antigas (mesma lista do front, utils/media.ts).
+_LEGACY_IMAGE_HOSTS = {"ecoarturismo.com.br", "www.ecoarturismo.com.br"}
+_LEGACY_IMAGE_RE = re.compile(r"^https://[^/]+\.blob\.core\.windows\.net/.+/[0-9a-fA-F-]{36}\.(png|jpe?g)$")
+
+
+def _legacy_srcset(url: str) -> str:
+    if not _LEGACY_IMAGE_RE.match(url):
         return ""
-    return ", ".join(f"{_VARIANT_RE.sub(f'_{width}.webp', url)} {width}w" for width in _VARIANT_WIDTHS)
+    base = f"{get_settings().resolved_webapp_base_url}/api/v1/public/img?u={quote(url, safe='')}"
+    return ", ".join(f"{base}&w={width} {width}w" for width in _VARIANT_WIDTHS)
 
 
-def _image_preload_tag(url: str, sizes: str, media: Optional[str] = None) -> str:
+def _responsive_srcset(url: str, legacy: bool = False) -> str:
+    if _VARIANT_RE.search(url):
+        return ", ".join(f"{_VARIANT_RE.sub(f'_{width}.webp', url)} {width}w" for width in _VARIANT_WIDTHS)
+    return _legacy_srcset(url) if legacy else ""
+
+
+def _image_preload_tag(url: str, sizes: str, media: Optional[str] = None, legacy: bool = False) -> str:
     attrs = [f'rel="preload"', 'as="image"', f'href="{html.escape(url)}"', 'fetchpriority="high"']
-    srcset = _responsive_srcset(url)
+    srcset = _responsive_srcset(url, legacy)
     if srcset:
         attrs += [f'imagesrcset="{html.escape(srcset)}"', f'imagesizes="{html.escape(sizes)}"']
     if media:
@@ -274,7 +287,7 @@ def _v2_visible_sections(page: PublicPageOut) -> Optional[list[dict]]:
     return [section for section in config.get("sections") or [] if isinstance(section, dict) and section.get("enabled")]
 
 
-def _hero_preload_tags(page: PublicPageOut) -> list[str]:
+def _hero_preload_tags(page: PublicPageOut, legacy_images: bool = False) -> list[str]:
     """Pede no HTML, antes do JavaScript, o que a primeira tela do visual novo usa.
 
     Fontes do visual novo (sem travar a pintura), foto do Banner Inicial quando ele é a
@@ -303,16 +316,16 @@ def _hero_preload_tags(page: PublicPageOut) -> list[str]:
             mobile = _absolute(mobile_src) if own_mobile else None
             sizes = _HERO_SIZES.get(layout, "100vw")
             if image and mobile:
-                tags.append(_image_preload_tag(image, sizes, "(min-width: 641px)"))
-                tags.append(_image_preload_tag(mobile, "100vw", _HERO_MOBILE_MEDIA))
+                tags.append(_image_preload_tag(image, sizes, "(min-width: 641px)", legacy_images))
+                tags.append(_image_preload_tag(mobile, "100vw", _HERO_MOBILE_MEDIA, legacy_images))
             elif image:
-                tags.append(_image_preload_tag(image, sizes))
+                tags.append(_image_preload_tag(image, sizes, None, legacy_images))
 
     # Logo do Menu do topo ou do Banner Inicial: o do banner (se a página trocou) ou o da agência.
     if has_header or (first is not None and first is hero):
         logo = _absolute((hero or {}).get("logoUrl")) or _absolute((page.branding or {}).get("logo_url"))
         if logo:
-            tags.append(_image_preload_tag(logo, "320px"))
+            tags.append(_image_preload_tag(logo, "320px", None, legacy_images))
     return tags
 
 
@@ -347,7 +360,7 @@ def render_public_page_html(
     page_data = _fetch_page_payload(db, agency_slug, page_slug)
     canonical_url, origin = _canonicalize_url(page_url)
     meta_block = _build_meta_block(page_data, canonical_url, origin)
-    preload_tags = _hero_preload_tags(page_data)
+    preload_tags = _hero_preload_tags(page_data, (urlsplit(canonical_url).hostname or "").lower() in _LEGACY_IMAGE_HOSTS)
     if preload_tags:
         meta_block += "    " + "\n    ".join(preload_tags) + "\n"
     meta_block += "    " + _page_data_script(page_data, urlsplit(canonical_url).path) + "\n"

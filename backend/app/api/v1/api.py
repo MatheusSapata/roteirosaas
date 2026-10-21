@@ -30,6 +30,7 @@ from app.api.v1.endpoints import (
     webhook_notifications,
     public_lead_forms,
     public_pages,
+    public_images,
     stats,
     system_banners,
     templates,
@@ -55,6 +56,7 @@ api_router.include_router(pages.router, prefix="/pages", tags=["pages"])
 api_router.include_router(media.router, prefix="/media", tags=["media"])
 api_router.include_router(stats.router, prefix="/stats", tags=["stats"])
 api_router.include_router(public_pages.router, prefix="/public/pages", tags=["public-pages"])
+api_router.include_router(public_images.router, prefix="/public", tags=["public-images"])
 api_router.include_router(billing.router, prefix="/billing", tags=["billing"])
 api_router.include_router(checkout.router, prefix="/checkout", tags=["checkout"])
 api_router.include_router(pixels.router, prefix="/pixels", tags=["pixels"])
