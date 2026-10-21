@@ -32,6 +32,7 @@ from app.models.team_invite import TeamInvite
 from app.models.agency_user import AgencyUser
 from app.models.agency import Agency
 from app.services import auth as auth_service
+from app.services.email import send_in_background, send_password_reset_email
 from app.services.permissions import final_permissions_for_member
 from app.services.team import ensure_legacy_owner_context, find_pending_invite_by_token, get_agency_plan, is_owner_user
 from app.services.session_monitor import summarize_user_agent
@@ -400,7 +401,15 @@ def request_password_reset(payload: PasswordResetRequest, db: Session = Depends(
     response: dict[str, str] = {
         "detail": "Se o email estiver cadastrado, enviaremos instruções para redefinir a senha."
     }
-    # Ambiente dev/test: retornamos o token para facilitar QA. Em produção, será enviado por e-mail.
+    base = (settings.webapp_base_url or "https://app.roteiroonline.com").rstrip("/")
+    send_in_background(
+        send_password_reset_email,
+        to_email=user.email,
+        name=user.name,
+        reset_url=f"{base}/reset-password?token={token}",
+        expires_minutes=settings.password_reset_token_minutes,
+    )
+    # Ambiente dev/test: retornamos o token para facilitar QA.
     if settings.env != "prod":
         response["reset_token"] = token
     return response

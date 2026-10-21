@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import logging
+import threading
+from html import escape
 import smtplib
 import ssl
 from email.mime.multipart import MIMEMultipart
@@ -177,4 +179,89 @@ def send_team_invite_email(
       <p>Este convite expira em {expires_days} dias.</p>
       <p>Se você não esperava este convite, ignore este e-mail.</p>
     """
+    client.send_email(to_email=to_email, subject=subject, html_body=html_body, text_body=text_body)
+
+
+def send_in_background(func, /, **kwargs) -> None:
+    """Envia sem segurar a resposta (webhook, formulário): o SMTP pode levar segundos e falha só no log."""
+
+    def run() -> None:
+        try:
+            func(**kwargs)
+        except Exception:  # pragma: no cover - envio de e-mail nunca quebra o fluxo de quem chamou
+            logger.exception("Falha ao enviar e-mail em segundo plano (%s)", getattr(func, "__name__", "?"))
+
+    threading.Thread(target=run, daemon=True).start()
+
+
+def _button(url: str, label: str) -> str:
+    return (
+        f'<p style="margin:24px 0;"><a href="{url}" style="background-color:#41ce5f;color:#0f1f14;'
+        f'padding:12px 20px;border-radius:999px;font-weight:700;text-decoration:none;">{label}</a></p>'
+        f'<p>Se o botão não funcionar, copie e cole este link no navegador:</p>'
+        f'<p style="word-break:break-all;"><a href="{url}">{url}</a></p>'
+    )
+
+
+def send_checkout_welcome_email(
+    *,
+    to_email: str,
+    name: str | None,
+    plan_key: str | None,
+    cycle: str | None,
+    password_url: str,
+) -> None:
+    """Cliente novo que acabou de pagar pelo checkout (Asaas): confirma a compra e leva a definir a senha."""
+
+    client = EmailClient()
+    if not client._is_configured():
+        logger.info("SMTP nao configurado. Boas-vindas para %s nao serao enviadas.", to_email)
+        return
+    plan_label = _plan_label(plan_key)
+    cycle_label = _cycle_label(cycle)
+    greeting = name or to_email
+    plan_text = f"{plan_label} ({cycle_label})" if cycle_label else plan_label
+    subject = "Pagamento confirmado: bem-vindo ao Roteiro Online"
+    text_body = (
+        f"Olá, {greeting}.\n\n"
+        f"Recebemos o seu pagamento e o {plan_text} já está ativo.\n"
+        "Para acessar o painel, crie a sua senha neste link:\n"
+        f"{password_url}\n\n"
+        "Se precisar de ajuda, basta responder este e-mail.\n"
+        "Equipe Roteiro Online"
+    )
+    html_body = (
+        f"<p>Olá, {escape(greeting)}.</p>"
+        f"<p>Recebemos o seu pagamento e o <strong>{escape(plan_text)}</strong> já está ativo. "
+        "Para acessar o painel, crie a sua senha:</p>"
+        f"{_button(password_url, 'Criar minha senha')}"
+        "<p>Se precisar de ajuda, basta responder este e-mail.</p>"
+        "<p>Equipe Roteiro Online</p>"
+    )
+    client.send_email(to_email=to_email, subject=subject, html_body=html_body, text_body=text_body)
+
+
+def send_password_reset_email(*, to_email: str, name: str | None, reset_url: str, expires_minutes: int) -> None:
+    client = EmailClient()
+    if not client._is_configured():
+        logger.info("SMTP nao configurado. Redefinicao de senha para %s nao sera enviada.", to_email)
+        return
+    greeting = name or to_email
+    hours = expires_minutes // 60
+    validity = f"{hours} hora{'s' if hours != 1 else ''}" if expires_minutes % 60 == 0 and hours else f"{expires_minutes} minutos"
+    subject = "Redefinir a sua senha do Roteiro Online"
+    text_body = (
+        f"Olá, {greeting}.\n\n"
+        "Recebemos um pedido para redefinir a sua senha. Use o link abaixo:\n"
+        f"{reset_url}\n\n"
+        f"O link vale por {validity}. Se você não pediu, ignore este e-mail: a sua senha continua a mesma.\n"
+        "Equipe Roteiro Online"
+    )
+    html_body = (
+        f"<p>Olá, {escape(greeting)}.</p>"
+        "<p>Recebemos um pedido para redefinir a sua senha.</p>"
+        f"{_button(reset_url, 'Redefinir senha')}"
+        f"<p>O link vale por {validity}. Se você não pediu, ignore este e-mail: a sua senha continua a mesma.</p>"
+        "<p>Equipe Roteiro Online</p>"
+    )
     client.send_email(to_email=to_email, subject=subject, html_body=html_body, text_body=text_body)
