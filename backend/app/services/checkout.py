@@ -35,6 +35,7 @@ from app.schemas.checkout import (
 from app.services import auth as auth_service
 from app.services.asaas import AsaasAPIError, AsaasClient, build_default_split_payload
 from app.services.card_installments import InstallmentOption, installment_options, option_for
+from app.services.email import send_checkout_welcome_email, send_in_background
 from app.services.company_status import mark_subscription_overdue
 from app.services.legacy_renewal import is_legacy_renewal_session, legacy_renewal_info
 from app.services.hub_funnel import send_hub_event
@@ -466,6 +467,17 @@ def _announce_checkout_purchase(
     metadata["purchase_notified_at"] = _utcnow().isoformat()
     session.metadata_json = metadata
     upgraded = scenario == SubscriptionPushScenario.UPGRADED
+    # Cliente novo do checkout público (ainda sem senha): o e-mail leva de volta à tela de senha.
+    if scenario == SubscriptionPushScenario.NEW and not metadata.get("upgrade_mode") and not session.password_defined_at:
+        base = (settings.webapp_base_url or "https://app.roteiroonline.com").rstrip("/")
+        send_in_background(
+            send_checkout_welcome_email,
+            to_email=session.customer_email,
+            name=session.customer_name,
+            plan_key=session.plan_key,
+            cycle=session.billing_cycle,
+            password_url=f"{base}/checkout/{session.offer_key}?token={session.token}",
+        )
     _notify_checkout_subscription_push(
         scenario=scenario,
         session=session,
