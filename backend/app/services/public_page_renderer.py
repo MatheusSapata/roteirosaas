@@ -235,8 +235,8 @@ _HERO_SIZES = {"split": "(max-width: 640px) 100vw, 50vw"}
 _HERO_MOBILE_MEDIA = "(max-width: 640px)"
 
 
-# Teste: só estes endereços recebem versões leves das fotos antigas (mesma lista do front, utils/media.ts).
-_LEGACY_IMAGE_HOSTS = {"ecoarturismo.com.br", "www.ecoarturismo.com.br"}
+# Teste: só estes endereços (ecoarturismo e destinosol) recebem versões leves das fotos antigas (mesma lista do front, utils/media.ts).
+_LEGACY_IMAGE_HOSTS = {"ecoarturismo.com.br", "www.ecoarturismo.com.br", "destinosol.com", "www.destinosol.com"}
 _LEGACY_IMAGE_RE = re.compile(r"^https://[^/]+\.blob\.core\.windows\.net/.+/[0-9a-fA-F-]{36}\.(png|jpe?g)$")
 
 

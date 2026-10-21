@@ -30,8 +30,8 @@
             </a>
           </div>
         </div>
-        <div v-if="mapEmbedUrl" class="v2-ft-col v2-ft-mapcol">
-          <iframe :src="mapEmbedUrl" :title="copy.mapTitle" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
+        <div v-if="mapEmbedUrl" ref="mapBox" class="v2-ft-col v2-ft-mapcol">
+          <iframe :src="mapNear ? mapEmbedUrl : undefined" :title="copy.mapTitle" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
         </div>
       </div>
       <div class="v2-ft-bottom v2-in v2-d2">
@@ -49,7 +49,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, inject } from "vue";
+import { computed, inject, ref } from "vue";
 import { siFacebook, siInstagram, siTiktok, siYoutube } from "simple-icons";
 import type { AgencyFooterSection } from "../../../types/page";
 import cadasturLogo from "../../../assets/cadastur-logo.png";
@@ -60,6 +60,7 @@ import { normalizeWhatsappDigits } from "../../../utils/whatsapp";
 import V2Section from "./V2Section.vue";
 import V2LegalInfo from "./V2LegalInfo.vue";
 import { localize } from "./useHeading";
+import { useNearViewport } from "./useNearViewport";
 
 const props = defineProps<{
   section: AgencyFooterSection;
@@ -121,6 +122,9 @@ const mapQuery = computed(() => {
 const mapEmbedUrl = computed(() =>
   mapQuery.value ? `https://www.google.com/maps?q=${encodeURIComponent(mapQuery.value)}&z=16&hl=${getCurrentLanguage() === "es" ? "es" : "pt-BR"}&output=embed` : ""
 );
+// O mapa do Google (cerca de 400 KB) só carrega quando o rodapé chega perto da tela.
+const mapBox = ref<HTMLElement | null>(null);
+const mapNear = useNearViewport(mapBox, 400);
 const mapLink = computed(() => (mapQuery.value ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery.value)}` : ""));
 const icons: Record<string, { path: string; label: string }> = {
   instagram: { path: siInstagram.path, label: "Instagram" },

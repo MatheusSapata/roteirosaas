@@ -395,6 +395,7 @@
             </div>
 
             <div
+              ref="mapBox"
               :class="[
                 'overflow-hidden rounded-[24px] border shadow-inner',
                 isLight ? 'border-slate-200 bg-white/70' : 'border-white/10 bg-white/5'
@@ -402,7 +403,7 @@
             >
               <iframe
                 class="h-80 w-full"
-                :src="mapEmbedUrl"
+                :src="mapNear ? mapEmbedUrl : undefined"
                 frameborder="0"
                 loading="lazy"
               ></iframe>
@@ -462,7 +463,7 @@
   </section>
 </template>
 <script setup lang="ts">
-import { computed, inject } from "vue";
+import { computed, inject, ref } from "vue";
 import { siFacebook, siInstagram, siTiktok, siYoutube } from "simple-icons";
 import type { AgencyFooterSection } from "../../types/page";
 import type { AgencySocialNetwork } from "../../store/useAgencyStore";
@@ -470,6 +471,7 @@ import cadasturLogo from "../../assets/cadastur-logo.png";
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
 import { createLocalizer, getCurrentLanguage, type LocalizedString } from "../../utils/i18n";
 import { normalizeWhatsappDigits } from "../../utils/whatsapp";
+import { useNearViewport } from "./v2/useNearViewport";
 
 const props = defineProps<{
   section: AgencyFooterSection;
@@ -546,6 +548,9 @@ const addressLine2 = computed(() => {
 const addressText = computed(() => agencyProfile.value?.address_text || addressLine1.value || addressLine2.value || "");
 
 const mapEmbedUrl = computed(() => agencyProfile.value?.map_embed_url || buildMapUrl(addressText.value));
+// O mapa do Google só carrega quando o rodapé chega perto da tela.
+const mapBox = ref<HTMLElement | null>(null);
+const mapNear = useNearViewport(mapBox, 400);
 const mapLink = computed(() => {
   const query = agencyProfile.value?.map_query || addressText.value;
   return query ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}` : "";
