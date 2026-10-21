@@ -5,6 +5,7 @@ reduzida e guardada como `<id>_<largura>.webp` (o mesmo padrão das fotos novas,
 ciclo de vida do arquivo original); depois é só redirecionar. O arquivo original não muda.
 """
 
+import logging
 import re
 import threading
 
@@ -15,6 +16,7 @@ from starlette.concurrency import run_in_threadpool
 from app.services.image_optimizer import VARIANT_WIDTHS, optimize_width, variant_name
 from app.services.media_storage import media_storage
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 _LEGACY_NAME = re.compile(r"^([0-9a-fA-F-]{36})\.(png|jpe?g)$")
@@ -51,6 +53,7 @@ async def legacy_image(u: str = Query(..., max_length=600), w: int = Query(1280)
     try:
         ready = await run_in_threadpool(_convert, name, cached_name, w)
     except Exception:  # noqa: BLE001 - qualquer falha: a página usa a foto original
+        logger.exception("Foto antiga sem versão leve: %s (w=%s)", name, w)
         return RedirectResponse(original_url, status_code=302)
     if not ready:
         _not_optimizable.add(cached_name)

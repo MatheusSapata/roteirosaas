@@ -3,7 +3,7 @@
     <div v-if="backgroundImage" class="vsl-background" :style="backgroundStyle"></div>
     <div class="relative z-[1] mx-auto w-full max-w-5xl px-6 text-center" :class="previewDevice ? 'py-16' : 'pb-16 pt-8'">
       <div v-if="section.logoEnabled !== false && resolvedLogo" class="v2-in mb-4 flex justify-center">
-        <img :src="resolvedLogo" :alt="title" class="vsl-brand-logo" :style="logoStyle" />
+        <img :src="lightLogoSrc(resolvedLogo)" :alt="title" class="vsl-brand-logo" :style="logoStyle" />
       </div>
       <h2 v-if="title" class="v2-title v2-in v2-d1" :style="[{ color: primaryText }, titleScaleStyle(title)]">{{ title }}</h2>
       <div v-if="subtitleHtml" class="v2-lead v2-in v2-d2 mt-3" :style="{ color: mutedText }" v-html="subtitleHtml"></div>
@@ -45,7 +45,7 @@ import { sanitizeHtml } from "../../../utils/sanitizeHtml";
 import { createLocalizer, getCurrentLanguage } from "../../../utils/i18n";
 import { normalizeExternalLink } from "../../../utils/links";
 import { extractYoutubeId, normalizeYoutubePlayerUrl } from "../../../utils/video";
-import { resolveMediaUrl } from "../../../utils/media";
+import { lightLogoSrc, resolveMediaUrl } from "../../../utils/media";
 import { usePageDesignContext } from "./designContext";
 import { useEntrance } from "./useEntrance";
 import { computeSectionTone, toneVars } from "./useSectionTone";
