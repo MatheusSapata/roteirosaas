@@ -67,3 +67,29 @@ def optimize_image(data: bytes) -> Optional[dict[int, bytes]]:
     except Exception as exc:  # noqa: BLE001 - imagem estranha não pode impedir o envio
         logger.warning("Imagem enviada sem otimizar: %s", exc)
         return None
+
+
+def optimize_width(data: bytes, width: int) -> Optional[bytes]:
+    """Uma única largura em WebP (fotos antigas, geradas sob demanda). None: fica como está."""
+    try:
+        with Image.open(io.BytesIO(data)) as source:
+            if source.format not in OPTIMIZABLE_FORMATS or getattr(source, "is_animated", False):
+                return None
+            if source.width * source.height > MAX_SOURCE_PIXELS:
+                return None
+            icc_profile = source.info.get("icc_profile") if source.mode != "CMYK" else None
+            image = ImageOps.exif_transpose(source)
+            alpha = _has_alpha(image)
+            image = image.convert("RGBA" if alpha else "RGB")
+            if image.width > width:
+                height = max(1, round(image.height * width / image.width))
+                image = image.resize((width, height), Image.Resampling.LANCZOS)
+            buffer = io.BytesIO()
+            options = {"quality": ALPHA_QUALITY if alpha else PHOTO_QUALITY, "method": 5}
+            if icc_profile:
+                options["icc_profile"] = icc_profile
+            image.save(buffer, format="WEBP", **options)
+            return buffer.getvalue()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Foto antiga sem otimizar: %s", exc)
+        return None
