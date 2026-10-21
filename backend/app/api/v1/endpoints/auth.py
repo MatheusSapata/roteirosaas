@@ -18,7 +18,6 @@ from app.models.user_tracking import UserTracking
 from app.schemas.user import (
     CrmViewPreferencesIn,
     CrmViewPreferencesOut,
-    PasswordResetByProfile,
     PasswordResetConfirm,
     PasswordResetRequest,
     PasswordChange,
@@ -43,6 +42,8 @@ from app.services.media_storage import media_storage
 router = APIRouter()
 settings = get_settings()
 login_limiter = InMemoryRateLimiter(attempts=5, window_seconds=300, block_minutes=15)
+# Pedidos de redefinição por e-mail: no máximo 3 a cada 15 minutos por endereço (evita encher a caixa de alguém).
+forgot_limiter = InMemoryRateLimiter(attempts=3, window_seconds=900, block_minutes=15)
 
 
 class TrialAckPayload(BaseModel):
@@ -397,6 +398,10 @@ def request_password_reset(payload: PasswordResetRequest, db: Session = Depends(
     if not user:
         return {"detail": "Se o email estiver cadastrado, enviaremos instruções para redefinir a senha."}
 
+    if forgot_limiter.is_blocked(normalized_email):
+        return {"detail": "Se o email estiver cadastrado, enviaremos instruções para redefinir a senha."}
+    forgot_limiter.register_failure(normalized_email)
+
     token = auth_service.create_password_reset_token(user.email)
     response: dict[str, str] = {
         "detail": "Se o email estiver cadastrado, enviaremos instruções para redefinir a senha."
@@ -425,29 +430,6 @@ def reset_password(payload: PasswordResetConfirm, db: Session = Depends(get_db))
     user = db.query(User).filter(func.lower(User.email) == normalized_email).first()
     if not user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado.")
-
-    try:
-        auth_service.validate_password_strength(payload.password)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-    user.hashed_password = auth_service.get_password_hash(payload.password)
-    user.temporary_password = False
-    db.add(user)
-    db.commit()
-    return {"detail": "Senha atualizada com sucesso."}
-
-
-@router.post("/password/reset/by-profile")
-def reset_password_by_profile(payload: PasswordResetByProfile, db: Session = Depends(get_db)) -> dict:
-    normalized_email = payload.email.strip().lower()
-    user = db.query(User).filter(func.lower(User.email) == normalized_email).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="Dados nao conferem.")
-
-    stored_cpf = "".join(filter(str.isdigit, user.cpf or ""))
-    if not stored_cpf or stored_cpf != payload.cpf:
-        raise HTTPException(status_code=400, detail="Dados nao conferem.")
 
     try:
         auth_service.validate_password_strength(payload.password)
