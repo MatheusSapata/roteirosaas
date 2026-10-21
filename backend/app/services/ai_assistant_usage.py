@@ -43,10 +43,12 @@ def _plan_limit(plan: str | None) -> int | None:
 
 
 def get_ai_assistant_monthly_limit(user: User, db: Session | None = None) -> int | None:
-    """Limite mensal do usuário: vale o maior entre o plano da própria conta e o plano do dono de cada equipe a que ele pertence."""
+    """Limite mensal do usuário. Membro de equipe (não dono) sempre usa o plano do dono da equipe;
+    dono usa o próprio plano. Sem dono encontrado, cai no plano da própria conta."""
     if getattr(user, "is_superuser", False):
         return None
-    limits = [_plan_limit(effective_plan(user))]
+    is_member = user.is_owner is not None and not bool(user.is_owner)
+    limits = [] if is_member else [_plan_limit(effective_plan(user))]
     if db is not None:
         owners = (
             db.query(User)
@@ -60,6 +62,8 @@ def get_ai_assistant_monthly_limit(user: User, db: Session | None = None) -> int
             .all()
         )
         limits.extend(_plan_limit(effective_plan(owner)) for owner in owners)
+    if not limits:
+        limits.append(_plan_limit(effective_plan(user)))
     if any(limit is None for limit in limits):
         return None
     return max(limits)
