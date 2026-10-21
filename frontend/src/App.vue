@@ -103,6 +103,11 @@ const syncViewportBackground = () => {
   document.documentElement.style.backgroundImage = "none";
   document.body.style.backgroundColor = backgroundColor;
   document.body.style.backgroundImage = "none";
+  // Páginas públicas no iPhone: sem o efeito de mola ao puxar a tela para baixo no topo (a faixa
+  // preta aparecia e a página voltava, parecendo que não tinha carregado). O painel segue normal.
+  const overscroll = isPublicShellRoute.value ? "none" : "";
+  document.documentElement.style.overscrollBehaviorY = overscroll;
+  document.body.style.overscrollBehaviorY = overscroll;
 };
 
 const checkCookieConsent = () => {
