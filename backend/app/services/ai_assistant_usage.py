@@ -8,6 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models.ai_assistant_usage import AiAssistantUsage
+from app.models.agency_user import AgencyUser
 from app.models.user import User
 from app.services.plans import effective_plan
 
@@ -36,11 +37,32 @@ def normalize_ai_assistant_plan(plan: str | None) -> str:
     return PLAN_ALIASES.get(normalized, normalized or "free")
 
 
-def get_ai_assistant_monthly_limit(user: User) -> int | None:
+def _plan_limit(plan: str | None) -> int | None:
+    plan_key = normalize_ai_assistant_plan(plan)
+    return AI_ASSISTANT_MONTHLY_LIMITS.get(plan_key, AI_ASSISTANT_MONTHLY_LIMITS["free"])
+
+
+def get_ai_assistant_monthly_limit(user: User, db: Session | None = None) -> int | None:
+    """Limite mensal do usuário: vale o maior entre o plano da própria conta e o plano do dono de cada equipe a que ele pertence."""
     if getattr(user, "is_superuser", False):
         return None
-    plan_key = normalize_ai_assistant_plan(effective_plan(user))
-    return AI_ASSISTANT_MONTHLY_LIMITS.get(plan_key, AI_ASSISTANT_MONTHLY_LIMITS["free"])
+    limits = [_plan_limit(effective_plan(user))]
+    if db is not None:
+        owners = (
+            db.query(User)
+            .join(AgencyUser, AgencyUser.user_id == User.id)
+            .filter(
+                AgencyUser.role == "owner",
+                AgencyUser.agency_id.in_(
+                    db.query(AgencyUser.agency_id).filter(AgencyUser.user_id == user.id)
+                ),
+            )
+            .all()
+        )
+        limits.extend(_plan_limit(effective_plan(owner)) for owner in owners)
+    if any(limit is None for limit in limits):
+        return None
+    return max(limits)
 
 
 def get_ai_assistant_period_key(now: datetime | None = None) -> str:
@@ -115,7 +137,7 @@ def check_ai_assistant_message_limit(db: Session, user: User) -> tuple[AiAssista
     )
     if usage is None:
         usage = AiAssistantUsage(user_id=user.id, period_key=period_key, message_count=0)
-    limit = get_ai_assistant_monthly_limit(user)
+    limit = get_ai_assistant_monthly_limit(user, db)
     used = int(usage.message_count or 0)
 
     if limit is not None and used >= limit:
@@ -155,7 +177,7 @@ def get_ai_assistant_usage_summary(db: Session, user: User) -> dict[str, int | s
         )
         .first()
     )
-    limit = get_ai_assistant_monthly_limit(user)
+    limit = get_ai_assistant_monthly_limit(user, db)
     used = int(usage.message_count or 0) if usage else 0
     remaining = None if limit is None else max(int(limit) - used, 0)
     return {
