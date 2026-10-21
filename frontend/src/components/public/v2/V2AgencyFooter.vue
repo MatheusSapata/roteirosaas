@@ -3,7 +3,7 @@
     <div class="v2-ft">
       <div class="v2-ft-cols v2-in">
         <div v-if="logo || description || (socialLinks.length && !socialOwnColumn)" class="v2-ft-col v2-ft-brand">
-          <img v-if="logo" :src="logo" :alt="companyName" class="v2-ft-logo" :style="{ borderRadius: `${Math.max(0, logoRadius || 0)}px` }" loading="lazy" />
+          <img v-if="logo" :src="lightLogoSrc(logo)" :alt="companyName" class="v2-ft-logo" :style="{ borderRadius: `${Math.max(0, logoRadius || 0)}px` }" loading="lazy" />
           <p v-if="description" class="v2-ft-about">{{ description }}</p>
           <div v-if="socialLinks.length && !socialOwnColumn" class="v2-ft-social" :aria-label="copy.social">
             <a v-for="link in socialLinks" :key="link.network" :href="link.url" target="_blank" rel="noopener noreferrer" :aria-label="link.label" :title="link.label">
@@ -55,7 +55,7 @@ import type { AgencyFooterSection } from "../../../types/page";
 import cadasturLogo from "../../../assets/cadastur-logo.png";
 import { PUBLIC_BRANDING_KEY } from "../../../utils/brandingKeys";
 import { getCurrentLanguage } from "../../../utils/i18n";
-import { resolveMediaUrl } from "../../../utils/media";
+import { lightLogoSrc, resolveMediaUrl } from "../../../utils/media";
 import { normalizeWhatsappDigits } from "../../../utils/whatsapp";
 import V2Section from "./V2Section.vue";
 import V2LegalInfo from "./V2LegalInfo.vue";

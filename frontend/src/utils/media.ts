@@ -204,6 +204,15 @@ const legacyImagesEnabled = () => {
   return LEGACY_IMAGE_HOSTS.includes(window.location.hostname.toLowerCase()) || /[?&]optimg=1(&|$)/.test(window.location.search);
 };
 
+/** Logo pequena (rodapé, redirecionamento): para foto antiga, a versão leve de 640 px no próprio `src`, sem mudar o tamanho na tela. */
+export const lightLogoSrc = (url?: string | null): string => {
+  if (!url) return "";
+  if (!VARIANT_RE.test(url) && LEGACY_IMAGE_RE.test(url) && legacyImagesEnabled()) {
+    return `${PLATFORM_API_BASE_URL}/public/img?u=${encodeURIComponent(url)}&w=640`;
+  }
+  return url;
+};
+
 /** srcset das versões leves de uma imagem, para o navegador baixar só o tamanho da tela. Vazio para imagens antigas. */
 export const responsiveSrcset = (url?: string | null): string => {
   if (url && !VARIANT_RE.test(url) && LEGACY_IMAGE_RE.test(url) && legacyImagesEnabled()) {

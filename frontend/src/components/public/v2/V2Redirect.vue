@@ -1,7 +1,7 @@
 <template>
   <V2Section type="redirect" :background="section.backgroundColor" :anchor-id="section.anchorId" flush>
     <div class="v2-rd v2-in" :class="{ 'v2-rd--live': live }">
-      <img v-if="logo" :src="logo" alt="" class="v2-rd-logo" />
+      <img v-if="logo" :src="lightLogoSrc(logo)" alt="" class="v2-rd-logo" />
       <V2Img v-if="image" :src="image" alt="" class="v2-rd-img" />
       <h1 v-if="title" class="v2-title v2-rd-title" :style="titleScaleStyle(title)">{{ title }}</h1>
       <p v-if="subtitle" class="v2-lead v2-rd-sub">{{ subtitle }}</p>
@@ -37,7 +37,7 @@
 import { computed, inject, onBeforeUnmount, onMounted, ref } from "vue";
 import type { RedirectSection } from "../../../types/page";
 import { PUBLIC_BRANDING_KEY } from "../../../utils/brandingKeys";
-import { resolveMediaUrl } from "../../../utils/media";
+import { lightLogoSrc, resolveMediaUrl } from "../../../utils/media";
 import { safeRedirectUrl } from "../../../utils/redirectUrl";
 import V2Button from "./V2Button.vue";
 import V2Img from "./V2Img.vue";
