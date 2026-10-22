@@ -152,7 +152,7 @@
         v-if="cropperModalOpen"
         class="app-modal-overlay fixed inset-0 z-50 flex items-center justify-center px-4 py-6"
       >
-        <div class="w-full max-w-5xl rounded-3xl bg-white p-6 shadow-2xl">
+        <div class="w-full max-w-5xl rounded-3xl bg-white p-6 shadow-2xl max-h-[calc(100dvh-3rem)] overflow-y-auto overscroll-contain">
           <div class="flex items-center justify-between">
             <div>
               <p class="text-xs uppercase tracking-[0.3em] text-slate-400">Editor de perfil</p>
@@ -219,7 +219,7 @@
               </div>
             </div>
           </div>
-          <div class="mt-6 flex justify-end gap-3">
+          <div class="sticky bottom-0 z-10 -mx-6 -mb-6 mt-6 flex justify-end gap-3 border-t border-slate-200 bg-white px-6 py-4">
             <button
               type="button"
               class="rounded-full border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
