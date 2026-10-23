@@ -527,10 +527,18 @@ def _chat_reply_problem(reply: str) -> str:
     return "" if is_valid else validation_error
 
 
+# Regras que valem sempre, mesmo com o prompt do construtor editado no painel.
+FIXED_RULES = (
+    "REGRAS FIXAS DA PLATAFORMA\n"
+    "- MENU DO TOPO: cada item do menu tem no máximo 1 palavra (ex.: Roteiro, Preços, Inclui, "
+    "Dúvidas, Depoimentos, Sobre, Contato). Nunca use duas ou mais palavras num item."
+)
+
+
 def _instructions(context: str = "") -> str:
-    """Prompt do superadmin + formato fixo + dados da conta (por último, para o começo do
+    """Prompt do superadmin + regras fixas + dados da conta (por último, para o começo do
     texto continuar igual entre conversas e aproveitar o cache da OpenAI)."""
-    prompt = load_system_prompt()
+    prompt = f"{load_system_prompt()}\n\n{FIXED_RULES}"
     return f"{prompt}\n\n{context.strip()}" if context and context.strip() else prompt
 
 
@@ -1820,6 +1828,52 @@ def _answered_keys(section_name: str, section: dict[str, Any], index: int) -> li
     ]
 
 
+# Nomes de várias palavras que têm um equivalente de uma palavra só.
+MENU_ONE_WORD = {
+    "O QUE INCLUI": "Inclui",
+    "O QUE ESTA INCLUSO": "Inclui",
+    "INCLUI E NAO INCLUI": "Inclui",
+    "ITENS INCLUSOS": "Inclui",
+    "PERGUNTAS FREQUENTES": "Dúvidas",
+    "DUVIDAS FREQUENTES": "Dúvidas",
+    "ROTEIRO DIA A DIA": "Roteiro",
+    "DIA A DIA": "Roteiro",
+    "PRECOS E PACOTES": "Preços",
+    "VALORES E PACOTES": "Preços",
+    "FALE CONOSCO": "Contato",
+    "FALE COM A GENTE": "Contato",
+    "QUEM SOMOS": "Sobre",
+    "SOBRE NOS": "Sobre",
+    "SOBRE A AGENCIA": "Sobre",
+    "OUTRAS VIAGENS": "Viagens",
+    "MAIS VIAGENS": "Viagens",
+    "PROXIMAS VIAGENS": "Viagens",
+    "DETALHES DO VOO": "Voos",
+    "RESERVE AGORA": "Reservar",
+    "RESERVE JA": "Reservar",
+}
+MENU_SKIP_WORDS = frozenset(
+    {"O", "A", "OS", "AS", "DE", "DA", "DO", "DAS", "DOS", "E", "QUE", "COM", "PARA", "NOSSO", "NOSSA",
+     "NOSSOS", "NOSSAS", "SEU", "SUA", "SEUS", "SUAS", "UM", "UMA", "NO", "NA", "NOS", "NAS", "EM", "MAIS"}
+)
+
+
+def one_word_menu_label(label: str) -> str:
+    """Nome do item do Menu do topo com no máximo 1 palavra: o equivalente conhecido ("O que
+    inclui" → "Inclui") ou a primeira palavra que não é artigo nem preposição."""
+    words = [word for word in re.split(r"\s+", (label or "").strip()) if word]
+    if len(words) <= 1:
+        return words[0] if words else ""
+    key = " ".join(re.sub(r"[^A-Z ]", " ", _normalize_text(label)).split())
+    if key in MENU_ONE_WORD:
+        return MENU_ONE_WORD[key]
+    for word in words:
+        clean = word.strip(".,;:!?()[]\"'")
+        if clean and _normalize_text(clean) not in MENU_SKIP_WORDS:
+            return clean[:1].upper() + clean[1:]
+    return words[0].strip(".,;:!?()[]\"'")
+
+
 def _link_header_menu(sections: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Liga os itens do Menu do topo às seções da página e deixa o menu em primeiro."""
     headers = [section for section in sections if section.get("type") == "header"]
@@ -1875,7 +1929,8 @@ def _link_header_menu(sections: list[dict[str, Any]]) -> list[dict[str, Any]]:
             # Seção que não veio nesta resposta (ex.: só o menu foi trocado): o editor liga pelo
             # título das seções que já estão na página.
             links.append({**item, "aiTargetLabel": label})
-    header["links"] = links
+    # Regra fixa: no máximo 1 palavra por item (a ligação acima usa o nome inteiro).
+    header["links"] = [{**link, "label": one_word_menu_label(link["label"])} for link in links]
     for extra in headers[1:]:
         extra.pop("_menuItems", None)
     return [header, *others]

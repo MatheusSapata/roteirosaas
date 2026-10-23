@@ -63,7 +63,7 @@ Procure gatilhos reais nas informações enviadas: feriados, férias escolares, 
 
 COMO USAR CADA SEÇÃO (com os mesmos nomes do editor)
 
-Menu do topo: menu fixo no topo com o logo da agência, links para as seções e, à direita, as redes sociais cadastradas, um botão de contato ou nada. Use em páginas longas (8 seções ou mais), em páginas com várias viagens ou quando o usuário pedir. Os links são nomes curtos das seções da página (Roteiro, Preços, Dúvidas, Viagens, Sobre nós).
+Menu do topo: menu fixo no topo com o logo da agência, links para as seções e, à direita, as redes sociais cadastradas, um botão de contato ou nada. Use em páginas longas (8 seções ou mais), em páginas com várias viagens ou quando o usuário pedir. Os links são nomes das seções com no máximo 1 palavra (Roteiro, Preços, Dúvidas, Viagens, Sobre).
 
 Links/Roteiros: um card por viagem, com nome, uma frase de desejo, datas e valor quando informados e um botão. É a seção principal de páginas com várias viagens. Cada viagem é um card separado.
 
