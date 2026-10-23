@@ -17,6 +17,13 @@
       <p class="sr-only" role="status">Carregando a página…</p>
     </div>
     <template v-else>
+    <div
+      v-if="agencyStore.borrowedAgency"
+      class="rounded-lg bg-amber-100 px-3 py-2 text-sm font-medium text-amber-900"
+      role="status"
+    >
+      Você está editando a página de {{ currentAgency?.name || "outra conta" }} como Admin Master.
+    </div>
     <div class="ed-topbar">
       <button type="button" class="ed-back" @click="goBack" :aria-label="viewCopy.actions.goBack">
         <ChevronLeftIcon aria-hidden="true" />
@@ -1756,7 +1763,7 @@ import {
 } from "../../services/aiAssistant";
 import { useAuthStore } from "../../store/useAuthStore";
 import { isLegacyLimitedPlan } from "../../utils/planLabels";
-import { useAgencyStore } from "../../store/useAgencyStore";
+import { useAgencyStore, type Agency } from "../../store/useAgencyStore";
 import { useLeadCaptureStore } from "../../store/useLeadCaptureStore";
 import type {
   BannerCardSection,
@@ -1835,6 +1842,7 @@ import viajeonCheckoutThumb from "../../assets/viajeon-checkout-thumb.png";
 import linksThumb from "../../assets/links-thumb.png";
 interface Page {
   id: number;
+  agency_id?: number;
   title: string;
   slug: string;
   status: string;
@@ -4668,6 +4676,8 @@ const whatsappDigits = computed(() => {
     agencyStore.agencies.find(a => a.id === agencyStore.currentAgencyId) || agencyStore.agencies[0];
   const agencyDigits = normalizeWhatsappDigits(agency?.cta_whatsapp || "");
   if (agencyDigits) return agencyDigits;
+  // Página de outra conta: nunca usa o WhatsApp de quem está editando.
+  if (agencyStore.borrowedAgency) return "";
   return normalizeWhatsappDigits(auth.user?.whatsapp || "");
 });
 const buildWhatsappLink = (title: string, _planName?: string) => {
@@ -4773,7 +4783,11 @@ const buildAddressText = (address: Record<string, string | undefined>) => {
   return [line1, line2].filter(Boolean).join(" - ");
 };
 
+// Página de outra conta (superusuário): o perfil vem da agência dona, nunca dos dados de quem edita.
+const borrowedAgencyProfile = ref<Record<string, any> | null>(null);
+
 const buildAgencyProfile = () => {
+  if (agencyStore.borrowedAgency && borrowedAgencyProfile.value) return borrowedAgencyProfile.value;
   const agency = currentAgency.value;
   const user = auth.user;
   const address = {
@@ -5739,6 +5753,29 @@ const hydrateFromConfig = (config?: PageConfig | string | null) => {
 };
 
 const defaultPageSlugPattern = /^roteiro-\d+$/i;
+// Superusuário abrindo a página de uma conta da qual não é membro (ex.: Implementações Black do
+// Hub): o editor passa a usar a agência dona da página (marca, link, imagens, vitrine) e devolve a
+// agência de antes ao sair.
+const borrowPageAgency = async (loaded: Page) => {
+  const agencyId = loaded.agency_id;
+  if (!agencyId || !auth.user?.is_superuser) return;
+  if (agencyStore.agencies.some(agency => agency.id === agencyId)) return;
+  try {
+    const [agencyRes, profileRes] = await Promise.all([
+      api.get<Agency>(`/agencies/${agencyId}`),
+      api.get<{ agency_profile: Record<string, any> }>(`/pages/${loaded.id}/agency-profile`)
+    ]);
+    borrowedAgencyProfile.value = profileRes.data.agency_profile;
+    agencyStore.borrowAgency(agencyRes.data);
+    await agencyStore.loadPrimaryDomain(agencyId);
+    applyAgencyBranding();
+  } catch (err) {
+    console.error("Não foi possível carregar a agência da página", err);
+  }
+};
+
+onBeforeUnmount(() => agencyStore.returnBorrowedAgency());
+
 const fetchPage = async () => {
   if (!auth.token) {
     errorMessage.value = viewCopy.feedback.loginAgain;
@@ -5756,6 +5793,7 @@ const fetchPage = async () => {
 
   try {
     const res = await api.get<Page>(`/pages/${pageId}`);
+    await borrowPageAgency(res.data);
     page.value = res.data;
     const loadedTitle = res.data.title || "";
     const existingSlug = (res.data.slug || "").trim();

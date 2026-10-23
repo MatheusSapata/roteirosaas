@@ -124,5 +124,11 @@ def update_agency(
 def get_agency(
     agency_id: int, current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
 ) -> AgencyOut:
+    if getattr(current_user, "is_superuser", False):
+        # Superusuário editando a página de outra conta: só leitura dos dados da agência.
+        agency = db.query(Agency).filter(Agency.id == agency_id).first()
+        if not agency:
+            raise HTTPException(status_code=404, detail="Agência não encontrada.")
+        return agency
     agency = require_agency_membership(db=db, agency_id=agency_id, user_id=current_user.id)
     return agency

@@ -76,5 +76,35 @@ export const useAgencyStore = defineStore("agency", () => {
     return primaryDomains.value[currentAgencyId.value] ?? null;
   });
 
-  return { agencies, currentAgencyId, loadAgencies, loadPrimaryDomain, primaryDomains, currentPrimaryDomain };
+  // Superusuário editando a página de outra conta: o editor usa a agência dona da página enquanto
+  // está aberto e devolve a agência de antes ao sair.
+  const borrowedAgency = ref<{ agencyId: number; previousId: number | null } | null>(null);
+
+  const borrowAgency = (agency: Agency) => {
+    // Só agência de fora (a pessoa não é membro); a própria já está na lista.
+    if (agencies.value.some(item => item.id === agency.id)) return;
+    borrowedAgency.value = { agencyId: agency.id, previousId: currentAgencyId.value };
+    agencies.value = [...agencies.value, agency];
+    currentAgencyId.value = agency.id;
+  };
+
+  const returnBorrowedAgency = () => {
+    const borrowed = borrowedAgency.value;
+    if (!borrowed) return;
+    borrowedAgency.value = null;
+    agencies.value = agencies.value.filter(item => item.id !== borrowed.agencyId);
+    currentAgencyId.value = borrowed.previousId ?? agencies.value[0]?.id ?? null;
+  };
+
+  return {
+    agencies,
+    currentAgencyId,
+    loadAgencies,
+    loadPrimaryDomain,
+    primaryDomains,
+    currentPrimaryDomain,
+    borrowedAgency,
+    borrowAgency,
+    returnBorrowedAgency
+  };
 });
