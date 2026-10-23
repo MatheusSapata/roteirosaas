@@ -252,7 +252,49 @@ def _extract_pix_automatic_qr_code(authorization: dict[str, Any]) -> dict[str, A
     }
 
 
-def _build_asaas_customer_payload(*, name: str, email: str, document: str, phone: str, session_token: str) -> dict[str, Any]:
+ADDRESS_KEYS = ("street", "number", "complement", "neighborhood", "city", "state")
+# Mínimo para a nota fiscal: o CEP já vem à parte; o complemento é opcional.
+REQUIRED_ADDRESS_KEYS = ("street", "number", "neighborhood", "city", "state")
+
+
+def session_address(session: CheckoutSession) -> dict[str, str]:
+    raw = (session.metadata_json or {}).get("customer_address")
+    if not isinstance(raw, dict):
+        return {}
+    return {key: str(raw[key]).strip() for key in ADDRESS_KEYS if str(raw.get(key) or "").strip()}
+
+
+def user_address(user: User) -> dict[str, str]:
+    values = {key: str(getattr(user, f"address_{key}", None) or "").strip() for key in ADDRESS_KEYS}
+    return {key: value for key, value in values.items() if value}
+
+
+def address_is_complete(zipcode: str | None, address: dict[str, str]) -> bool:
+    return len(_normalize_digits(zipcode)) == 8 and all(address.get(key) for key in REQUIRED_ADDRESS_KEYS)
+
+
+def asaas_address_fields(zipcode: str | None, address: dict[str, str]) -> dict[str, str]:
+    """Endereço no formato do cliente do Asaas (usado na nota fiscal). A cidade vem do CEP."""
+    fields = {
+        "postalCode": _normalize_digits(zipcode),
+        "address": address.get("street"),
+        "addressNumber": address.get("number"),
+        "complement": address.get("complement"),
+        "province": address.get("neighborhood"),
+    }
+    return {key: value for key, value in fields.items() if value}
+
+
+def _build_asaas_customer_payload(
+    *,
+    name: str,
+    email: str,
+    document: str,
+    phone: str,
+    session_token: str,
+    zipcode: str | None = None,
+    address: dict[str, str] | None = None,
+) -> dict[str, Any]:
     return {
         "name": name,
         "email": email,
@@ -261,6 +303,7 @@ def _build_asaas_customer_payload(*, name: str, email: str, document: str, phone
         "externalReference": f"checkout:{session_token}",
         "notificationDisabled": False,
         "groupName": ASAAS_CUSTOMER_GROUP_NAME,
+        **asaas_address_fields(zipcode, address or {}),
     }
 
 
@@ -579,6 +622,7 @@ def _apply_upgrade_after_payment(db: Session, session: CheckoutSession) -> tuple
     user.name = session.customer_name or user.name
     user.whatsapp = session.customer_phone or user.whatsapp
     user.address_zipcode = session.customer_zipcode or user.address_zipcode
+    _apply_session_address_to_user(user, session)
 
     subscription.plan = session.plan_key
     subscription.status = "active"
@@ -1340,12 +1384,17 @@ def _find_or_create_asaas_customer(
     email: str,
     document: str,
     phone: str,
+    zipcode: str | None = None,
+    address: dict[str, str] | None = None,
 ) -> str:
     digits = _normalize_digits(document)
     customer_list = client.list_customers(cpfCnpj=digits)
     for item in customer_list.get("data", []) or []:
         if _normalize_digits(item.get("cpfCnpj")) == digits:
-            return str(item.get("id"))
+            customer_id = str(item.get("id"))
+            if address:
+                sync_asaas_customer_address(client, customer_id, zipcode, address)
+            return customer_id
     customer = client.create_customer(
         _build_asaas_customer_payload(
             name=name,
@@ -1353,12 +1402,25 @@ def _find_or_create_asaas_customer(
             document=digits,
             phone=phone,
             session_token=session_token,
+            zipcode=zipcode,
+            address=address,
         )
     )
     customer_id = customer.get("id")
     if not customer_id:
         raise HTTPException(status_code=502, detail="Asaas nÃ£o retornou o cliente.")
     return str(customer_id)
+
+
+def sync_asaas_customer_address(client: AsaasClient, customer_id: str | None, zipcode: str | None, address: dict[str, str]) -> None:
+    """Leva o endereço ao cliente do Asaas (nota fiscal). Falhar aqui não pode travar a compra."""
+    fields = asaas_address_fields(zipcode, address)
+    if not customer_id or not fields.get("address"):
+        return
+    try:
+        client.update_customer(customer_id, fields)
+    except Exception:  # noqa: BLE001
+        logger.warning("Não foi possível atualizar o endereço do cliente %s no Asaas.", customer_id, exc_info=True)
 
 
 def create_checkout_session(
@@ -1372,6 +1434,7 @@ def create_checkout_session(
     customer_zipcode: str,
     coupon_code: str | None,
     metadata: dict[str, Any] | None,
+    customer_address: dict[str, str] | None = None,
     allow_existing_user: bool = False,
     plan_key: str | None = None,
 ) -> CheckoutSession:
@@ -1400,6 +1463,8 @@ def create_checkout_session(
     )
     # Parcelas do cartão e promoção da 1ª mensalidade valem pelo que a oferta tinha quando a compra
     # começou. Com cupom, a parcela fixa (ex.: 12x de R$ 97) não vale: as parcelas seguem a tabela.
+    if customer_address:
+        metadata_payload["customer_address"] = {key: customer_address[key] for key in ADDRESS_KEYS if customer_address.get(key)}
     metadata_payload["max_installments"] = offer.max_installments if offer.billing_cycle == "annual" else 1
     metadata_payload["installment_fixed_values"] = (
         {} if discount_amount else {count: str(value) for count, value in offer.installment_fixed_values.items()}
@@ -1485,6 +1550,7 @@ def create_upgrade_checkout_session(
         customer_document=document,
         customer_phone=phone,
         customer_zipcode=zipcode,
+        customer_address=user_address(user),
         coupon_code=coupon_code,
         metadata=metadata,
         allow_existing_user=True,
@@ -1502,6 +1568,7 @@ def update_upgrade_checkout_session_details(
     customer_document: str,
     customer_phone: str,
     customer_zipcode: str,
+    customer_address: dict[str, str] | None = None,
 ) -> CheckoutSession:
     if not _is_upgrade_session(session):
         raise HTTPException(status_code=400, detail="Sessao nao pertence ao fluxo de upgrade.")
@@ -1533,6 +1600,9 @@ def update_upgrade_checkout_session_details(
     session.customer_document = document_digits
     session.customer_phone = phone_digits
     session.customer_zipcode = zipcode_digits
+    if customer_address:
+        metadata["customer_address"] = {key: customer_address[key] for key in ADDRESS_KEYS if customer_address.get(key)}
+        session.metadata_json = metadata
     session.updated_at = _utcnow()
     db.add(session)
     db.commit()
@@ -1963,6 +2033,7 @@ def serialize_checkout_session(db: Session, session: CheckoutSession) -> dict[st
         "customer_document": session.customer_document,
         "customer_phone": session.customer_phone,
         "customer_zipcode": session.customer_zipcode,
+        "customer_address": session_address(session),
         "pix_copy_paste": session.pix_copy_paste,
         "pix_qr_code_base64": session.pix_qr_code_base64,
         "pix_expiration_date": session.pix_expiration_date,
@@ -1996,6 +2067,8 @@ def start_pix_payment(db: Session, session: CheckoutSession) -> CheckoutSession:
         email=session.customer_email,
         document=session.customer_document,
         phone=session.customer_phone,
+        zipcode=session.customer_zipcode,
+        address=session_address(session),
     )
     immediate_qr: dict[str, Any] = {}
     frequency = "ANNUALLY" if session.billing_cycle == "annual" else "MONTHLY"
@@ -2111,6 +2184,8 @@ def start_card_payment(db: Session, session: CheckoutSession, payload: dict[str,
         email=session.customer_email,
         document=session.customer_document,
         phone=session.customer_phone,
+        zipcode=session.customer_zipcode,
+        address=session_address(session),
     )
     amount = Decimal(str(session.amount))
     card_last4 = _extract_card_last4(payload.get("card_number"))
@@ -2149,7 +2224,7 @@ def start_card_payment(db: Session, session: CheckoutSession, payload: dict[str,
         "email": session.customer_email,
         "cpfCnpj": session.customer_document,
         "postalCode": session.customer_zipcode,
-        "addressNumber": "S/N",
+        "addressNumber": session_address(session).get("number") or "S/N",
         "phone": session.customer_phone,
         "mobilePhone": session.customer_phone,
     }
@@ -2300,6 +2375,12 @@ def _detach_cakto_after_legacy_renewal(session: CheckoutSession, subscription: S
     subscription.cakto_order_id = None
 
 
+def _apply_session_address_to_user(user: User, session: CheckoutSession) -> None:
+    """O endereço informado na compra vai para o cadastro (só os campos preenchidos)."""
+    for key, value in session_address(session).items():
+        setattr(user, f"address_{key}", value[:2] if key == "state" else value)
+
+
 def _upsert_paid_user_and_subscription(db: Session, session: CheckoutSession) -> User:
     user = session.user or _find_existing_user(db, session.customer_email, session.customer_document)
     previous_plan = str(user.plan or "").strip().lower() if user else ""
@@ -2331,6 +2412,7 @@ def _upsert_paid_user_and_subscription(db: Session, session: CheckoutSession) ->
         else:
             user.cpf = session.customer_document
         user.plan = session.plan_key
+    _apply_session_address_to_user(user, session)
 
     subscription = user.subscription
     if not subscription:

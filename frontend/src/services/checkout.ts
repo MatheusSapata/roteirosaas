@@ -103,6 +103,15 @@ export interface CheckoutPublicConfig {
   pixels: CheckoutPublicPixel[];
 }
 
+export interface CheckoutAddress {
+  street?: string;
+  number?: string;
+  complement?: string;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
+}
+
 export interface CheckoutSessionPayload {
   offer_key: string;
   customer_name: string;
@@ -110,6 +119,8 @@ export interface CheckoutSessionPayload {
   customer_document: string;
   customer_phone: string;
   customer_zipcode: string;
+  /** Endereço completo para a nota fiscal (o CEP vem à parte). */
+  customer_address?: CheckoutAddress;
   coupon_code?: string | null;
   /** Origem da compra: UTMs do anúncio e o site de onde a pessoa veio. */
   utm?: Partial<Record<"utm_source" | "utm_medium" | "utm_campaign" | "utm_term" | "utm_content" | "referrer", string>>;
@@ -132,6 +143,7 @@ export interface CheckoutSession {
   customer_document: string;
   customer_phone: string;
   customer_zipcode: string;
+  customer_address?: CheckoutAddress;
   pix_copy_paste?: string | null;
   pix_qr_code_base64?: string | null;
   pix_expiration_date?: string | null;
@@ -320,7 +332,7 @@ export const updateUpgradeCheckoutSessionDetails = async (
   token: string,
   payload: Pick<
     CheckoutSessionPayload,
-    "customer_name" | "customer_email" | "customer_document" | "customer_phone" | "customer_zipcode"
+    "customer_name" | "customer_email" | "customer_document" | "customer_phone" | "customer_zipcode" | "customer_address"
   >
 ) => {
   const response = await api.put<CheckoutSession>(`/checkout/public/session/${encodeURIComponent(token)}/upgrade-details`, payload);

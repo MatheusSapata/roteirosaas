@@ -9,6 +9,15 @@
       </template>
     </AgencyHeader>
 
+    <div v-if="missingAddressFields.length" class="ai-notice" role="status">
+      <span class="ai-notice-icon" aria-hidden="true"><MapPinIcon aria-hidden="true" /></span>
+      <div class="ai-notice-text">
+        <p class="ai-notice-title">{{ viewCopy.addressNotice.title }}</p>
+        <p>{{ viewCopy.addressNotice.missing }} {{ missingAddressFields.join(", ") }}.</p>
+      </div>
+      <RouterLink to="/admin/agency" class="ai-btn-primary ai-btn-sm">{{ viewCopy.addressNotice.action }}</RouterLink>
+    </div>
+
     <div class="ai-stats">
       <article v-for="item in invoiceSummaries" :key="item.id" class="ai-stat">
         <span class="ai-stat-icon" :class="`is-${item.id}`" aria-hidden="true">
@@ -113,6 +122,7 @@ import {
   CheckIcon,
   ClockIcon,
   DownloadIcon,
+  MapPinIcon,
   ReceiptIcon,
   RotateCwIcon,
   TriangleAlertIcon
@@ -121,6 +131,7 @@ import { computed, onMounted, ref, watch } from "vue";
 import api from "../../services/api";
 import AgencyHeader from "../../components/admin/agency/AgencyHeader.vue";
 import { agencyCounts } from "../../composables/useAgencyCounts";
+import { useAuthStore } from "../../store/useAuthStore";
 import { createAdminLocalizer } from "../../utils/adminI18n";
 
 type InvoiceBucket = "paid" | "overdue" | "upcoming";
@@ -155,8 +166,31 @@ const t = createAdminLocalizer();
 const viewCopy = {
   upcoming: t({ pt: "A vencer", es: "Por vencer" }),
   overdue: t({ pt: "Vencidas", es: "Vencidas" }),
-  paid: t({ pt: "Pagas", es: "Pagadas" })
+  paid: t({ pt: "Pagas", es: "Pagadas" }),
+  addressNotice: {
+    title: t({ pt: "Complete o endereço para receber a nota fiscal", es: "Completa la dirección para recibir la factura" }),
+    missing: t({ pt: "Falta informar:", es: "Falta informar:" }),
+    action: t({ pt: "Completar endereço", es: "Completar dirección" })
+  }
 };
+
+// Endereço da nota fiscal: não é obrigatório para quem já é cliente, só lembramos aqui.
+const auth = useAuthStore();
+const addressFieldLabels = [
+  { key: "address_zipcode", label: t({ pt: "CEP", es: "CEP" }) },
+  { key: "address_street", label: t({ pt: "rua", es: "calle" }) },
+  { key: "address_number", label: t({ pt: "número", es: "número" }) },
+  { key: "address_neighborhood", label: t({ pt: "bairro", es: "barrio" }) },
+  { key: "address_city", label: t({ pt: "cidade", es: "ciudad" }) },
+  { key: "address_state", label: t({ pt: "UF", es: "estado" }) }
+] as const;
+const missingAddressFields = computed(() => {
+  const user = auth.user as Record<string, unknown> | null;
+  if (!user || user.is_owner === false) return [];
+  return addressFieldLabels
+    .filter(field => !String(user[field.key] ?? "").trim() || (field.key === "address_zipcode" && String(user[field.key]).replace(/\D/g, "").length !== 8))
+    .map(field => field.label);
+});
 
 const tabs: Array<{ id: InvoiceBucket | "all"; label: string }> = [
   { id: "all", label: t({ pt: "Todas", es: "Todas" }) },
@@ -782,5 +816,10 @@ onMounted(() => {
 .ai-pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid var(--border); padding: 12px 16px; font-size: 12.5px; color: var(--muted-foreground); }
 .ai-pagination > div { display: flex; align-items: center; gap: 8px; }
 .ai-empty { display: flex; flex-direction: column; align-items: center; gap: 10px; border-radius: 20px; background: var(--card); padding: 40px 16px; text-align: center; font-size: 14px; color: var(--muted-foreground); box-shadow: var(--shadow-card); }
+.ai-notice { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; border-radius: 20px; background: var(--status-warning); color: var(--status-warning-foreground); padding: 14px 16px; }
+.ai-notice-icon { display: grid; place-items: center; width: 40px; height: 40px; flex-shrink: 0; border-radius: 999px; background: var(--card); }
+.ai-notice-icon svg { width: 18px; height: 18px; }
+.ai-notice-text { flex: 1 1 280px; font-size: 13px; }
+.ai-notice-title { font-family: var(--font-display); font-size: 15px; font-weight: 600; }
 @media (max-width: 900px) { .ai-stats { grid-template-columns: 1fr; } }
 </style>

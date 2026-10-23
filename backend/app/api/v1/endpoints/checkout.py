@@ -163,6 +163,7 @@ def create_public_checkout_session(payload: CheckoutSessionCreate, db: Session =
         customer_document=payload.customer_document,
         customer_phone=payload.customer_phone,
         customer_zipcode=payload.customer_zipcode,
+        customer_address=payload.customer_address.cleaned() if payload.customer_address else None,
         coupon_code=payload.coupon_code,
         # Nada do que o navegador manda entra nos metadados da sessão (o servidor confia neles para
         # cobrar e para mexer em assinaturas); só a origem da compra, já validada.
@@ -253,6 +254,7 @@ def update_public_upgrade_checkout_session_details(
         customer_document=payload.customer_document,
         customer_phone=payload.customer_phone,
         customer_zipcode=payload.customer_zipcode,
+        customer_address=payload.customer_address.cleaned() if payload.customer_address else None,
     )
     return CheckoutSessionOut.model_validate(serialize_checkout_session(db, session))
 

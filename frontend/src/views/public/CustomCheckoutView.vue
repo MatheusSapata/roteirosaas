@@ -91,7 +91,14 @@
                 <label class="checkout-field">
                   <span>CEP</span>
                   <div class="checkout-cep-wrap">
-                    <input v-model="form.customer_zipcode" :disabled="lockedProfileFields.customer_zipcode" placeholder="00000-000" />
+                    <input
+                      v-model="form.customer_zipcode"
+                      :disabled="lockedProfileFields.customer_zipcode"
+                      placeholder="00000-000"
+                      inputmode="numeric"
+                      @blur="lookupCep"
+                      @input="onCepInput"
+                    />
                     <a
                       class="checkout-link-help checkout-link-help-inside"
                       href="https://buscacepinter.correios.com.br/app/endereco/index.php"
@@ -101,6 +108,33 @@
                       Não sei meu CEP
                     </a>
                   </div>
+                </label>
+              </div>
+              <p v-if="cepStatus" class="checkout-cep-status" :class="{ 'is-error': cepStatusError }" role="status">{{ cepStatus }}</p>
+              <div class="checkout-address-grid">
+                <label class="checkout-field checkout-address-street">
+                  <span>Rua</span>
+                  <input v-model="form.address_street" autocomplete="address-line1" placeholder="Rua, avenida..." />
+                </label>
+                <label class="checkout-field checkout-address-number">
+                  <span>Número</span>
+                  <input v-model="form.address_number" placeholder="Nº ou S/N" />
+                </label>
+                <label class="checkout-field checkout-address-complement">
+                  <span>Complemento (opcional)</span>
+                  <input v-model="form.address_complement" autocomplete="address-line2" placeholder="Sala, apto..." />
+                </label>
+                <label class="checkout-field checkout-address-neighborhood">
+                  <span>Bairro</span>
+                  <input v-model="form.address_neighborhood" placeholder="Bairro" />
+                </label>
+                <label class="checkout-field checkout-address-city">
+                  <span>Cidade</span>
+                  <input v-model="form.address_city" autocomplete="address-level2" placeholder="Cidade" />
+                </label>
+                <label class="checkout-field checkout-address-state">
+                  <span>UF</span>
+                  <input v-model="form.address_state" maxlength="2" autocomplete="address-level1" placeholder="UF" @input="form.address_state = form.address_state.toUpperCase()" />
                 </label>
               </div>
               <!-- Renovação do plano antigo (valor que o cliente já pagava) e upgrade do plano antigo (valor cheio): sem cupom. -->
@@ -608,8 +642,62 @@ const form = reactive({
   customer_document: "",
   customer_phone: "",
   customer_zipcode: "",
+  address_street: "",
+  address_number: "",
+  address_complement: "",
+  address_neighborhood: "",
+  address_city: "",
+  address_state: "",
   coupon_code: ""
 });
+
+// Endereço completo para a nota fiscal: o CEP preenche rua, bairro, cidade e UF (ViaCEP).
+const cepStatus = ref("");
+const cepStatusError = ref(false);
+let lastCepLookup = "";
+
+const addressPayload = () => ({
+  street: form.address_street.trim(),
+  number: form.address_number.trim(),
+  complement: form.address_complement.trim(),
+  neighborhood: form.address_neighborhood.trim(),
+  city: form.address_city.trim(),
+  state: form.address_state.trim().toUpperCase()
+});
+
+const lookupCep = async () => {
+  const digits = form.customer_zipcode.replace(/\D/g, "");
+  if (digits.length !== 8 || digits === lastCepLookup) return;
+  lastCepLookup = digits;
+  cepStatus.value = "Buscando endereço...";
+  cepStatusError.value = false;
+  try {
+    const response = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+    const data = await response.json();
+    if (!response.ok || data?.erro) throw new Error("not_found");
+    form.address_street = data.logradouro || form.address_street;
+    form.address_neighborhood = data.bairro || form.address_neighborhood;
+    form.address_city = data.localidade || form.address_city;
+    form.address_state = String(data.uf || form.address_state).toUpperCase().slice(0, 2);
+    cepStatus.value = data.logradouro ? "Endereço preenchido pelo CEP. Confira e informe o número." : "CEP geral da cidade: informe rua, número e bairro.";
+  } catch {
+    cepStatus.value = "Não achamos este CEP. Confira os números ou preencha o endereço.";
+    cepStatusError.value = true;
+  }
+};
+
+const onCepInput = () => {
+  if (form.customer_zipcode.replace(/\D/g, "").length === 8) lookupCep();
+};
+
+const fillAddressFromSession = (address?: Partial<Record<string, string>> | null) => {
+  form.address_street = address?.street || form.address_street;
+  form.address_number = address?.number || form.address_number;
+  form.address_complement = address?.complement || form.address_complement;
+  form.address_neighborhood = address?.neighborhood || form.address_neighborhood;
+  form.address_city = address?.city || form.address_city;
+  form.address_state = address?.state || form.address_state;
+};
 
 const lockedProfileFields = reactive({
   customer_name: false,
@@ -880,6 +968,12 @@ const validateDetails = () => {
     inlineError.value = "Preencha todos os campos obrigatórios.";
     return false;
   }
+  // Cliente novo informa o endereço completo (nota fiscal). Quem já é cliente pode seguir sem ele.
+  const address = addressPayload();
+  if (!isUpgradeFlow.value && (!address.street || !address.number || !address.neighborhood || !address.city || address.state.length !== 2)) {
+    inlineError.value = "Informe o endereço completo: precisamos dele para emitir a nota fiscal.";
+    return false;
+  }
   const documentDigits = form.customer_document.replace(/\D/g, "");
   if (documentDigits.length !== 11 && documentDigits.length !== 14) {
     inlineError.value = "Informe um CPF ou CNPJ válido.";
@@ -984,6 +1078,7 @@ const submitDetails = async () => {
         customer_document: form.customer_document,
         customer_phone: form.customer_phone,
         customer_zipcode: form.customer_zipcode,
+        customer_address: addressPayload(),
       });
     } else {
       session.value = await createCheckoutSession({
@@ -993,6 +1088,7 @@ const submitDetails = async () => {
         customer_document: form.customer_document,
         customer_phone: form.customer_phone,
         customer_zipcode: form.customer_zipcode,
+        customer_address: addressPayload(),
         coupon_code: form.coupon_code,
         // Origem da compra (UTMs do anúncio, guardadas desde a LP): vai para o cadastro da empresa.
         utm: { ...currentAttribution(), seller_code: currentSellerCode() }
@@ -1057,6 +1153,7 @@ const applyCoupon = async () => {
       customer_document: form.customer_document,
       customer_phone: session.value?.customer_phone || form.customer_phone,
       customer_zipcode: session.value?.customer_zipcode || form.customer_zipcode,
+      customer_address: addressPayload(),
       coupon_code: coupon
     });
     form.coupon_code = session.value.applied_coupon_code || coupon;
@@ -1075,6 +1172,7 @@ const fillFormFromSession = (data: CheckoutSession) => {
   form.customer_document = formatDocument(data.customer_document || "");
   form.customer_phone = data.customer_phone || "";
   form.customer_zipcode = data.customer_zipcode || "";
+  fillAddressFromSession(data.customer_address);
   form.coupon_code = data.applied_coupon_code || form.coupon_code || "";
 };
 
@@ -1142,6 +1240,7 @@ const removeAppliedCoupon = async () => {
       customer_document: form.customer_document,
       customer_phone: session.value.customer_phone || form.customer_phone,
       customer_zipcode: session.value.customer_zipcode || form.customer_zipcode,
+      customer_address: addressPayload(),
       coupon_code: null
     });
     router.replace({ query: { ...route.query, token: session.value.token } }).catch(() => {});
@@ -1676,6 +1775,39 @@ onBeforeUnmount(() => {
 
 .checkout-field input:disabled {
   opacity: 0.6;
+}
+
+.checkout-address-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.checkout-address-street { grid-column: span 4; }
+.checkout-address-number { grid-column: span 2; }
+.checkout-address-complement { grid-column: span 3; }
+.checkout-address-neighborhood { grid-column: span 3; }
+.checkout-address-city { grid-column: span 4; }
+.checkout-address-state { grid-column: span 2; }
+
+@media (max-width: 520px) {
+  .checkout-address-street,
+  .checkout-address-complement,
+  .checkout-address-neighborhood,
+  .checkout-address-city { grid-column: span 6; }
+  .checkout-address-number,
+  .checkout-address-state { grid-column: span 3; }
+}
+
+.checkout-cep-status {
+  margin: -4px 0 0;
+  font-size: 12.5px;
+  opacity: 0.8;
+}
+
+.checkout-cep-status.is-error {
+  color: #e05656;
+  opacity: 1;
 }
 
 .checkout-field-row {

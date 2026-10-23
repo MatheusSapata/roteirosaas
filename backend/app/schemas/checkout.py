@@ -248,6 +248,21 @@ class CheckoutUtmIn(BaseModel):
         return {key: value.strip() for key, value in self.model_dump().items() if isinstance(value, str) and value.strip()}
 
 
+class CheckoutAddressIn(BaseModel):
+    street: str | None = Field(default=None, max_length=255)
+    number: str | None = Field(default=None, max_length=50)
+    complement: str | None = Field(default=None, max_length=255)
+    neighborhood: str | None = Field(default=None, max_length=255)
+    city: str | None = Field(default=None, max_length=255)
+    state: str | None = Field(default=None, max_length=2)
+
+    def cleaned(self) -> dict[str, str]:
+        values = {key: str(value or "").strip() for key, value in self.model_dump().items()}
+        if values.get("state"):
+            values["state"] = values["state"].upper()
+        return {key: value for key, value in values.items() if value}
+
+
 class CheckoutSessionCreate(BaseModel):
     offer_key: str = Field(..., min_length=1, max_length=120)
     customer_name: str = Field(..., min_length=1, max_length=255)
@@ -255,6 +270,8 @@ class CheckoutSessionCreate(BaseModel):
     customer_document: str = Field(..., min_length=11, max_length=18)
     customer_phone: str = Field(..., min_length=10, max_length=20)
     customer_zipcode: str = Field(..., min_length=8, max_length=10)
+    # Endereço completo para a nota fiscal (o CEP preenche rua, bairro, cidade e UF).
+    customer_address: CheckoutAddressIn | None = None
     coupon_code: str | None = Field(default=None, max_length=80)
     # Aceito por compatibilidade e ignorado: os metadados da sessão são só do servidor (valor da 1ª
     # cobrança, upgrade, assinatura substituída). A origem da compra vem em `utm`.
@@ -292,6 +309,8 @@ class CheckoutUpgradeSessionDetailsUpdate(BaseModel):
     customer_document: str = Field(..., min_length=11, max_length=18)
     customer_phone: str = Field(..., min_length=10, max_length=20)
     customer_zipcode: str = Field(..., min_length=8, max_length=10)
+    # Endereço completo para a nota fiscal (o CEP preenche rua, bairro, cidade e UF).
+    customer_address: CheckoutAddressIn | None = None
 
     @field_validator("customer_document")
     @classmethod
@@ -342,6 +361,7 @@ class CheckoutSessionOut(BaseModel):
     customer_document: str
     customer_phone: str
     customer_zipcode: str
+    customer_address: dict[str, str] = Field(default_factory=dict)
     pix_copy_paste: str | None = None
     pix_qr_code_base64: str | None = None
     pix_expiration_date: datetime | None = None

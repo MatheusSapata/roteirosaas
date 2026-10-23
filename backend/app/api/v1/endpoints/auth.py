@@ -302,7 +302,33 @@ def update_me(user_in: UserUpdate, db: Session = Depends(get_db), current_user: 
     db.add(current_user)
     db.commit()
     db.refresh(current_user)
+    if provided_fields & ADDRESS_FIELDS:
+        _sync_address_to_asaas(current_user)
     return current_user
+
+
+ADDRESS_FIELDS = {
+    "address_street",
+    "address_number",
+    "address_complement",
+    "address_neighborhood",
+    "address_city",
+    "address_state",
+    "address_zipcode",
+}
+
+
+def _sync_address_to_asaas(user: User) -> None:
+    """Endereço salvo no painel também vai para o cliente do Asaas, que emite a nota fiscal."""
+    subscription = user.subscription
+    customer_id = subscription.asaas_customer_id if subscription else None
+    if not customer_id or not settings.asaas_api_key:
+        return
+    from app.services.asaas import AsaasClient
+    from app.services.checkout import sync_asaas_customer_address, user_address
+
+    client = AsaasClient(settings.asaas_api_key, settings.asaas_base_url)
+    sync_asaas_customer_address(client, customer_id, user.address_zipcode, user_address(user))
 
 
 @router.get("/me/crm-view-preferences", response_model=CrmViewPreferencesOut)

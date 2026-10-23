@@ -67,6 +67,11 @@ class AsaasClient:
     def create_customer(self, payload: dict[str, Any]) -> dict[str, Any]:
         return self._request("POST", "/customers", json=payload)
 
+    def update_customer(self, customer_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        if not customer_id:
+            raise ValueError("Customer id is required")
+        return self._request("PUT", f"/customers/{customer_id}", json=payload)
+
     def list_customers(self, **params: Any) -> dict[str, Any]:
         return self._request("GET", "/customers", params=params)
 
