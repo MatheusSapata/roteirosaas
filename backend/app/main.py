@@ -23,7 +23,7 @@ from app.services.public_page_renderer import (
     render_public_page_html,
 )
 from app.services.public_page_resolver import PublicPageResolverService
-from app.services.subscription import schedule_expiration_job
+from app.services.subscription import schedule_expiration_job, schedule_payment_watch_job
 from app.services.trial_tags import schedule_trial_tag_job
 
 settings = get_settings()
@@ -226,4 +226,5 @@ async def start_background_jobs() -> None:
     if settings.env == "test":
         return
     schedule_expiration_job(interval_minutes=60)
+    schedule_payment_watch_job(interval_minutes=5)
     schedule_trial_tag_job()

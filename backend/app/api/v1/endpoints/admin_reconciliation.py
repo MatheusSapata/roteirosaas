@@ -9,6 +9,7 @@ from app.api.deps import get_current_superuser, get_db
 from app.core.config import get_settings
 from app.models.user import User
 from app.services.asaas import AsaasClient
+from app.services.billing_operations import pix_automatic_ended, scan_paid_not_released
 from app.services.billing_reconciliation import fetch_remote, load_local, reconcile, sao_paulo_today
 
 router = APIRouter()
@@ -52,3 +53,30 @@ def billing_reconciliation(
         return report
     finally:
         _lock.release()
+
+
+@router.get("/billing-operations/paid-not-released")
+def paid_not_released(
+    response: Response,
+    days: int = Query(60, ge=1, le=180),
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_superuser),
+):
+    """Cobranças pagas nos últimos dias de contas ainda inadimplentes ou encerradas. Só lista para
+    revisão: nada é liberado ou cancelado por aqui."""
+    response.headers["Cache-Control"] = "no-store"
+    settings = get_settings()
+    if not settings.asaas_api_key:
+        raise HTTPException(503, "A chave da API Asaas não está configurada no servidor.")
+    return scan_paid_not_released(db, AsaasClient(settings.asaas_api_key, settings.asaas_base_url), days)
+
+
+@router.get("/billing-operations/pix-automatic-ended")
+def pix_automatic_without_authorization(
+    response: Response,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_superuser),
+):
+    """Quem paga por Pix Automático sem autorização ativa e precisa reativar antes do próximo vencimento."""
+    response.headers["Cache-Control"] = "no-store"
+    return {"items": pix_automatic_ended(db)}

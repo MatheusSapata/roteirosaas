@@ -170,7 +170,8 @@ def test_accounts_keep_their_notices_when_new_subscription_joins_purchase(db_ses
     # A compra aprovada avisava também renovação e upgrade: quem recebia continua recebendo os três.
     assert buyer.event_keys == ["purchase_approved", "checkout_started", "subscription_renewed", "upgrade_realizado"]
     assert old.event_keys == ["purchase_approved", "subscription_renewed", "upgrade_realizado"]
-    assert other.event_keys == ["payment_overdue"]
+    # Quem recebe cobrança vencida passa a receber também "pagamento recebido, conta bloqueada".
+    assert other.event_keys == ["payment_overdue", "paid_but_blocked"]
 
 
 def test_overdue_charge_is_sent_once_per_charge(db_session, pushover_calls):

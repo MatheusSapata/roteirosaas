@@ -135,6 +135,18 @@ DEFAULT_WEBHOOK_RULES: list[dict[str, Any]] = [
         "is_builtin": True,
     },
     {
+        "event_key": "paid_but_blocked",
+        "display_name": "Pagamento recebido, conta bloqueada",
+        "description": "Pagamento recebido há mais de 15 minutos de uma conta que continua sem acesso: confira na Conciliação e libere pelo Admin Master.",
+        "enabled": True,
+        "title_template": "Pago e bloqueado - {{user_name}}",
+        "body_template": "{{amount}} | {{plan_name}} | {{payment_method}} | venceu {{due_date}} | {{customer_email}} | {{customer_phone}}",
+        "icon_tag": "rotating_light",
+        "priority": 4,
+        "sort_order": 55,
+        "is_builtin": True,
+    },
+    {
         "event_key": "subscription_cancelled",
         "display_name": "Assinatura cancelada",
         "description": "Dispara quando a assinatura é cancelada.",
@@ -251,6 +263,12 @@ def ensure_default_rules(db: Session) -> None:
                 db.add(WebhookNotificationRule(**row))
         except IntegrityError:
             pass  # outra requisição criou o mesmo evento ao mesmo tempo
+    if any(row["event_key"] == "paid_but_blocked" for row in missing):
+        # Quem já recebe "Cobrança vencida" passa a receber também este aviso (mesma equipe de cobrança).
+        for account in db.query(PushoverAccount).all():
+            keys = list(account.event_keys or [])
+            if "payment_overdue" in keys and "paid_but_blocked" not in keys:
+                account.event_keys = keys + ["paid_but_blocked"]
     db.commit()
 
 

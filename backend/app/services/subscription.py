@@ -398,6 +398,30 @@ def charge_card_renewals() -> int:
     return done
 
 
+def schedule_payment_watch_job(interval_minutes: int = 5) -> None:
+    """Confere de poucos em poucos minutos se algum pagamento recebido deixou a conta sem acesso."""
+
+    async def _loop() -> None:
+        while True:
+            db = SessionLocal()
+            try:
+                from app.services.billing_operations import alert_paid_but_blocked
+
+                alert_paid_but_blocked(db)
+            except Exception:
+                logger.exception("Erro no alerta de pagamento recebido com conta bloqueada")
+            finally:
+                db.close()
+            await asyncio.sleep(interval_minutes * 60)
+
+    try:
+        asyncio.get_event_loop().create_task(_loop())
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.create_task(_loop())
+
+
 def schedule_expiration_job(interval_minutes: int = 60) -> None:
     """
     Inicia uma tarefa assincrona que roda a cada interval_minutes.
