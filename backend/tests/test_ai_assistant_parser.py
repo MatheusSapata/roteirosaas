@@ -682,7 +682,7 @@ def test_repeated_sections_and_menu_links_by_title_and_existing_page() -> None:
     header, nacionais, internacionais, bio = config["sections"]
     assert header["actionType"] == "social"
     assert [(link["label"], link["target"]) for link in header["links"]] == [
-        ("Nacionais", nacionais["anchorId"]), ("Internacionais", internacionais["anchorId"]), ("Sobre nós", bio["anchorId"]),
+        ("Nacionais", nacionais["anchorId"]), ("Internacionais", internacionais["anchorId"]), ("Sobre", bio["anchorId"]),
     ]
     assert nacionais["anchorId"] != internacionais["anchorId"]
     assert nacionais["items"][0]["pageSlug"] == "gramado-canela"
