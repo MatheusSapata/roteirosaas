@@ -2267,10 +2267,15 @@ const verifyBlockedPayment = () => {
   void blockedWatcher.checkNow();
 };
 
-watch(showSubscriptionBlockedDialog, open => {
-  if (open) void loadBlockedInvoice();
-  else blockedWatcher.reset();
-});
+// immediate: a conta pode entrar já bloqueada, antes deste watch existir.
+watch(
+  showSubscriptionBlockedDialog,
+  open => {
+    if (open) void loadBlockedInvoice();
+    else blockedWatcher.reset();
+  },
+  { immediate: true }
+);
 
 const acknowledgeTrial = async (stage: "start" | "end" | "warn3" | "warn1", redirectToPlans = false) => {
   try {

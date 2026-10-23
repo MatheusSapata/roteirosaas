@@ -585,6 +585,10 @@ onMounted(async () => {
 .ai-pill.status-replaced { background: var(--muted); color: var(--muted-foreground); }
 .ai-foot { border-top: 1px solid var(--border); padding: 12px 16px; font-size: 12.5px; color: var(--muted-foreground); }
 .ai-btn-ghost, .ai-btn-primary { min-height: 44px; }
+.ai-table td, .ai-table th { padding-left: 12px; padding-right: 12px; }
+.ai-table td:first-child { white-space: normal; min-width: 220px; }
+.ai-table td:last-child, .ai-table th:last-child { padding-right: 16px; }
+.ai-small { white-space: normal; display: inline-block; max-width: 110px; }
 .ai-btn-sm { min-height: 36px; }
 @media (max-width: 900px) { .pf-facts { grid-template-columns: 1fr; } }
 </style>
