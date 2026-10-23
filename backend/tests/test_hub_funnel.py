@@ -55,3 +55,63 @@ def test_falha_de_rede_nao_propaga(monkeypatch):
 
     monkeypatch.setattr(hub_funnel.httpx, "post", boom)
     hub_funnel._post("https://hub/x", "k", {"event_type": "signup"})
+
+
+def test_conexao_salva_no_painel_vale_antes_do_ambiente(client, monkeypatch):
+    from app.api.deps import get_current_superuser
+    from app.main import app
+    from app.models.external_api_key import ExternalApiKey
+    from tests.conftest import TestingSessionLocal
+
+    monkeypatch.setattr(hub_funnel, "get_settings", lambda: _settings("https://env/x", "chave-env"))
+    hub_funnel.clear_config_cache()
+    assert hub_funnel.hub_config() == ("https://env/x", "chave-env", "ambiente")
+
+    app.dependency_overrides[get_current_superuser] = lambda: SimpleNamespace(is_superuser=True)
+    base = "/api/v1/admin/admin-master/viajehub"
+    try:
+        assert client.put(base, json={"url": "https://hub.viajeon.com/api/public/funil/evento"}).status_code == 400
+        assert client.put(base, json={"url": "http://hub/x", "key": "abc"}).status_code == 400
+        saved = client.put(
+            base,
+            json={"url": "POST https://hub.viajeon.com/api/public/funil/evento", "key": " chave-do-roteiro-1234 "},
+        )
+        assert saved.status_code == 200, saved.text
+        body = saved.json()
+        assert body["url"] == "https://hub.viajeon.com/api/public/funil/evento"
+        assert body["key_masked"].endswith("1234") and body["source"] == "painel"
+        assert "chave-do-roteiro" not in saved.text
+
+        db = TestingSessionLocal()
+        record = db.query(ExternalApiKey).filter(ExternalApiKey.provider == "viajehub").one()
+        assert "chave-do-roteiro" not in record.api_key_encrypted
+        db.close()
+        assert hub_funnel.hub_config() == (
+            "https://hub.viajeon.com/api/public/funil/evento",
+            "chave-do-roteiro-1234",
+            "painel",
+        )
+
+        # Trocar só o endereço mantém a chave.
+        client.put(base, json={"url": "https://outro.hub/api/public/funil/evento"})
+        assert hub_funnel.hub_config()[1] == "chave-do-roteiro-1234"
+
+        calls: list[tuple[str, str]] = []
+
+        def fake_post(url, json, headers, timeout):
+            calls.append((url, headers["x-funnel-key"]))
+            assert json == {}
+            return SimpleNamespace(status_code=400)
+
+        monkeypatch.setattr(hub_funnel.httpx, "post", fake_post)
+        tested = client.post(f"{base}/test").json()
+        assert tested["ok"] is True
+        assert calls == [("https://outro.hub/api/public/funil/evento", "chave-do-roteiro-1234")]
+
+        monkeypatch.setattr(hub_funnel.httpx, "post", lambda *a, **k: SimpleNamespace(status_code=401))
+        assert client.post(f"{base}/test").json()["ok"] is False
+
+        assert client.delete(base).json()["source"] == "ambiente"
+    finally:
+        app.dependency_overrides.pop(get_current_superuser, None)
+        hub_funnel.clear_config_cache()

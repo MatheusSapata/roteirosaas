@@ -369,6 +369,12 @@ const platformRoutes: RouteRecordRaw[] = [
         meta: { requiresSuperuser: true }
       },
       {
+        path: "administracao/viajehub",
+        name: "admin-management-viajehub",
+        component: () => import("../views/admin/ViajeHubIntegrationView.vue"),
+        meta: { requiresSuperuser: true }
+      },
+      {
         path: "administracao/webhooks",
         name: "admin-management-webhooks",
         component: () => import("../views/admin/WebhookNotificationsView.vue"),

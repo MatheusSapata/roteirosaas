@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
+    admin_viajehub,
     admin_master_whatsapp,
     admin,
     admin_reconciliation,
@@ -81,6 +82,7 @@ api_router.include_router(webhook_notifications.admin_router, tags=["admin-maste
 api_router.include_router(webhook_notifications.router, tags=["webhook-notifications"])
 api_router.include_router(flight_api_keys.router, prefix="/admin", tags=["flight-api-keys"])
 api_router.include_router(image_api_keys.router, prefix="/admin", tags=["image-api-keys"])
+api_router.include_router(admin_viajehub.router, prefix="/admin", tags=["admin-master-viajehub"])
 api_router.include_router(stock_photos.router, prefix="/admin", tags=["stock-photos"])
 api_router.include_router(admin_companies.router, prefix="/admin", tags=["admin-companies"])
 api_router.include_router(admin_revenue.router, prefix="/admin", tags=["admin-revenue"])
