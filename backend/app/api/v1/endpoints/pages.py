@@ -564,15 +564,31 @@ def get_page(
 def page_agency_profile(
     page_id: int, current_user: User = Depends(get_current_active_user), db: Session = Depends(get_db)
 ) -> dict:
-    """Perfil da agência dona da página (o mesmo da página pública), para a prévia do editor
-    quando o superusuário edita a página de outra conta."""
+    """Perfil e domínio principal da agência dona da página (os mesmos da página pública), para o
+    editor quando o superusuário edita a página de outra conta."""
     from app.api.v1.endpoints.public_pages import build_agency_profile
+    from app.models.agency_domain import AgencyDomain
 
     page = db.query(Page).filter(Page.id == page_id).first()
     if not page or not page.agency:
         raise HTTPException(status_code=404, detail="Página não encontrada.")
     ensure_agency_member(db, page.agency_id, current_user)
-    return {"agency_id": page.agency_id, "agency_profile": build_agency_profile(page.agency)}
+    # Mesma escolha do editor: domínio ativo e verificado, o principal primeiro.
+    domain = (
+        db.query(AgencyDomain)
+        .filter(
+            AgencyDomain.agency_id == page.agency_id,
+            AgencyDomain.is_active.is_(True),
+            AgencyDomain.is_verified.is_(True),
+        )
+        .order_by(AgencyDomain.is_primary.desc(), AgencyDomain.created_at.desc())
+        .first()
+    )
+    return {
+        "agency_id": page.agency_id,
+        "agency_profile": build_agency_profile(page.agency),
+        "primary_domain": domain.host if domain else None,
+    }
 
 
 CREATIVE_IMAGE_MAX_BYTES = 20 * 1024 * 1024

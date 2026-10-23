@@ -5763,11 +5763,14 @@ const borrowPageAgency = async (loaded: Page) => {
   try {
     const [agencyRes, profileRes] = await Promise.all([
       api.get<Agency>(`/agencies/${agencyId}`),
-      api.get<{ agency_profile: Record<string, any> }>(`/pages/${loaded.id}/agency-profile`)
+      api.get<{ agency_profile: Record<string, any>; primary_domain: string | null }>(
+        `/pages/${loaded.id}/agency-profile`
+      )
     ]);
     borrowedAgencyProfile.value = profileRes.data.agency_profile;
+    // O domínio vem junto do perfil (a lista de domínios é só para membros da conta).
+    agencyStore.primaryDomains = { ...agencyStore.primaryDomains, [agencyId]: profileRes.data.primary_domain };
     agencyStore.borrowAgency(agencyRes.data);
-    await agencyStore.loadPrimaryDomain(agencyId);
     applyAgencyBranding();
   } catch (err) {
     console.error("Não foi possível carregar a agência da página", err);

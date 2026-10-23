@@ -32,13 +32,24 @@ def _as(user: User) -> None:
     app.dependency_overrides[get_current_user] = lambda: user
 
 
-def test_superusuario_le_agencia_dominio_e_perfil(client, setup):
+def test_superusuario_le_agencia_dominio_e_perfil(client, db_session, setup):
+    from app.models.agency_domain import AgencyDomain
+
     agency, page = setup
+    db_session.add_all(
+        [
+            AgencyDomain(agency_id=agency.id, host="velho.com.br", is_primary=False, is_active=True, is_verified=True, verification_token="t1"),
+            AgencyDomain(agency_id=agency.id, host="cliente.com.br", is_primary=True, is_active=True, is_verified=True, verification_token="t2"),
+            AgencyDomain(agency_id=agency.id, host="pendente.com.br", is_primary=True, is_active=False, is_verified=False, verification_token="t3"),
+        ]
+    )
+    db_session.commit()
     _as(User(id=999, email="admin@x.com", is_superuser=True, is_active=True))
     assert client.get(f"/api/v1/agencies/{agency.id}").json()["slug"] == "cliente"
-    assert client.get("/api/v1/agencies/me/domains", params={"agency_id": agency.id}).status_code == 200
     profile = client.get(f"/api/v1/pages/{page.id}/agency-profile")
-    assert profile.status_code == 200 and profile.json()["agency_id"] == agency.id
+    assert profile.status_code == 200
+    assert profile.json()["agency_id"] == agency.id
+    assert profile.json()["primary_domain"] == "cliente.com.br"
 
 
 def test_quem_nao_e_membro_continua_barrado(client, setup):
