@@ -524,9 +524,12 @@ def _normalize_asaas_payment(payment: dict[str, Any]) -> BillingInvoiceOut:
     payment_link_url = _extract_payment_link_url(payment.get("paymentLink"))
     current_due_date = _parse_asaas_date(due_date)
     is_paid = status in {"received", "confirmed", "received_in_cash"}
-    bucket: Literal["paid", "overdue", "upcoming"] = "paid"
+    bucket: Literal["paid", "overdue", "upcoming", "replaced"] = "paid"
     if not is_paid:
         bucket = "overdue" if current_due_date and current_due_date < date.today() else "upcoming"
+        # Cancelada no Asaas: o status continua o de antes, só o campo "deleted" muda.
+        if payment.get("deleted") is True:
+            bucket = "replaced"
     pay_url = invoice_url or payment_link_url or bank_slip_url
     download_url = receipt_url or bank_slip_url or invoice_url or payment_link_url
     return BillingInvoiceOut(
@@ -1180,6 +1183,35 @@ def _open_invoice_to_pay(client: AsaasClient, customer_id: str) -> dict[str, Any
     return max(due, key=lambda item: str(item.get("dueDate") or "")) if due else None
 
 
+def _pay_open_invoice_with_card(
+    db: Session,
+    client: AsaasClient,
+    subscription: Subscription,
+    customer_id: str | None,
+    card_payload: dict[str, Any],
+    plan_key: str,
+    billing_cycle: str,
+) -> None:
+    """Fatura vencida do cliente é paga na hora no cartão novo (o Asaas confirma na mesma chamada e
+    a cobrança passa a CREDIT_CARD). Cartão recusado interrompe antes de qualquer troca."""
+    if not customer_id:
+        return
+    open_invoice = _open_invoice_to_pay(client, customer_id)
+    if open_invoice is None:
+        return
+    paid = client.pay_with_credit_card(str(open_invoice["id"]), card_payload) or {}
+    if not is_paid_payment(paid):
+        raise HTTPException(status_code=402, detail="O cartão não foi aprovado. Confira os dados ou use outro cartão.")
+    full_payment = {**open_invoice, **paid}
+    if not apply_asaas_payment(db, full_payment) and not payment_applied(db, str(full_payment.get("id"))):
+        _set_subscription_active(subscription, subscription.plan or plan_key, None, billing_cycle)
+        _increase_total_revenue(db, _parse_decimal_value(full_payment.get("netValue") or full_payment.get("value")))
+        db.add(subscription)
+        db.commit()
+        mark_payment_applied(db, str(full_payment.get("id")), "PAYMENT_RECEIVED")
+    db.refresh(subscription)
+
+
 def _switch_pix_automatic_to_card(
     db: Session,
     client: AsaasClient,
@@ -1196,19 +1228,7 @@ def _switch_pix_automatic_to_card(
     if contract is None or not customer_id:
         raise HTTPException(status_code=400, detail="Não encontramos o plano e o valor do seu contrato. Fale com o suporte.")
 
-    open_invoice = _open_invoice_to_pay(client, customer_id)
-    if open_invoice is not None:
-        paid = client.pay_with_credit_card(str(open_invoice["id"]), card_payload) or {}
-        if not is_paid_payment(paid):
-            raise HTTPException(status_code=402, detail="O cartão não foi aprovado. Confira os dados ou use outro cartão.")
-        full_payment = {**open_invoice, **paid}
-        if not apply_asaas_payment(db, full_payment) and not payment_applied(db, str(full_payment.get("id"))):
-            _set_subscription_active(subscription, subscription.plan or contract.plan_key, None, contract.billing_cycle)
-            _increase_total_revenue(db, _parse_decimal_value(full_payment.get("netValue") or full_payment.get("value")))
-            db.add(subscription)
-            db.commit()
-            mark_payment_applied(db, str(full_payment.get("id")), "PAYMENT_RECEIVED")
-        db.refresh(subscription)
+    _pay_open_invoice_with_card(db, client, subscription, customer_id, card_payload, contract.plan_key, contract.billing_cycle)
 
     valid_until = subscription.valid_until
     next_due = valid_until.date() if valid_until is not None and valid_until.replace(tzinfo=None) > datetime.utcnow() else date.today()
@@ -1318,6 +1338,12 @@ def update_card(
         elif pix_customer:
             _switch_pix_automatic_to_card(db, client, current_user, subscription, card_payload, card_number_digits)
         else:
+            # O Asaas não troca o cartão de cobranças que já estavam pendentes: a vencida é paga já
+            # no cartão novo (se recusar, nada muda); as que vencem depois seguem a assinatura.
+            _pay_open_invoice_with_card(
+                db, client, subscription, subscription.asaas_customer_id, card_payload,
+                subscription.plan or "", subscription.billing_cycle or DEFAULT_CYCLE,
+            )
             client.update_subscription(subscription.asaas_subscription_id, {"billingType": "CREDIT_CARD"})
             client.update_subscription_card(subscription.asaas_subscription_id, card_payload)
             _remember_card(subscription, card_number_digits)
