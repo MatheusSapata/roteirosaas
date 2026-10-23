@@ -7,7 +7,9 @@ export const UTM_KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_term",
 export type Attribution = Partial<Record<(typeof UTM_KEYS)[number] | "referrer", string>>;
 
 const STORAGE_KEY = "ro_attribution";
+const SELLER_KEY = "ro_seller";
 const MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+const SELLER_RE = /^[A-Za-z0-9-]{1,20}$/;
 
 const read = (): (Attribution & { saved_at?: number }) | null => {
   try {
@@ -48,8 +50,37 @@ const externalReferrer = () => {
   }
 };
 
+/**
+ * Código da vendedora do link (?vendedor=01), para o painel de vendas do Viaje On Hub. Vale por 30
+ * dias e o último link aberto vence.
+ */
+const captureSeller = () => {
+  if (typeof window === "undefined") return;
+  const code = new URLSearchParams(window.location.search).get("vendedor")?.trim();
+  if (!code || !SELLER_RE.test(code)) return;
+  try {
+    localStorage.setItem(SELLER_KEY, JSON.stringify({ code, saved_at: Date.now() }));
+  } catch {
+    // Sem armazenamento: vale só o que está no endereço.
+  }
+};
+
+/** Código da vendedora do último link aberto nos últimos 30 dias. */
+export const currentSellerCode = (): string | undefined => {
+  captureSeller();
+  try {
+    const stored = JSON.parse(localStorage.getItem(SELLER_KEY) || "null");
+    if (!stored?.code || !SELLER_RE.test(stored.code)) return undefined;
+    if (!stored.saved_at || Date.now() - stored.saved_at > MAX_AGE_MS) return undefined;
+    return stored.code;
+  } catch {
+    return undefined;
+  }
+};
+
 /** Guarda as UTMs do endereço atual (ou, sem elas, o site de onde a pessoa veio na primeira visita). */
 export const captureAttribution = (): Attribution => {
+  captureSeller();
   const utm = fromUrl();
   const referrer = externalReferrer();
   const stored = read();

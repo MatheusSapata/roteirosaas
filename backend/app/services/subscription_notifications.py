@@ -79,6 +79,40 @@ def _format_timestamp(value: datetime | None = None) -> str:
     return current.strftime("%d/%m/%Y %H:%M")
 
 
+def _latest_paid_checkout(email: str | None) -> tuple[str | None, str | None]:
+    """(token, código da vendedora) da última compra paga desse e-mail no checkout próprio.
+
+    Pagamentos que chegam pela Cakto ou pelo Asaas não trazem a sessão: ela é achada pelo e-mail.
+    Melhor esforço: sem banco ou sem compra, segue sem os dois.
+    """
+    clean = (email or "").strip().lower()
+    if not clean:
+        return None, None
+    try:
+        from sqlalchemy import func
+
+        from app.db import session as db_session
+        from app.models.checkout import CheckoutSession
+
+        db = db_session.SessionLocal()
+        try:
+            row = (
+                db.query(CheckoutSession)
+                .filter(func.lower(CheckoutSession.customer_email) == clean, CheckoutSession.status == "paid")
+                .order_by(CheckoutSession.paid_at.desc().nullslast(), CheckoutSession.id.desc())
+                .first()
+            )
+            if not row:
+                return None, None
+            utm = (row.metadata_json or {}).get("utm")
+            seller = utm.get("seller_code") if isinstance(utm, dict) else None
+            return row.token, (str(seller).strip() or None) if seller else None
+        finally:
+            db.close()
+    except Exception:  # pragma: no cover - o funil nunca pode quebrar o aviso
+        return None, None
+
+
 def _send_hub_purchase(
     scenario: SubscriptionPushScenario,
     *,
@@ -88,10 +122,26 @@ def _send_hub_purchase(
     plan: str | None,
     amount: Any,
     payment_method: str | None,
+    checkout_session_id: str | None = None,
+    seller_code: str | None = None,
+    cancelled_item: str | None = None,
 ) -> None:
-    """Assinatura nova ou troca de plano vira o passo `subscription_paid` no funil do Hub."""
+    """Assinatura nova ou troca de plano vira o passo `subscription_paid` no funil do Hub; o
+    cancelamento vira `subscription_cancelled` (o Hub tira da meta se for em até 7 dias)."""
+    if scenario == SubscriptionPushScenario.CANCELLED:
+        token, _seller = _latest_paid_checkout(email)
+        send_hub_event(
+            "subscription_cancelled",
+            email=email,
+            name=name,
+            phone=phone,
+            payload={"checkout_session_id": token, "reason": cancelled_item},
+        )
+        return
     if scenario not in (SubscriptionPushScenario.NEW, SubscriptionPushScenario.UPGRADED):
         return
+    if checkout_session_id is None and seller_code is None:
+        checkout_session_id, seller_code = _latest_paid_checkout(email)
     try:
         value = float(amount) if amount is not None else None
     except (TypeError, ValueError):
@@ -102,11 +152,27 @@ def _send_hub_purchase(
         name=name,
         phone=phone,
         payload={
+            "checkout_session_id": checkout_session_id,
             "plan": plan,
             "amount": value,
             "payment_method": payment_method,
             "upgrade": scenario == SubscriptionPushScenario.UPGRADED,
+            "seller_code": seller_code,
         },
+    )
+
+
+def send_hub_refund(*, email: str | None, name: str | None, phone: str | None, reason: str) -> None:
+    """Estorno ou cobrança apagada no Asaas: o Hub tira a venda da meta se for em até 7 dias."""
+    _send_hub_purchase(
+        SubscriptionPushScenario.CANCELLED,
+        email=email,
+        name=name,
+        phone=phone,
+        plan=None,
+        amount=None,
+        payment_method=None,
+        cancelled_item=reason,
     )
 
 
@@ -124,6 +190,8 @@ def publish_subscription_notification(
     occurred_at: datetime | None = None,
     customer_email: str | None = None,
     customer_phone: str | None = None,
+    checkout_session_id: str | None = None,
+    seller_code: str | None = None,
 ) -> None:
     scenario_value = SubscriptionPushScenario(scenario)
     upgraded = scenario_value == SubscriptionPushScenario.UPGRADED
@@ -135,6 +203,9 @@ def publish_subscription_notification(
         plan=upgraded_plan_name if upgraded else plan_name,
         amount=amount,
         payment_method=payment_method,
+        checkout_session_id=checkout_session_id,
+        seller_code=seller_code,
+        cancelled_item=cancelled_item,
     )
     plan = plan_name or offer_name or "Plano"
     notify_safely(

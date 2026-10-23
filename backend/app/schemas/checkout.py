@@ -4,6 +4,8 @@ from typing import Any, Literal
 
 from zoneinfo import ZoneInfo
 
+import re
+
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
@@ -232,6 +234,15 @@ class CheckoutUtmIn(BaseModel):
     utm_term: str | None = Field(default=None, max_length=255)
     utm_content: str | None = Field(default=None, max_length=255)
     referrer: str | None = Field(default=None, max_length=500)
+    # Código da vendedora do link (?vendedor=01), para o painel de vendas do Viaje On Hub.
+    seller_code: str | None = None
+
+    @field_validator("seller_code", mode="before")
+    @classmethod
+    def _valid_seller_code(cls, value: object) -> str | None:
+        """Código inválido não derruba o checkout: só é descartado."""
+        text = str(value or "").strip()
+        return text if re.fullmatch(r"[A-Za-z0-9-]{1,20}", text) else None
 
     def cleaned(self) -> dict[str, str]:
         return {key: value.strip() for key, value in self.model_dump().items() if isinstance(value, str) and value.strip()}

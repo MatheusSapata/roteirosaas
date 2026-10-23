@@ -450,7 +450,7 @@ import {
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import api from "../../services/api";
-import { captureAttribution, currentAttribution } from "../../utils/attribution";
+import { captureAttribution, currentAttribution, currentSellerCode } from "../../utils/attribution";
 import { SALES_META_PIXEL_ID, firstMetaSend, metaBrowserContext, metaStandardEventId, startMetaPixels, trackMetaEvent } from "../../utils/metaPixel";
 import {
   LEGACY_RENEWAL_OFFER_KEY,
@@ -995,7 +995,7 @@ const submitDetails = async () => {
         customer_zipcode: form.customer_zipcode,
         coupon_code: form.coupon_code,
         // Origem da compra (UTMs do anúncio, guardadas desde a LP): vai para o cadastro da empresa.
-        utm: currentAttribution()
+        utm: { ...currentAttribution(), seller_code: currentSellerCode() }
       });
     }
     await trackEvent("details_submit_success", {
