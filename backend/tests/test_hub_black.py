@@ -172,3 +172,13 @@ def test_limite_do_plano_vira_erro_explicado(db_session, monkeypatch):
     saved = db_session.query(Page).filter(Page.id == page.id).first()
     state = hub_black.generation_state(saved)
     assert state["status"] == "error" and "plano free" in state["error"]
+
+
+def test_conta_do_cliente_desativada_usa_a_do_admin(db_session):
+    _agency(db_session, "cliente@x.com", "cliente")
+    admin = _agency(db_session, "admin@x.com", "admin")
+    user = db_session.query(User).filter(User.email == "cliente@x.com").first()
+    user.is_active = False
+    db_session.commit()
+    agency, fallback = hub_black.resolve_target_agency(db_session, "cliente@x.com", "admin@x.com")
+    assert (agency.id, fallback) == (admin.id, True)

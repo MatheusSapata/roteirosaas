@@ -22,8 +22,11 @@ from app.services.media_storage import media_storage
 router = APIRouter()
 
 
-def ensure_agency_member(db: Session, agency_id: int, user_id: int) -> None:
-    membership = db.query(AgencyUser).filter(AgencyUser.agency_id == agency_id, AgencyUser.user_id == user_id).first()
+def ensure_agency_member(db: Session, agency_id: int, user: User) -> None:
+    # Superusuário (Admin Master) edita páginas de qualquer conta, como em pages.ensure_agency_member.
+    if getattr(user, "is_superuser", False):
+        return
+    membership = db.query(AgencyUser).filter(AgencyUser.agency_id == agency_id, AgencyUser.user_id == user.id).first()
     if not membership:
         raise HTTPException(status_code=403, detail="Você não faz parte desta agência.")
 
@@ -36,7 +39,7 @@ async def upload_media(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> MediaAssetOut:
-    ensure_agency_member(db, agency_id, current_user.id)
+    ensure_agency_member(db, agency_id, current_user)
     file_bytes = await file.read()
     variants = await run_in_threadpool(optimize_image, file_bytes) if optimize else None
     if variants:
@@ -57,7 +60,7 @@ async def remove_media_background(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> Response:
-    ensure_agency_member(db, agency_id, current_user.id)
+    ensure_agency_member(db, agency_id, current_user)
     content_type = (file.content_type or "").lower()
     if not content_type.startswith("image/"):
         raise HTTPException(status_code=415, detail="Envie um arquivo de imagem válido.")

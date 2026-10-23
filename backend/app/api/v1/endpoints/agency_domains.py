@@ -92,7 +92,9 @@ def list_domains(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ) -> list[AgencyDomainOut]:
-    ensure_agency_member(db, agency_id, current_user.id)
+    # Só leitura: o superusuário vê o domínio da conta cuja página está editando.
+    if not getattr(current_user, "is_superuser", False):
+        ensure_agency_member(db, agency_id, current_user.id)
     domains = (
         db.query(AgencyDomain)
         .filter(AgencyDomain.agency_id == agency_id)

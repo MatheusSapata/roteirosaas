@@ -88,7 +88,8 @@ def _agency_of_email(db: Session, email: str | None) -> Agency | None:
     if not email:
         return None
     user = db.query(User).filter(func.lower(User.email) == email).first()
-    if not user:
+    # Só conta já liberada: usuário ativo (desativado ou bloqueado cai na conta do Admin).
+    if not user or not user.is_active or (user.status or "active").lower() not in {"active", "pending_agency_setup"}:
         return None
     memberships = db.query(AgencyUser).filter(AgencyUser.user_id == user.id).all()
     if not memberships:
