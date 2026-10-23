@@ -187,6 +187,19 @@ def _find_default_page(db: Session, agency_slug: str) -> Page:
     return page
 
 
+@router.get("/hub-preview/{token}", response_model=PublicPageOut)
+def get_hub_preview_page(token: str, db: Session = Depends(get_db)) -> PublicPageOut:
+    """Prévia de uma página gerada pelo Viaje On Hub (Implementações Black), mesmo em rascunho.
+    O token é assinado com a chave do funil do Hub; sem a assinatura certa, 404."""
+    from app.services import hub_black
+
+    page_id = hub_black.page_id_from_token(token)
+    page = base_page_query(db).filter(Page.id == page_id).first() if page_id else None
+    if not page:
+        raise HTTPException(status_code=404, detail="Prévia não encontrada.")
+    return serialize_public_page(page, page.agency.slug, db)
+
+
 @router.get("/by-slug/{agency_slug}/{page_slug}", response_model=PublicPageOut)
 def get_public_page(agency_slug: str, page_slug: str, db: Session = Depends(get_db)) -> PublicPageOut:
     page = _find_page_by_slug(db, agency_slug, page_slug)

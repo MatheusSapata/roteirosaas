@@ -190,7 +190,7 @@ def serve_short_public_page(
 
 
 RESERVED_PREFIXES = {"api", "assets", "uploads", "static", "admin"}
-PUBLIC_SPA_PREFIXES = {"checkout", "pedido", "lp"}
+PUBLIC_SPA_PREFIXES = {"checkout", "pedido", "lp", "previa-hub"}
 
 
 @app.get("/{agency_slug}", response_class=HTMLResponse, include_in_schema=False)

@@ -505,14 +505,17 @@ const loadPage = async () => {
   const rawAgencyParam = resolveParam(route.params.agencySlug as string | string[] | undefined);
   const rawPageParam = resolveParam(route.params.pageSlug as string | string[] | undefined);
   const platformHost = isPlatformHost.value;
+  // Prévia do Viaje On Hub (Implementações Black): página em rascunho, sem visitas nem pixels.
+  const hubPreviewToken = route.name === "hub-preview" ? resolveParam(route.params.token as string | string[] | undefined) : "";
 
-  if (platformHost && !rawAgencyParam) {
+  if (platformHost && !rawAgencyParam && !hubPreviewToken) {
     pageData.value = null;
     loading.value = false;
     return;
   }
 
   const endpoint = (() => {
+    if (hubPreviewToken) return `/public/pages/hub-preview/${encodeURIComponent(hubPreviewToken)}`;
     if (platformHost) {
       return rawPageParam
         ? `/public/pages/by-slug/${rawAgencyParam}/${rawPageParam}`
@@ -523,7 +526,7 @@ const loadPage = async () => {
   })();
 
   try {
-    const data = takeEmbeddedPageData() ?? (await api.get<PublicPageResponse>(endpoint)).data;
+    const data = (hubPreviewToken ? null : takeEmbeddedPageData()) ?? (await api.get<PublicPageResponse>(endpoint)).data;
     pageData.value = data;
     pageId.value = data.id;
     const configJson = typeof data.config === "string" ? data.config : JSON.stringify(data.config);
@@ -540,6 +543,10 @@ const loadPage = async () => {
       pageUrl.value = window.location.href;
     } else {
       pageUrl.value = "";
+    }
+    if (hubPreviewToken) {
+      setupScrollAnchors();
+      return;
     }
     if (pageId.value) {
       trackVisit();
