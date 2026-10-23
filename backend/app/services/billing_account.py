@@ -50,6 +50,11 @@ def _mark(db: Session, event_id: str, event_type: str, payload: dict[str, Any]) 
     return True
 
 
+def mark_event_once(db: Session, event_id: str, event_type: str, payload: dict[str, Any]) -> bool:
+    """Marca um fato em asaas_event_logs; False quando já estava marcado."""
+    return _mark(db, event_id, event_type, payload)
+
+
 def payment_applied(db: Session, payment_id: str | None) -> bool:
     if not payment_id:
         return False
