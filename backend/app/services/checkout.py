@@ -301,6 +301,8 @@ def _notify_checkout_subscription_push(
             cancelled_item=cancelled_item,
             customer_email=session.customer_email or user.email,
             customer_phone=session.customer_phone or user.whatsapp,
+            checkout_session_id=session.token,
+            seller_code=_session_seller(session),
         )
     except Exception:  # pragma: no cover - alerta não pode quebrar o checkout
         pass
@@ -315,6 +317,13 @@ def _session_utm(session: CheckoutSession) -> dict[str, str]:
     if not isinstance(raw, dict):
         return {}
     return {key: str(value).strip() for key, value in raw.items() if key in (*UTM_KEYS, "referrer") and str(value or "").strip()}
+
+
+def _session_seller(session: CheckoutSession) -> str | None:
+    """Código da vendedora do link, guardado junto da origem da compra."""
+    raw = (session.metadata_json or {}).get("utm")
+    value = raw.get("seller_code") if isinstance(raw, dict) else None
+    return str(value).strip() or None if value else None
 
 
 def _record_checkout_origin(db: Session, user: User, session: CheckoutSession) -> None:
@@ -354,6 +363,7 @@ def _notify_checkout_started(session: CheckoutSession) -> None:
             "billing_cycle": session.billing_cycle,
             "amount": float(first or session.amount or 0) or None,
             "upgrade": bool(metadata.get("upgrade_mode")),
+            "seller_code": _session_seller(session),
         },
         external_id=f"ro-checkout-{session.token}",
     )

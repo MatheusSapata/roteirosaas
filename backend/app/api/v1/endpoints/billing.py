@@ -20,7 +20,11 @@ from app.services.asaas import AsaasAPIError, AsaasClient, build_default_split_p
 from app.services.cakto import CaktoAPIError, CaktoIntegrationService
 from app.services.checkout import find_pix_automatic_authorization_id, handle_asaas_checkout_webhook
 from app.services.company_status import mark_subscription_overdue
-from app.services.subscription_notifications import SubscriptionPushScenario, publish_subscription_notification
+from app.services.subscription_notifications import (
+    SubscriptionPushScenario,
+    publish_subscription_notification,
+    send_hub_refund,
+)
 from app.services.webhook_notifications import notify_payment_overdue
 from app.services.legacy_renewal import legacy_renewal_info, legacy_upgrade_available
 from app.services.plans import effective_plan
@@ -630,6 +634,12 @@ async def webhook(request: Request, db: Session = Depends(get_db)) -> Dict[str, 
                             name=user.name or "",
                             email=user.email or "",
                             phone=user.whatsapp or "",
+                        )
+                        send_hub_refund(
+                            email=user.email,
+                            name=user.name,
+                            phone=user.whatsapp,
+                            reason="Estorno no Asaas" if event == "PAYMENT_REFUNDED" else "Cobrança apagada no Asaas",
                         )
                     elif event in {"PAYMENT_REPROVED_BY_RISK_ANALYSIS"}:
                         subscription.status = "failed"

@@ -169,3 +169,43 @@ def test_account_created_by_the_purchase_keeps_the_origin(db_session, meta):
     checkout._upsert_paid_user_and_subscription(db_session, session)
     db_session.commit()
     assert db_session.query(UserTracking).filter_by(user_id=user.id).count() == 1
+
+
+def test_seller_code_reaches_session_hub_and_paid_event(client, db_session, meta, monkeypatch):
+    """Link da vendedora (?vendedor=): o código vai na origem da compra, no checkout_started e no
+    subscription_paid, mesmo quando o pagamento chega sem a sessão (Cakto, Asaas)."""
+    from app.services import subscription_notifications as notes
+
+    body = _create(client, NO_PROMO, utm={**UTM, "seller_code": "02"})
+    bad = _create(client, NO_PROMO, utm={**UTM, "seller_code": "não vale!"})
+    session = db_session.query(CheckoutSession).filter_by(token=body["token"]).one()
+    assert session.metadata_json["utm"]["seller_code"] == "02"
+    assert "seller_code" not in db_session.query(CheckoutSession).filter_by(token=bad["token"]).one().metadata_json["utm"]
+    started = next(item for item in meta.hub if item["event"] == "checkout_started" and item["payload"]["checkout_session_id"] == body["token"])
+    assert started["payload"]["seller_code"] == "02" and "seller_code" not in started["utm"]
+
+    session.status = "paid"
+    db_session.commit()
+    paid: list[dict] = []
+    monkeypatch.setattr(notes, "send_hub_event", lambda event, **kwargs: paid.append({"event": event, **kwargs}))
+    monkeypatch.setattr(notes, "notify_safely", lambda **_kwargs: None)
+    notes.publish_subscription_notification(
+        scenario=notes.SubscriptionPushScenario.NEW, user_name="Ana", payment_method="pix", amount=137,
+        plan_name="Roteiro Online", customer_email="ANA@example.com",
+    )
+    assert paid[-1]["event"] == "subscription_paid"
+    assert paid[-1]["payload"]["seller_code"] == "02" and paid[-1]["payload"]["checkout_session_id"] == body["token"]
+
+    notes.publish_subscription_notification(
+        scenario=notes.SubscriptionPushScenario.CANCELLED, user_name="Ana", payment_method=None, amount=None,
+        cancelled_item="Assinatura cancelada", customer_email="ana@example.com",
+    )
+    assert paid[-1]["event"] == "subscription_cancelled"
+    assert paid[-1]["payload"] == {"checkout_session_id": body["token"], "reason": "Assinatura cancelada"}
+
+    # Renovação não vira venda nova no Hub.
+    notes.publish_subscription_notification(
+        scenario=notes.SubscriptionPushScenario.RENEWED, user_name="Ana", payment_method="pix", amount=137,
+        customer_email="ana@example.com",
+    )
+    assert paid[-1]["event"] == "subscription_cancelled"
