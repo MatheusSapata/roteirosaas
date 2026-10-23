@@ -442,3 +442,100 @@ def test_renewal_of_active_account_keeps_remaining_days(db_session):
     valid_until = checkout._renewal_valid_until(session, "active", user.subscription.valid_until)
 
     assert 39 <= (valid_until - checkout._utcnow()).days + 1 <= 40
+
+
+# ---------------------------------------------------------------- troca de cartão (achados do sandbox)
+
+
+@pytest.fixture
+def login_in_request_session():
+    """Como em produção: o usuário logado vem da mesma sessão do banco que a rota usa."""
+    from fastapi import Depends
+
+    from app.api.deps import get_db
+
+    def _login(user_id: int) -> None:
+        app.dependency_overrides[get_current_active_user] = lambda db=Depends(get_db): db.get(User, user_id)
+
+    yield _login
+    app.dependency_overrides.pop(get_current_active_user, None)
+
+
+class CardAsaas(FakeAsaas):
+    def __init__(self, payments=None, *, refuse=False):
+        super().__init__(payments)
+        self.refuse = refuse
+        self.paid_with_card: list[str] = []
+        self.card_updates: list[str] = []
+
+    def pay_with_credit_card(self, payment_id, payload):
+        if self.refuse:
+            raise AsaasAPIError({"errors": [{"code": "invalid_action", "description": "Transação não autorizada"}]})
+        self.paid_with_card.append(payment_id)
+        return {"id": payment_id, "status": "CONFIRMED", "billingType": "CREDIT_CARD", "value": 129.99}
+
+    def update_subscription(self, subscription_id, payload):
+        self.card_updates.append("billingType")
+        return {}
+
+    def update_subscription_card(self, subscription_id, payload):
+        self.card_updates.append("card")
+        return {}
+
+
+CARD = {"holder_name": "Cliente", "number": "4111 1111 1111 1111", "expiry_month": "12", "expiry_year": "2030", "ccv": "123"}
+
+
+def test_changing_card_pays_the_overdue_invoice_with_the_new_card_first(client, login_in_request_session, monkeypatch, quiet):
+    db = TestingSessionLocal()
+    user = customer(db, asaas_subscription_id="sub_1", payment_type="card")
+    login_in_request_session(user.id)
+    fake = CardAsaas([payment("pay_overdue", status="OVERDUE", due=-3, subscription="sub_1")])
+    monkeypatch.setattr(billing, "_get_asaas_client", lambda: fake)
+    monkeypatch.setattr(billing, "handle_asaas_checkout_webhook", lambda db, payload: False)
+
+    response = client.post("/api/v1/billing/update-card", json=CARD)
+
+    assert response.status_code == 200, response.text
+    assert fake.paid_with_card == ["pay_overdue"] and fake.card_updates == ["billingType", "card"]
+    db.expire_all()
+    sub = db.query(Subscription).one()
+    assert sub.status == "active" and sub.card_last4 == "1111"
+
+
+def test_refused_card_changes_nothing(client, login_in_request_session, monkeypatch, quiet):
+    db = TestingSessionLocal()
+    user = customer(db, asaas_subscription_id="sub_1", payment_type="card")
+    login_in_request_session(user.id)
+    fake = CardAsaas([payment("pay_overdue", status="OVERDUE", due=-3, subscription="sub_1")], refuse=True)
+    monkeypatch.setattr(billing, "_get_asaas_client", lambda: fake)
+
+    response = client.post("/api/v1/billing/update-card", json=CARD)
+
+    assert response.status_code == 502
+    assert fake.card_updates == []
+    db.expire_all()
+    assert db.query(Subscription).one().status == "past_due"
+
+
+def test_changing_card_without_open_invoice_only_updates_the_subscription(client, login_in_request_session, monkeypatch, quiet):
+    db = TestingSessionLocal()
+    user = customer(db, status="active", valid_until_days=10, asaas_subscription_id="sub_1", payment_type="card")
+    login_in_request_session(user.id)
+    fake = CardAsaas([payment("pay_next", status="PENDING", due=10, subscription="sub_1")])
+    monkeypatch.setattr(billing, "_get_asaas_client", lambda: fake)
+
+    assert client.post("/api/v1/billing/update-card", json=CARD).status_code == 200
+    assert fake.paid_with_card == [] and fake.card_updates == ["billingType", "card"]
+
+
+def test_payment_removed_in_asaas_is_shown_as_replaced(client, login_as, monkeypatch, quiet):
+    db = TestingSessionLocal()
+    user = customer(db)
+    login_as(user.id)
+    removed = payment("pay_removed", status="OVERDUE", due=-3, deleted=True)
+    monkeypatch.setattr(billing, "_get_asaas_client", lambda: FakeAsaas([removed]))
+
+    body = client.get("/api/v1/billing/invoices").json()
+
+    assert body["items"][0]["bucket"] == "replaced" and body["account"]["open_amount"] == 0
