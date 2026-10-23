@@ -401,6 +401,12 @@ const platformRoutes: RouteRecordRaw[] = [
     ]
   },
   {
+    // Prévia de página gerada pelo Viaje On Hub (link assinado, sem login).
+    path: "/previa-hub/:token",
+    name: "hub-preview",
+    component: PublicPageView
+  },
+  {
     path: "/:agencySlug/:pageSlug?",
     alias: ["/p/:agencySlug/:pageSlug?"],
     name: "public-page",

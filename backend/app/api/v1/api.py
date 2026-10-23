@@ -20,6 +20,7 @@ from app.api.v1.endpoints import (
     documents,
     flight_api_keys,
     flight_sections,
+    hub_black,
     image_api_keys,
     stock_photos,
     lead_forms,
@@ -83,6 +84,7 @@ api_router.include_router(webhook_notifications.router, tags=["webhook-notificat
 api_router.include_router(flight_api_keys.router, prefix="/admin", tags=["flight-api-keys"])
 api_router.include_router(image_api_keys.router, prefix="/admin", tags=["image-api-keys"])
 api_router.include_router(admin_viajehub.router, prefix="/admin", tags=["admin-master-viajehub"])
+api_router.include_router(hub_black.router, tags=["hub-black"])
 api_router.include_router(stock_photos.router, prefix="/admin", tags=["stock-photos"])
 api_router.include_router(admin_companies.router, prefix="/admin", tags=["admin-companies"])
 api_router.include_router(admin_revenue.router, prefix="/admin", tags=["admin-revenue"])
