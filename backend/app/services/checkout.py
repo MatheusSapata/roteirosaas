@@ -3007,9 +3007,17 @@ def handle_asaas_checkout_webhook(db: Session, payload: dict[str, Any]) -> bool:
     renewal_key = instruction_id or str(metadata.get("asaas_pix_automatic_last_instruction_id") or "").strip()
     if not renewal_key:
         renewal_key = str(payment.get("id") or "").strip()
-    renewal_already_processed = bool(renewal_key) and (
+    # Uma renovação por vencimento. Antes só se comparava a última instrução: quem pagava pela fatura
+    # uma cobrança mais antiga (a instrução recusada de outro ciclo) não tinha o pagamento reconhecido.
+    renewal_due = _payment_due_date(instruction if isinstance(instruction, dict) and instruction.get("dueDate") else payment)
+    renewed_due_dates = [str(item) for item in (metadata.get("asaas_pix_automatic_renewed_due_dates") or [])]
+    legacy_processed = bool(renewal_key) and (
         str(metadata.get("asaas_pix_automatic_last_renewed_instruction_id") or "") == renewal_key
+    ) and (
+        renewal_due is None
+        or renewal_due.isoformat() == str(metadata.get("asaas_pix_automatic_last_instruction_due_date") or renewal_due.isoformat())
     )
+    renewal_already_processed = (renewal_due is not None and renewal_due.isoformat() in renewed_due_dates) or legacy_processed
     renewal_confirmed = was_already_paid and is_pix_automatic and (
         instruction_paid or event in {"PAYMENT_CONFIRMED", "PAYMENT_RECEIVED"}
     ) and not renewal_already_processed
@@ -3018,7 +3026,9 @@ def handle_asaas_checkout_webhook(db: Session, payload: dict[str, Any]) -> bool:
         session.status = "paid"
         if renewal_key:
             metadata["asaas_pix_automatic_last_renewed_instruction_id"] = renewal_key
-            session.metadata_json = metadata
+        if renewal_due is not None:
+            metadata["asaas_pix_automatic_renewed_due_dates"] = (renewed_due_dates + [renewal_due.isoformat()])[-24:]
+        session.metadata_json = metadata
         _renew_paid_pix_automatic_subscription(db, session)
     elif not was_already_paid and (
         event in {"PAYMENT_CONFIRMED", "PAYMENT_RECEIVED"} or authorization_activated or session.status == "paid"

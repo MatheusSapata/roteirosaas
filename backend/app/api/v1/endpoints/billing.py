@@ -146,6 +146,22 @@ def _parse_external_reference(ref: Optional[str]) -> tuple[int, str, str] | None
         return None
 
 
+# Pagamento sem referência nossa (assinatura criada ou editada no painel do Asaas): só os avisos que
+# mudam o acesso, para um "cobrança criada" não mexer no status de quem está em dia.
+FALLBACK_PAYMENT_EVENTS = {"PAYMENT_CONFIRMED", "PAYMENT_RECEIVED", "PAYMENT_OVERDUE"}
+
+
+def _match_payment_by_asaas_subscription(db: Session, payment: dict[str, Any]) -> tuple[int, str, str] | None:
+    """Cobrança paga direto pela fatura, sem a referência do checkout: acha a conta pela assinatura do Asaas."""
+    sub_id, _ = _extract_resource_info(payment.get("subscription"))
+    if not sub_id:
+        return None
+    subscription = db.query(Subscription).filter(Subscription.asaas_subscription_id == sub_id).first()
+    if subscription is None or not subscription.user_id:
+        return None
+    return subscription.user_id, subscription.plan or "free", subscription.billing_cycle or DEFAULT_CYCLE
+
+
 def _compute_asaas_event_id(payload: dict[str, Any]) -> str:
     explicit_id = payload.get("id")
     if explicit_id:
@@ -574,6 +590,9 @@ async def webhook(request: Request, db: Session = Depends(get_db)) -> Dict[str, 
         if event.startswith("PAYMENT_"):
             payment = payload.get("payment") or {}
             parsed = _parse_external_reference(payment.get("externalReference"))
+            matched_by_reference = parsed is not None
+            if not parsed and event in FALLBACK_PAYMENT_EVENTS:
+                parsed = _match_payment_by_asaas_subscription(db, payment)
             if parsed:
                 user_id, plan_key, cycle = parsed
                 cycle = cycle or DEFAULT_CYCLE
@@ -581,7 +600,8 @@ async def webhook(request: Request, db: Session = Depends(get_db)) -> Dict[str, 
                 if user:
                     previous_status = str(user.subscription.status if user.subscription else "").strip().lower()
                     subscription = _ensure_subscription(user)
-                    subscription.external_reference = payment.get("externalReference")
+                    if matched_by_reference:
+                        subscription.external_reference = payment.get("externalReference")
                     sub_id, sub_data = _extract_resource_info(payment.get("subscription"))
                     customer_id, _ = _extract_resource_info(payment.get("customer"))
                     link_id, _ = _extract_resource_info(payment.get("paymentLink"))
