@@ -128,6 +128,17 @@ class AsaasClient:
     def get_pix_qr_code(self, payment_id: str) -> dict[str, Any]:
         return self._request("GET", f"/payments/{payment_id}/pixQrCode")
 
+    def delete_payment(self, payment_id: str) -> None:
+        """Cancela uma cobrança em aberto (PENDING ou OVERDUE). Cobrança paga o Asaas recusa."""
+        if not payment_id:
+            return
+        self._request("DELETE", f"/payments/{payment_id}")
+
+    def pay_with_credit_card(self, payment_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        if not payment_id:
+            raise ValueError("Payment id is required")
+        return self._request("POST", f"/payments/{payment_id}/payWithCreditCard", json=payload)
+
     def delete_payment_link(self, link_id: str) -> None:
         if not link_id:
             return

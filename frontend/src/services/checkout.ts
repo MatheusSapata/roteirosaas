@@ -294,14 +294,15 @@ export const createUpgradeCheckoutSession = async (offerKey: string, couponCode?
 /** Chave usada na rota do checkout para a renovação do plano antigo (não é uma oferta do Admin Master). */
 export const LEGACY_RENEWAL_OFFER_KEY = "renovacao-assinatura";
 
-/** Aparência do checkout e resumo da renovação do plano antigo do cliente logado (valor vem do servidor). */
+/** Aparência do checkout e resumo da renovação do cliente logado (plano, ciclo e valor vêm do servidor). */
 export const getLegacyRenewalCheckoutConfig = async () => {
-  const response = await api.get<CheckoutPublicConfig>("/checkout/public/legacy-renewal/config");
+  const response = await api.get<CheckoutPublicConfig>("/checkout/public/renewal/config");
   return response.data;
 };
 
+/** Renovação no contrato do cliente: serve qualquer cliente pago, não só os planos antigos. */
 export const createLegacyRenewalCheckoutSession = async () => {
-  const response = await api.post<CheckoutSession>("/checkout/public/session/legacy-renewal");
+  const response = await api.post<CheckoutSession>("/checkout/public/session/renewal");
   return response.data;
 };
 

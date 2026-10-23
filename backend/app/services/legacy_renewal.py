@@ -17,12 +17,13 @@ from decimal import Decimal
 from typing import Literal
 
 from fastapi import HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, object_session
 
 from app.models.checkout import CheckoutSession
 from app.models.subscription import Subscription
 from app.models.user import User
 from app.schemas.checkout import CheckoutOfferOut
+from app.services.billing_account import ContractOffer, current_contract_offer
 from app.services.company_status import ENDED_STATUSES
 
 # Corte: assinaturas criadas antes de 15/10/2026 00:00 em Brasília são dos planos antigos.
@@ -148,31 +149,75 @@ def require_panel_renewal(user: User) -> tuple[Subscription, Decimal]:
     return subscription, info.amount
 
 
-def legacy_renewal_offer_for_user(user: User) -> CheckoutOfferOut:
-    subscription, amount = require_panel_renewal(user)
-    return build_legacy_renewal_offer(subscription, amount)
+def build_renewal_offer(contract: ContractOffer) -> CheckoutOfferOut:
+    """Oferta "virtual" da renovação de quem não é dos planos antigos: o contrato do próprio cliente."""
+    return CheckoutOfferOut(
+        key=LEGACY_RENEWAL_OFFER_KEY,
+        title=contract.title,
+        footer_product_label=contract.title,
+        plan_key=contract.plan_key,
+        billing_cycle=contract.billing_cycle,
+        amount=contract.amount,
+        active=True,
+        max_installments=1,
+        first_payment_amount=None,
+    )
 
 
-def create_legacy_renewal_checkout_session(db: Session, user: User) -> CheckoutSession:
-    """Sessão de checkout da renovação: plano, ciclo e valor da assinatura atual, sem cupom e sem
+def require_renewal(db: Session, user: User) -> tuple[Subscription, CheckoutOfferOut]:
+    """Assinatura e oferta da renovação de qualquer cliente pago: plano, ciclo e valor do contrato
+    dele, lidos do banco. Planos antigos seguem as regras de require_panel_renewal."""
+    subscription = user.subscription
+    if subscription is None:
+        raise HTTPException(status_code=404, detail="Não encontramos uma assinatura para renovar.")
+    if legacy_renewal_info(subscription).legacy:
+        subscription, amount = require_panel_renewal(user)
+        return subscription, build_legacy_renewal_offer(subscription, amount)
+    if str(subscription.provider or "").strip().lower() != "asaas":
+        raise HTTPException(
+            status_code=400,
+            detail="A renovação da sua assinatura é gerida pelo local onde ela foi contratada.",
+        )
+    contract = current_contract_offer(db, user)
+    if contract is None:
+        raise HTTPException(status_code=400, detail="Não encontramos o plano e o valor do seu contrato. Fale com o suporte.")
+    return subscription, build_renewal_offer(contract)
+
+
+def renewal_offer_for_user(db: Session, user: User) -> CheckoutOfferOut:
+    return require_renewal(db, user)[1]
+
+
+def legacy_renewal_offer_for_user(user: User, db: Session | None = None) -> CheckoutOfferOut:
+    return renewal_offer_for_user(db or object_session(user), user)
+
+
+def create_renewal_checkout_session(db: Session, user: User) -> CheckoutSession:
+    """Sessão de checkout da renovação: plano, ciclo e valor do contrato do cliente, sem cupom e sem
     promoção. Usa o fluxo de upgrade (cartão e Pix automático), que cria o contrato novo no Asaas e
-    encerra o anterior depois do pagamento."""
+    encerra o anterior depois do pagamento. Serve qualquer cliente pago; nos planos antigos o valor
+    vem de legacy_renewal_amount."""
     from app.services.checkout import create_upgrade_checkout_session
 
-    subscription, amount = require_panel_renewal(user)
-    offer = build_legacy_renewal_offer(subscription, amount)
+    subscription, offer = require_renewal(db, user)
     return create_upgrade_checkout_session(
         db,
         offer=offer,
         user=user,
         coupon_code=None,
-        plan_key=str(subscription.plan or "").strip().lower(),
+        plan_key=str(offer.plan_key or subscription.plan or "").strip().lower(),
         extra_metadata={
+            # legacy_renewal é a marca de "renovação" em todo o fluxo (aviso, Cakto, plano antigo).
             "legacy_renewal": True,
+            "renewal": True,
             "first_subscription": False,
             "legacy_previous_provider": str(subscription.provider or "").strip().lower(),
         },
     )
+
+
+# Nome antigo: a renovação passou a servir qualquer cliente.
+create_legacy_renewal_checkout_session = create_renewal_checkout_session
 
 
 def is_legacy_renewal_session(session: CheckoutSession) -> bool:

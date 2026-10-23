@@ -652,22 +652,82 @@
         v-if="showSubscriptionBlockedDialog"
         class="app-modal-overlay fixed inset-0 z-[55] flex items-center justify-center px-4"
       >
-        <div class="w-full max-w-lg rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-elegant sm:p-8">
-          <p class="text-xs font-semibold uppercase tracking-[0.3em] text-rose-500">{{ subscriptionBlockCopy.eyebrow }}</p>
-          <h2 class="mt-3 text-2xl font-bold text-slate-900">{{ subscriptionBlockCopy.title }}</h2>
-          <p class="mt-2 text-sm text-slate-600">{{ subscriptionBlockCopy.description }}</p>
-          <div class="mt-6 flex flex-wrap justify-end">
+        <div
+          class="w-full max-w-lg rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-elegant sm:p-8"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="subscription-block-title"
+        >
+          <p
+            class="text-xs font-semibold uppercase tracking-[0.3em]"
+            :class="blockedInvoice ? 'text-amber-600' : 'text-rose-500'"
+          >
+            {{ blockedInvoice ? blockCopy.pendingEyebrow : blockCopy.expiredEyebrow }}
+          </p>
+          <h2 id="subscription-block-title" class="mt-3 text-2xl font-bold text-slate-900">
+            {{ blockedInvoice ? blockCopy.pendingTitle(blockedInvoiceMonth) : blockCopy.expiredTitle }}
+          </h2>
+          <p class="mt-2 text-sm text-slate-600">
+            {{ blockedInvoice ? blockCopy.pendingText(blockedInvoiceDueDate) : blockCopy.expiredText(blockedAccessEnded) }}
+          </p>
+          <div v-if="blockedInvoice || blockedOffer" class="mt-4 flex items-center justify-between rounded-2xl bg-slate-100 px-4 py-3 text-sm text-slate-500">
+            <span>
+              {{ blockedInvoice ? blockCopy.invoiceLine(blockedInvoiceMonth, blockedInvoiceMethod) : blockedOfferLine }}
+            </span>
+            <b class="text-lg font-bold tabular-nums text-slate-900">
+              {{ formatBRL(blockedInvoice ? blockedInvoice.value : blockedOffer?.amount ?? 0) }}
+            </b>
+          </div>
+          <p v-if="blockedWatcher.phase.value === 'checking'" class="mt-3 text-sm text-blue-600" role="status">
+            {{ blockCopy.checking }} {{ blockedWatcher.hint.value }}
+          </p>
+          <div class="mt-6 flex flex-wrap justify-end gap-2">
             <button
-              class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
-              @click="goToPlansFromSubscriptionBlock"
+              type="button"
+              class="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+              @click="goToInvoices"
             >
-              {{ subscriptionOverdue ? viewCopy.subscription.overdue.action : viewCopy.trial.blocked.goPlans }}
+              {{ blockCopy.viewInvoices }}
+            </button>
+            <button
+              v-if="blockedInvoice"
+              type="button"
+              class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+              @click="payBlockedInvoice"
+            >
+              {{ blockCopy.pay(formatBRL(blockedInvoice.value)) }}
+            </button>
+            <button
+              v-else
+              type="button"
+              class="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+              :disabled="blockedLoading"
+              @click="renewalModalOpen = true"
+            >
+              {{ blockCopy.renew }}
             </button>
           </div>
+          <p v-if="blockedInvoice" class="mt-4 border-t border-slate-200 pt-4 text-[13px] text-slate-500">
+            {{ blockCopy.alreadyPaid }}
+            <button
+              type="button"
+              class="font-semibold text-emerald-600 hover:underline"
+              :disabled="blockedWatcher.checking.value"
+              @click="verifyBlockedPayment"
+            >
+              {{ blockedWatcher.checking.value ? blockCopy.checkingShort : blockCopy.verify }}
+            </button>
+          </p>
         </div>
       </div>
     </transition>
 
+    <RenewalModal
+      :open="renewalModalOpen"
+      :invoice="blockedInvoice"
+      @close="renewalModalOpen = false"
+      @paid="renewalModalOpen = false"
+    />
 
     <transition name="fade">
       <div
@@ -790,6 +850,16 @@ import SidebarLogo from "../assets/Logo Branco - Roteiro Online.png";
 import ColoredLogo from "../assets/Logo Cor - Roteiro Online.png";
 import BrandSwitcher from "../components/shared/BrandSwitcher.vue";
 import ImageUploadField from "../components/admin/inputs/ImageUploadField.vue";
+import RenewalModal from "../components/admin/billing/RenewalModal.vue";
+import { useInvoicePaymentWatch } from "../composables/useInvoicePaymentWatch";
+import {
+  formatBRL,
+  formatInvoiceDate,
+  getBillingInvoices,
+  invoiceMonthName,
+  type BillingInvoice,
+  type BillingRenewalOffer
+} from "../services/billing";
 import api, { API_PERMISSION_DENIED_EVENT } from "../services/api";
 import { getWhatsAppInboxAccess, listWhatsAppConversations } from "../services/whatsapp";
 import type { WhatsAppConversation } from "../types/whatsapp";
@@ -966,15 +1036,6 @@ const viewCopy = {
         es: "Tu período contratado terminó. Para volver a editar y publicar itinerarios, renueva tu plan."
       }),
       close: t({ pt: "Fechar", es: "Cerrar" })
-    },
-    overdue: {
-      eyebrow: t({ pt: "Pagamento pendente", es: "Pago pendiente" }),
-      title: t({ pt: "Regularize o pagamento para voltar a editar", es: "Regulariza el pago para volver a editar" }),
-      description: t({
-        pt: "Não conseguimos confirmar o pagamento da sua assinatura. Abra sua assinatura para pagar a fatura em aberto (ou use o link que chegou por e-mail) e o acesso volta sozinho.",
-        es: "No pudimos confirmar el pago de tu suscripción. Abre tu suscripción para pagar la factura pendiente (o usa el enlace que llegó por correo) y el acceso vuelve solo."
-      }),
-      action: t({ pt: "Ver assinatura", es: "Ver suscripción" })
     }
   },
   cookies: {
@@ -2028,9 +2089,6 @@ const trialActive = computed(() => {
 });
 const trialBlocked = computed(() => Boolean(auth.user?.trial_blocked));
 const subscriptionBlocked = computed(() => Boolean(auth.user?.subscription_blocked));
-// Cobrança em atraso (cartão recusado, boleto/Pix não pago): o caminho é pagar a fatura, não assinar de novo.
-const subscriptionOverdue = computed(() => String(auth.user?.subscription_status || "").toLowerCase() === "past_due");
-const subscriptionBlockCopy = computed(() => (subscriptionOverdue.value ? viewCopy.subscription.overdue : viewCopy.subscription.blocked));
 const blockedTrialEndDateLabel = computed(() => {
   if (!trialEndDate.value || Number.isNaN(trialEndDate.value.getTime())) {
     return "data indisponível";
@@ -2119,10 +2177,100 @@ const goToPlans = () => {
   router.push("/admin/planos");
 };
 
-// Pagamento pendente ou plano expirado: os dois levam à página da assinatura.
-const goToPlansFromSubscriptionBlock = () => {
-  goToPlans();
+// Conta bloqueada por falta de pagamento: o aviso mostra a fatura que libera o acesso (pagar direto,
+// sem passar pelo checkout) ou, sem fatura em aberto, leva à renovação no plano e valor do cliente.
+const blockCopy = {
+  pendingEyebrow: t({ pt: "Pagamento pendente", es: "Pago pendiente" }),
+  expiredEyebrow: t({ pt: "Plano expirado", es: "Plan expirado" }),
+  pendingTitle: (month: string) =>
+    t({
+      pt: `Pague a fatura${month ? ` de ${month}` : ""} para voltar a editar`,
+      es: `Paga la factura${month ? ` de ${month}` : ""} para volver a editar`
+    }),
+  pendingText: (due: string) =>
+    t({
+      pt: `A renovação venceu${due ? ` em ${due}` : ""}. Assim que o pagamento for confirmado, o acesso volta sozinho. Não precisa assinar de novo.`,
+      es: `La renovación venció${due ? ` el ${due}` : ""}. En cuanto se confirme el pago, el acceso vuelve solo. No necesitas suscribirte de nuevo.`
+    }),
+  expiredTitle: t({ pt: "Renove para voltar a editar", es: "Renueva para volver a editar" }),
+  expiredText: (ended: string) =>
+    t({
+      pt: `Seu plano terminou${ended ? ` em ${ended}` : ""}. A renovação mantém o seu plano e o valor que você já paga. Suas páginas e dados continuam guardados.`,
+      es: `Tu plan terminó${ended ? ` el ${ended}` : ""}. La renovación mantiene tu plan y el valor que ya pagas. Tus páginas y datos siguen guardados.`
+    }),
+  invoiceLine: (month: string, method: string) =>
+    t({ pt: `Fatura${month ? ` de ${month}` : ""}${method ? ` · ${method}` : ""}`, es: `Factura${month ? ` de ${month}` : ""}${method ? ` · ${method}` : ""}` }),
+  viewInvoices: t({ pt: "Ver faturas", es: "Ver facturas" }),
+  pay: (amount: string) => t({ pt: `Pagar ${amount}`, es: `Pagar ${amount}` }),
+  renew: t({ pt: "Renovar assinatura", es: "Renovar suscripción" }),
+  alreadyPaid: t({ pt: "Já pagou?", es: "¿Ya pagaste?" }),
+  verify: t({ pt: "Verificar pagamento", es: "Verificar pago" }),
+  checkingShort: t({ pt: "Conferindo...", es: "Verificando..." }),
+  checking: t({ pt: "Conferindo o pagamento a cada 15 segundos...", es: "Verificando el pago cada 15 segundos..." })
 };
+
+const blockedInvoice = ref<BillingInvoice | null>(null);
+const blockedOffer = ref<BillingRenewalOffer | null>(null);
+const blockedLoading = ref(false);
+const renewalModalOpen = ref(false);
+
+const blockedWatcher = useInvoicePaymentWatch();
+const blockedInvoiceMonth = computed(() => invoiceMonthName(blockedInvoice.value?.due_date));
+const blockedInvoiceDueDate = computed(() => formatInvoiceDate(blockedInvoice.value?.due_date).replace("--", ""));
+const blockedInvoiceMethod = computed(() => {
+  const type = String(blockedInvoice.value?.billing_type || "").toUpperCase();
+  if (type === "CREDIT_CARD") return "Cartão";
+  if (type === "BOLETO") return "Boleto";
+  return type === "PIX" ? "PIX" : "";
+});
+const blockedAccessEnded = computed(() => formatInvoiceDate(auth.user?.subscription_valid_until).replace("--", ""));
+const blockedOfferLine = computed(() => {
+  const offer = blockedOffer.value;
+  if (!offer) return "";
+  return `${offer.title} · ${offer.billing_cycle === "annual" ? "Anual" : "Mensal"}`;
+});
+
+const loadBlockedInvoice = async () => {
+  blockedLoading.value = true;
+  try {
+    const data = await getBillingInvoices();
+    blockedInvoice.value = data.items.find(item => item.id === data.account?.unlocking_invoice_id) ?? null;
+    blockedOffer.value = data.account?.renewal_offer ?? null;
+  } catch (err) {
+    console.error("Erro ao carregar a fatura em aberto", err);
+    blockedInvoice.value = null;
+    blockedOffer.value = null;
+  } finally {
+    blockedLoading.value = false;
+  }
+};
+
+const goToInvoices = () => {
+  router.push("/admin/agency/invoices");
+};
+
+const payBlockedInvoice = () => {
+  const invoice = blockedInvoice.value;
+  const url = invoice?.pay_url || invoice?.invoice_url;
+  if (!invoice || !url) {
+    goToInvoices();
+    return;
+  }
+  window.open(url, "_blank", "noopener");
+  blockedWatcher.start(invoice.id);
+};
+
+const verifyBlockedPayment = () => {
+  const invoice = blockedInvoice.value;
+  if (!invoice) return;
+  if (blockedWatcher.phase.value !== "checking") blockedWatcher.start(invoice.id);
+  void blockedWatcher.checkNow();
+};
+
+watch(showSubscriptionBlockedDialog, open => {
+  if (open) void loadBlockedInvoice();
+  else blockedWatcher.reset();
+});
 
 const acknowledgeTrial = async (stage: "start" | "end" | "warn3" | "warn1", redirectToPlans = false) => {
   try {
