@@ -37,9 +37,11 @@
             <b>
               <CreditCardIcon v-if="paymentMethodType !== 'pix'" aria-hidden="true" />
               {{ paymentSummary }}
+              <span v-if="pixAutomaticOff" class="pf-tag-danger">Desativado</span>
             </b>
           </div>
-          <button type="button" class="pf-link" @click="openPaymentMethodModal">Alterar</button>
+          <button v-if="pixAutomaticOff" type="button" class="pf-link" @click="openRenewal('pix')">Reativar</button>
+          <button v-else type="button" class="pf-link" @click="openPaymentMethodModal">Alterar</button>
         </div>
       </div>
 
@@ -256,8 +258,20 @@
         </div>
 
         <p class="mt-2 text-sm text-slate-600">
-          A alteração vale para as próximas cobranças da assinatura.
+          <template v-if="paymentMethodChoice === 'pix'">
+            Mesmo plano e mesmo valor. No Pix Automático, o banco pede um pagamento junto com a autorização: é a
+            próxima cobrança adiantada, e o acesso estende um ciclo a partir do vencimento atual.
+          </template>
+          <template v-else>
+            Mesmo plano e mesmo valor. No cartão, nada é cobrado agora (com fatura em aberto, ela é paga no cartão novo).
+          </template>
         </p>
+        <div v-if="paymentMethodChoice === 'pix'" class="pf-pay-state">
+          <p>Hoje</p>
+          <b>{{ paymentSummary }}<template v-if="pixAutomaticOff"> · desativado</template></b>
+          <small v-if="pixAutomaticOff">A autorização foi encerrada pelo banco ou por falta de pagamento.</small>
+          <small v-if="billing?.renewal_offer">Valor: {{ formatBRL(billing.renewal_offer.amount) }}</small>
+        </div>
 
         <div class="mt-4 flex gap-2">
           <button
@@ -307,7 +321,7 @@
             :disabled="paymentMethodSubmitting"
             @click="submitPaymentMethodChange"
           >
-            {{ paymentMethodSubmitting ? "Salvando..." : "Salvar alteração" }}
+            {{ paymentMethodSubmitting ? "Salvando..." : paymentMethodChoice === "pix" ? "Autorizar no banco" : "Salvar alteração" }}
           </button>
           <button
             type="button"
@@ -319,6 +333,13 @@
         </div>
       </div>
     </div>
+
+    <RenewalModal
+      :open="renewalOpen"
+      :initial-method="renewalMethod"
+      @close="renewalOpen = false"
+      @paid="onRenewed"
+    />
 
     <div
       v-if="showCancelModal"
@@ -375,6 +396,8 @@ import { useAuthStore } from "../../store/useAuthStore";
 import { getCustomerPlanLabel } from "../../utils/planLabels";
 import { createAdminLocalizer, getAdminLanguage } from "../../utils/adminI18n";
 import cardBrands from "../../assets/card-brands.json";
+import RenewalModal from "../../components/admin/billing/RenewalModal.vue";
+import { formatBRL, type BillingRenewalOffer, type PixAutomaticStatus } from "../../services/billing";
 
 interface BillingInfo {
   plan: string;
@@ -386,6 +409,8 @@ interface BillingInfo {
   payment_method_type?: string | null;
   card_brand?: string | null;
   card_last4?: string | null;
+  pix_automatic_status?: PixAutomaticStatus | null;
+  renewal_offer?: BillingRenewalOffer | null;
 }
 
 const authStore = useAuthStore();
@@ -586,6 +611,8 @@ const actionLoading = ref(false);
 const showCardForm = ref(false);
 const showCancelModal = ref(false);
 const showPaymentMethodModal = ref(false);
+const renewalOpen = ref(false);
+const renewalMethod = ref<"pix" | "card">("pix");
 const paymentMethodChoice = ref<"pix" | "card">("pix");
 const paymentMethodSubmitting = ref(false);
 const cardSubmitting = ref(false);
@@ -631,6 +658,11 @@ const billingCycleLabel = computed(() => {
 const currentPlanLabel = computed(() => getCustomerPlanLabel(billing.value?.plan || user.value?.plan));
 
 const paymentMethodType = computed(() => String(billing.value?.payment_method_type || "").toLowerCase());
+// Pix Automático encerrado (cancelado, expirado ou recusado): o cliente reativa pela renovação.
+const pixAutomaticOff = computed(() => {
+  const status = billing.value?.pix_automatic_status;
+  return Boolean(status && status !== "ACTIVE");
+});
 
 const normalizeBrandName = (value?: string | null) =>
   String(value || "")
@@ -967,13 +999,26 @@ const closePaymentMethodModal = () => {
   showPaymentMethodModal.value = false;
 };
 
+const openRenewal = (method: "pix" | "card" = "pix") => {
+  renewalMethod.value = method;
+  renewalOpen.value = true;
+};
+
+const onRenewed = async () => {
+  await loadBilling();
+  message.value = "Assinatura renovada.";
+};
+
 const submitPaymentMethodChange = async () => {
   paymentMethodSubmitting.value = true;
   message.value = null;
   error.value = null;
   try {
     if (paymentMethodChoice.value === "pix") {
-      await api.post("/billing/update-payment-method", { method: "pix" });
+      // Pix é sempre uma nova autorização do Pix Automático: segue para o QR Code da renovação.
+      closePaymentMethodModal();
+      openRenewal("pix");
+      return;
     } else {
       if (!cardForm.holderName || !cardForm.number || !cardForm.expiryMonth || !cardForm.expiryYear || !cardForm.ccv) {
         error.value = viewCopy.cardForm.errors.required;
@@ -988,7 +1033,7 @@ const submitPaymentMethodChange = async () => {
       });
     }
     await loadBilling();
-    message.value = paymentMethodChoice.value === "pix" ? "Forma de pagamento alterada para PIX." : viewCopy.cardForm.success;
+    message.value = viewCopy.cardForm.success;
     closePaymentMethodModal();
     resetCardForm();
   } catch (err) {
@@ -1639,6 +1684,11 @@ watch(
 .pf-link { font-size: 13px; font-weight: 600; color: var(--primary); }
 .pf-link.is-danger { color: var(--status-danger-foreground); }
 .pf-link:disabled { opacity: 0.6; }
+.pf-tag-danger { border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 600; background: var(--status-danger); color: var(--status-danger-foreground); }
+.pf-pay-state { margin-top: 14px; border-radius: 14px; background: var(--muted); padding: 12px 14px; }
+.pf-pay-state p { font-size: 12px; color: var(--muted-foreground); }
+.pf-pay-state b { display: block; margin-top: 2px; font-size: 15px; font-weight: 600; color: var(--foreground); }
+.pf-pay-state small { display: block; margin-top: 4px; font-size: 12px; color: var(--muted-foreground); }
 .pf-note { margin-top: 12px; font-size: 12.5px; color: var(--muted-foreground); }
 .pf-msg { margin-top: 10px; border-radius: 12px; padding: 8px 12px; font-size: 12.5px; }
 .pf-msg.is-ok { background: var(--status-success); color: var(--status-success-foreground); }
