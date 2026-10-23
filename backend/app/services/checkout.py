@@ -37,6 +37,7 @@ from app.services.asaas import AsaasAPIError, AsaasClient, build_default_split_p
 from app.services.card_installments import InstallmentOption, installment_options, option_for
 from app.services.email import send_checkout_welcome_email, send_in_background
 from app.services.company_status import mark_subscription_overdue
+from app.services.billing_account import cancel_open_payments
 from app.services.legacy_renewal import is_legacy_renewal_session, legacy_renewal_info
 from app.services.hub_funnel import send_hub_event
 from app.services.subscription_notifications import SubscriptionPushScenario, format_brl, publish_subscription_notification
@@ -2059,6 +2060,7 @@ def start_pix_payment(db: Session, session: CheckoutSession) -> CheckoutSession:
     db.add(session)
     db.commit()
     db.refresh(session)
+    _replace_open_payments_after_renewal(db, client, session)
     return session
 
 def _saved_card_token(
@@ -2249,6 +2251,7 @@ def start_card_payment(db: Session, session: CheckoutSession, payload: dict[str,
     db.add(session)
     db.commit()
     db.refresh(session)
+    _replace_open_payments_after_renewal(db, client, session)
     return session
 
 
@@ -2300,6 +2303,40 @@ def _detach_cakto_after_legacy_renewal(session: CheckoutSession, subscription: S
     subscription.cakto_order_id = None
 
 
+def _replace_open_payments_after_renewal(db: Session, client: AsaasClient, session: CheckoutSession) -> None:
+    """Renovação paga: só uma fatura em aberto por vez. Depois que a cobrança nova existe, cancela no
+    Asaas as abertas do cliente, para ele não pagar o mesmo período duas vezes. Falha aqui não
+    desfaz a renovação."""
+    if not is_legacy_renewal_session(session):
+        return
+    customers: list[str] = []
+    target = None
+    try:
+        target = _resolve_target_subscription_for_upgrade(db, session)
+    except Exception:  # noqa: BLE001
+        logger.exception("Assinatura da renovação não encontrada ao cancelar faturas abertas.")
+    for customer_id in (session.asaas_customer_id, target.asaas_customer_id if target else None):
+        if customer_id and customer_id not in customers:
+            customers.append(customer_id)
+    for customer_id in customers:
+        try:
+            cancel_open_payments(db, client, customer_id=customer_id, session=session)
+        except Exception:  # noqa: BLE001
+            logger.exception("Não foi possível cancelar as faturas abertas do cliente %s no Asaas.", customer_id)
+
+
+def _renewal_valid_until(session: CheckoutSession, previous_status: str, previous_valid_until: datetime | None) -> datetime:
+    """Fim do acesso depois de pagar a renovação. Quem renova em dia (ativo e com acesso pela frente)
+    soma o ciclo ao vencimento atual, sem perder dias; quem estava em atraso conta a partir de agora."""
+    now = _utcnow()
+    base = now
+    if is_legacy_renewal_session(session) and previous_status == "active" and previous_valid_until is not None:
+        aware = previous_valid_until if previous_valid_until.tzinfo else previous_valid_until.replace(tzinfo=timezone.utc)
+        if aware > now:
+            base = aware
+    return base + _duration_from_cycle(session.billing_cycle)
+
+
 def _upsert_paid_user_and_subscription(db: Session, session: CheckoutSession) -> User:
     user = session.user or _find_existing_user(db, session.customer_email, session.customer_document)
     previous_plan = str(user.plan or "").strip().lower() if user else ""
@@ -2340,6 +2377,8 @@ def _upsert_paid_user_and_subscription(db: Session, session: CheckoutSession) ->
         user.subscription_id = subscription.id
 
     previous_provider = (subscription.provider or "").strip().lower()
+    previous_status = str(subscription.status or "").strip().lower()
+    previous_valid_until = subscription.valid_until
     # Cakto antiga já encerrada (renova pela tela): renovando ou fazendo upgrade, passa para o Asaas.
     if previous_provider == "cakto" and (
         is_legacy_renewal_session(session) or legacy_renewal_info(subscription).mode == "panel"
@@ -2358,7 +2397,7 @@ def _upsert_paid_user_and_subscription(db: Session, session: CheckoutSession) ->
         subscription.card_brand = None
         subscription.card_last4 = None
     subscription.failed_attempts = 0
-    subscription.valid_until = _utcnow() + _duration_from_cycle(session.billing_cycle)
+    subscription.valid_until = _renewal_valid_until(session, previous_status, previous_valid_until)
     subscription.asaas_customer_id = session.asaas_customer_id
     metadata = dict(session.metadata_json or {})
     if metadata.get("asaas_subscription_id"):

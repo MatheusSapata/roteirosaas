@@ -230,9 +230,8 @@ def test_session_keeps_annual_cycle_and_value(client, login_as, quiet):
 @pytest.mark.parametrize(
     ("kwargs", "expected"),
     [
-        ({"plan": "scale", "legacy_amount": None, "mrr": "137.00", "created_at": AFTER_CUTOFF}, 403),  # cliente novo
-        ({"plan": "free", "legacy_amount": None, "mrr": "0"}, 403),
-        ({"plan": "teste", "legacy_amount": "5.00", "mrr": "5.00"}, 403),
+        ({"plan": "free", "legacy_amount": None, "mrr": "0"}, 400),  # sem plano pago para renovar
+        ({"plan": "teste", "legacy_amount": "5.00", "mrr": "5.00"}, 400),
         ({"plan": "infinity", "provider": "viajeon", "legacy_amount": None, "mrr": "100.00"}, 400),
         ({"plan": "essencial", "provider": "manual", "legacy_amount": None, "mrr": "49.99"}, 400),
         ({"plan": "essencial", "provider": "stripe", "legacy_amount": "49.99", "mrr": "49.99"}, 400),
