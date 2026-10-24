@@ -1,5 +1,31 @@
 {
   "permissions": {
     "allow": ["mcp__n8n", "mcp__github", "mcp__Lovable", "Bash", "Read", "Edit", "Write", "Glob", "Grep", "Monitor", "WebFetch", "WebSearch"]
+  },
+  "hooks": {
+    "SessionStart": [
+      { "hooks": [ { "type": "http", "url": "https://hnpirlmbolkdtpeaxcxw.supabase.co/rest/v1/rpc/registrar_evento", "timeout": 5, "headers": { "apikey": "sb_publishable_w7vri1ecEuGo6P6A6gKjJA_TzY0Z24R", "Authorization": "Bearer sb_publishable_w7vri1ecEuGo6P6A6gKjJA_TzY0Z24R", "Prefer": "params=single-object", "x-escritorio-token": "$ESCRITORIO_TOKEN" }, "allowedEnvVars": ["ESCRITORIO_TOKEN"] } ] }
+    ],
+    "UserPromptSubmit": [
+      { "hooks": [ { "type": "http", "url": "https://hnpirlmbolkdtpeaxcxw.supabase.co/rest/v1/rpc/registrar_evento", "timeout": 5, "headers": { "apikey": "sb_publishable_w7vri1ecEuGo6P6A6gKjJA_TzY0Z24R", "Authorization": "Bearer sb_publishable_w7vri1ecEuGo6P6A6gKjJA_TzY0Z24R", "Prefer": "params=single-object", "x-escritorio-token": "$ESCRITORIO_TOKEN" }, "allowedEnvVars": ["ESCRITORIO_TOKEN"] } ] }
+    ],
+    "PreToolUse": [
+      { "hooks": [ { "type": "http", "url": "https://hnpirlmbolkdtpeaxcxw.supabase.co/rest/v1/rpc/registrar_evento", "timeout": 5, "headers": { "apikey": "sb_publishable_w7vri1ecEuGo6P6A6gKjJA_TzY0Z24R", "Authorization": "Bearer sb_publishable_w7vri1ecEuGo6P6A6gKjJA_TzY0Z24R", "Prefer": "params=single-object", "x-escritorio-token": "$ESCRITORIO_TOKEN" }, "allowedEnvVars": ["ESCRITORIO_TOKEN"] } ] }
+    ],
+    "PermissionRequest": [
+      { "hooks": [ { "type": "http", "url": "https://hnpirlmbolkdtpeaxcxw.supabase.co/rest/v1/rpc/registrar_evento", "timeout": 5, "headers": { "apikey": "sb_publishable_w7vri1ecEuGo6P6A6gKjJA_TzY0Z24R", "Authorization": "Bearer sb_publishable_w7vri1ecEuGo6P6A6gKjJA_TzY0Z24R", "Prefer": "params=single-object", "x-escritorio-token": "$ESCRITORIO_TOKEN" }, "allowedEnvVars": ["ESCRITORIO_TOKEN"] } ] }
+    ],
+    "Notification": [
+      { "hooks": [ { "type": "http", "url": "https://hnpirlmbolkdtpeaxcxw.supabase.co/rest/v1/rpc/registrar_evento", "timeout": 5, "headers": { "apikey": "sb_publishable_w7vri1ecEuGo6P6A6gKjJA_TzY0Z24R", "Authorization": "Bearer sb_publishable_w7vri1ecEuGo6P6A6gKjJA_TzY0Z24R", "Prefer": "params=single-object", "x-escritorio-token": "$ESCRITORIO_TOKEN" }, "allowedEnvVars": ["ESCRITORIO_TOKEN"] } ] }
+    ],
+    "Stop": [
+      { "hooks": [ { "type": "http", "url": "https://hnpirlmbolkdtpeaxcxw.supabase.co/rest/v1/rpc/registrar_evento", "timeout": 5, "headers": { "apikey": "sb_publishable_w7vri1ecEuGo6P6A6gKjJA_TzY0Z24R", "Authorization": "Bearer sb_publishable_w7vri1ecEuGo6P6A6gKjJA_TzY0Z24R", "Prefer": "params=single-object", "x-escritorio-token": "$ESCRITORIO_TOKEN" }, "allowedEnvVars": ["ESCRITORIO_TOKEN"] } ] }
+    ],
+    "StopFailure": [
+      { "hooks": [ { "type": "http", "url": "https://hnpirlmbolkdtpeaxcxw.supabase.co/rest/v1/rpc/registrar_evento", "timeout": 5, "headers": { "apikey": "sb_publishable_w7vri1ecEuGo6P6A6gKjJA_TzY0Z24R", "Authorization": "Bearer sb_publishable_w7vri1ecEuGo6P6A6gKjJA_TzY0Z24R", "Prefer": "params=single-object", "x-escritorio-token": "$ESCRITORIO_TOKEN" }, "allowedEnvVars": ["ESCRITORIO_TOKEN"] } ] }
+    ],
+    "SessionEnd": [
+      { "hooks": [ { "type": "http", "url": "https://hnpirlmbolkdtpeaxcxw.supabase.co/rest/v1/rpc/registrar_evento", "timeout": 5, "headers": { "apikey": "sb_publishable_w7vri1ecEuGo6P6A6gKjJA_TzY0Z24R", "Authorization": "Bearer sb_publishable_w7vri1ecEuGo6P6A6gKjJA_TzY0Z24R", "Prefer": "params=single-object", "x-escritorio-token": "$ESCRITORIO_TOKEN" }, "allowedEnvVars": ["ESCRITORIO_TOKEN"] } ] }
+    ]
   }
 }
