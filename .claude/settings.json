@@ -17,7 +17,8 @@
       "Bash(git:*)",
       "Bash(npm:*)",
       "Bash(npx:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "mcp__19fa6fd3-d1f0-41fd-9888-48f02495263d"
     ]
   },
   "hooks": {
