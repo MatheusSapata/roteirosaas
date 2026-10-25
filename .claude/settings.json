@@ -1,6 +1,24 @@
 {
   "permissions": {
-    "allow": ["mcp__n8n", "mcp__github", "mcp__Lovable", "Bash", "Read", "Edit", "Write", "Glob", "Grep", "Monitor", "WebFetch", "WebSearch"]
+    "allow": [
+      "mcp__n8n",
+      "mcp__github",
+      "mcp__Lovable",
+      "Bash",
+      "Read",
+      "Edit",
+      "Write",
+      "Glob",
+      "Grep",
+      "Monitor",
+      "WebFetch",
+      "WebSearch",
+      "mcp__claude-code-remote",
+      "Bash(git:*)",
+      "Bash(npm:*)",
+      "Bash(npx:*)",
+      "Bash(node:*)"
+    ]
   },
   "hooks": {
     "SessionStart": [
