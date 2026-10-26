@@ -508,10 +508,25 @@ def _complete_paid_checkout_session(db: Session, session: CheckoutSession) -> Us
     previous_plan = str(metadata.get("current_plan") or (previous_user.plan if previous_user else "") or "").strip().lower() or None
     previous_cycle = metadata.get("current_billing_cycle") or (previous_subscription.billing_cycle if previous_subscription else None)
     scenario = checkout_purchase_scenario(session, previous_plan, previous_cycle)
+    user: User | None = None
     if _should_upgrade_session_in_place(db, session):
-        user, applied_previous_plan = _apply_upgrade_after_payment(db, session)
-        previous_plan = applied_previous_plan or previous_plan
-    else:
+        try:
+            user, applied_previous_plan = _apply_upgrade_after_payment(db, session)
+            previous_plan = applied_previous_plan or previous_plan
+        except AsaasAPIError as exc:
+            # O Asaas recusa alterar o valor de assinatura no cartão que já tem fatura paga. O cliente
+            # já pagou o upgrade: não pode ficar sem o plano novo. Segue como contrato novo, que
+            # cancela a assinatura anterior (senão ela continuaria cobrando o plano antigo).
+            logger.exception("Upgrade no lugar recusado pelo Asaas (sessão %s); aplicando como contrato novo.", session.token)
+            # A chamada ao Asaas é a primeira coisa de _apply_upgrade_after_payment: nada mudou no banco.
+            metadata = dict(session.metadata_json or {})
+            previous_subscription = _resolve_target_subscription_for_upgrade(db, session)
+            metadata["upgrade_in_place"] = False
+            metadata["upgrade_in_place_error"] = str(exc)[:500]
+            if previous_subscription and previous_subscription.asaas_subscription_id:
+                metadata.setdefault("replaced_asaas_subscription_id", previous_subscription.asaas_subscription_id)
+            session.metadata_json = metadata
+    if user is None:
         if _is_upgrade_session(session):
             # Plano novo pago: encerra a cobrança do plano anterior (assinatura no cartão ou Pix automático).
             _cancel_replaced_contracts_after_upgrade(db, session)

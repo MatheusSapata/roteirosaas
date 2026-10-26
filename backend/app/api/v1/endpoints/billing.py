@@ -514,6 +514,9 @@ def _extract_payment_link_url(payment_link: Any) -> Optional[str]:
     return None
 
 
+_REFUNDED_PAYMENT_STATUSES = {"refunded", "refund_requested", "refund_in_progress"}
+
+
 def _normalize_asaas_payment(payment: dict[str, Any]) -> BillingInvoiceOut:
     status = str(payment.get("status") or "").strip().lower()
     due_date = str(payment.get("dueDate") or "").strip() or None
@@ -527,8 +530,9 @@ def _normalize_asaas_payment(payment: dict[str, Any]) -> BillingInvoiceOut:
     bucket: Literal["paid", "overdue", "upcoming", "replaced"] = "paid"
     if not is_paid:
         bucket = "overdue" if current_due_date and current_due_date < date.today() else "upcoming"
-        # Cancelada no Asaas: o status continua o de antes, só o campo "deleted" muda.
-        if payment.get("deleted") is True:
+        # Cancelada no Asaas: o status continua o de antes, só o campo "deleted" muda. Estornada também
+        # não está em aberto: a cobrança foi devolvida, não é dívida do cliente.
+        if payment.get("deleted") is True or status in _REFUNDED_PAYMENT_STATUSES:
             bucket = "replaced"
     pay_url = invoice_url or payment_link_url or bank_slip_url
     download_url = receipt_url or bank_slip_url or invoice_url or payment_link_url
