@@ -407,7 +407,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
       { titulo: "Clique em Preços e pacotes", tela: 1 },
       { titulo: "Monte as ofertas", texto: "Nome, preço e moeda, **Complemento** (por pessoa, parcelas) e **Selo**. **Destacar esta oferta** chama atenção para a principal.", tela: 2 },
       { titulo: "Escolha o botão de cada oferta", texto: "Dentro da oferta, em **Botão da oferta**: texto e para onde ele leva.", tela: 3 },
-      { titulo: "Mostre as formas de pagamento", tela: 4 }
+      { titulo: "Mostre as formas de pagamento", tela: 4 },
+      { titulo: "Ajuste a observação final", texto: "Em **Observação final**, troque ou apague o texto que aparece abaixo dos preços (ex.: Consulte disponibilidade e condições vigentes)." }
     ],
     relacionados: ["compra-online", "editar-secao"]
   },
