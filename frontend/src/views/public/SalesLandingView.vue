@@ -11,10 +11,9 @@
     <section class="lp-sec is-night lp-hero">
       <div class="lp-wrap lp-hero-grid">
         <div class="lp-hero-copy">
-          <!-- No celular vira o cabeçalho: logo à esquerda e a demonstração à direita (sai de baixo do botão principal). -->
+          <!-- No celular vira o cabeçalho: logo à esquerda, com uma linha fina embaixo. -->
           <div class="lp-hero-top">
             <img :src="logoWhite" alt="Roteiro Online" class="lp-logo" width="240" height="72" />
-            <a :href="DEMO_URL" class="lp-top-demo" target="_blank" rel="noopener"><CalendarDays :size="14" aria-hidden="true" />Agendar demonstração</a>
           </div>
           <span class="lp-pill">Aumente a sua conversão!</span>
           <h1 class="lp-h1">Seu cliente não compra o que <span class="is-brand">não consegue imaginar!</span></h1>
@@ -45,7 +44,6 @@
         <div class="lp-hero-actions">
           <div class="lp-ctas">
             <a href="#planos" class="lp-btn" @click.prevent="goToPlans()">Quero assinar <ArrowRight :size="18" aria-hidden="true" /></a>
-            <a :href="DEMO_URL" class="lp-btn-ghost" target="_blank" rel="noopener">Agendar demonstração</a>
           </div>
           <p class="lp-note"><ShieldCheck :size="15" aria-hidden="true" /><span>Plano único com tudo incluso · 7 dias de garantia<span class="lp-hide-sm"> · Sem fidelidade</span></span></p>
         </div>
@@ -401,8 +399,7 @@
               <RouterLink :to="{ path: `/checkout/${currentOffer.key}`, query: checkoutQuery }" class="lp-btn lp-btn-block">Quero assinar agora <ArrowRight :size="18" aria-hidden="true" /></RouterLink>
             </template>
             <template v-else-if="!salesPlanLoading">
-              <p class="lp-price-eq">Fale com a gente para assinar.</p>
-              <a :href="DEMO_URL" class="lp-btn lp-btn-block" target="_blank" rel="noopener">Falar com a equipe <ArrowRight :size="18" aria-hidden="true" /></a>
+              <p class="lp-price-eq">Não conseguimos carregar os valores agora. Recarregue a página em instantes.</p>
             </template>
             <p class="lp-price-guarantee"><ShieldCheck :size="15" aria-hidden="true" /><span>7 dias de garantia<span class="lp-hide-sm">: não gostou, devolvemos 100%</span>.</span></p>
             <p class="lp-price-pay">Cartão de crédito ou Pix automático</p>
@@ -441,9 +438,6 @@
             <p>
               {{ item.a }}
               <template v-if="item.strong"><strong>{{ item.strong }}</strong> {{ item.after }}</template>
-              <template v-if="item.demo">
-                <a :href="DEMO_URL" target="_blank" rel="noopener">Agende uma demonstração aqui</a> {{ item.after }}
-              </template>
             </p>
           </details>
         </div>
@@ -463,7 +457,6 @@
         </p>
         <div class="lp-ctas">
           <a href="#planos" class="lp-btn" @click.prevent="goToPlans()">Quero assinar <ArrowRight :size="18" aria-hidden="true" /></a>
-          <a :href="DEMO_URL" class="lp-btn-ghost" target="_blank" rel="noopener">Agendar demonstração</a>
         </div>
         <p class="lp-final-note">Sem fidelidade · 7 dias de garantia · Cancelamento simples</p>
         <RouterLink to="/login" class="lp-login">Já é cliente? Entrar</RouterLink>
@@ -539,7 +532,6 @@ import exemploItalia from "../../assets/lp/exemplo-italia.webp";
  * para dentro do sistema. A assinatura leva direto ao checkout próprio (/checkout/:offerKey).
  */
 const HERO_VIDEO = "https://player-vz-19330b59-441.tv.pandavideo.com.br/embed/?v=13897fe0-22c6-420f-ad7c-523e37f8fd7f";
-const DEMO_URL = "https://cal.com/viajeon/roteiro-online";
 const PAGE_TITLE = "Roteiro Online | Páginas de roteiro que vendem";
 const PAGE_DESCRIPTION =
   "Crie páginas profissionais de roteiro em minutos e faça seu cliente sentir o valor antes mesmo de saber o preço.";
@@ -828,7 +820,7 @@ const loadSalesPlan = async () => {
   }
 };
 
-type FaqItem = { q: string; a: string; strong?: string; after?: string; demo?: boolean };
+type FaqItem = { q: string; a: string; strong?: string; after?: string };
 const FAQ: FaqItem[] = [
   {
     q: "Preciso saber programar ou contratar um designer?",
@@ -867,12 +859,6 @@ const FAQ: FaqItem[] = [
   {
     q: "Tem limite de roteiros?",
     a: "Não. A assinatura inclui roteiros ilimitados no ar, com todos os recursos liberados, do primeiro ao último."
-  },
-  {
-    q: "Consigo falar com alguém antes de assinar?",
-    a: "Consegue.",
-    demo: true,
-    after: "e a gente mostra a plataforma na prática, tira dúvidas e valida se faz sentido para o seu modelo de operação."
   }
 ];
 
@@ -1124,8 +1110,7 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 12px;
 }
-.lp-btn,
-.lp-btn-ghost {
+.lp-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1148,17 +1133,7 @@ onBeforeUnmount(() => {
   background: var(--t-btn-hover);
   transform: translateY(-1px);
 }
-.lp-btn-ghost {
-  border: 1px solid var(--t-line);
-  background: transparent;
-  color: var(--t-ink);
-}
-.lp-btn-ghost:hover {
-  border-color: var(--t-accent);
-  color: var(--t-accent);
-}
-.lp .lp-btn:focus-visible,
-.lp .lp-btn-ghost:focus-visible {
+.lp .lp-btn:focus-visible {
   outline: 2px solid var(--t-accent);
   outline-offset: 3px;
 }
@@ -1229,10 +1204,6 @@ onBeforeUnmount(() => {
 .lp-hero-top {
   display: flex;
   align-items: center;
-}
-/* Só no cabeçalho do celular; no computador a demonstração fica ao lado do botão principal. */
-.lp-top-demo {
-  display: none;
 }
 .lp-pill {
   display: inline-flex;
@@ -2858,10 +2829,6 @@ onBeforeUnmount(() => {
 .lp-faq p strong {
   color: var(--ink);
 }
-.lp-faq a {
-  color: var(--green-dark);
-  font-weight: 700;
-}
 .lp-faq-more {
   display: none;
 }
@@ -3002,33 +2969,15 @@ onBeforeUnmount(() => {
     gap: 10px;
     text-align: center;
   }
-  /* Cabeçalho: logo à esquerda, demonstração à direita, com uma linha fina embaixo. */
+  /* Cabeçalho: logo à esquerda, com uma linha fina embaixo. */
   .lp-hero-top {
     align-self: stretch;
-    justify-content: space-between;
-    gap: 12px;
     margin-bottom: 6px;
     padding-bottom: 10px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   }
   .lp-logo {
     width: min(112px, 30vw);
-  }
-  .lp-top-demo {
-    display: inline-flex;
-    flex: none;
-    align-items: center;
-    gap: 6px;
-    height: 32px;
-    padding: 0 12px;
-    border: 1px solid rgba(29, 233, 160, 0.4);
-    border-radius: 999px;
-    background: rgba(29, 233, 160, 0.08);
-    color: var(--mint);
-    font-size: 12.5px;
-    font-weight: 600;
-    text-decoration: none;
-    white-space: nowrap;
   }
   .lp-pill {
     padding: 5px 10px;
@@ -3060,10 +3009,6 @@ onBeforeUnmount(() => {
     flex-direction: column;
     align-items: stretch;
     gap: 8px;
-  }
-  /* Na capa do celular, "Agendar demonstração" sobe para o cabeçalho. */
-  .lp-hero-actions .lp-btn-ghost {
-    display: none;
   }
   .lp-hide-sm {
     display: none;
@@ -3294,13 +3239,6 @@ onBeforeUnmount(() => {
   .lp-promo-bar {
     font-size: 12px;
     letter-spacing: -0.01em;
-  }
-  .lp-top-demo {
-    padding: 0 10px;
-    font-size: 12px;
-  }
-  .lp-top-demo svg {
-    display: none;
   }
 }
 
