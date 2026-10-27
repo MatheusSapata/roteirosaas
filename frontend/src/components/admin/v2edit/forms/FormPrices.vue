@@ -36,6 +36,9 @@
         </EdList>
       </EdGroup>
       <EdPayments :value="modelValue" @patch="patch" />
+      <EdGroup title="Observação final">
+        <EdText :model-value="note" label="Texto abaixo dos preços" multiline placeholder="Consulte disponibilidade, formas de pagamento e condições vigentes." hint="Opcional. Aparece no rodapé da seção. Deixe vazio para esconder." @update:model-value="note = $event" />
+      </EdGroup>
     </template>
     <template #look>
       <EdGroup title="Layout">
@@ -65,7 +68,8 @@ import { readText, useDraft, writeText } from "../useDraft";
 
 const props = defineProps<{ modelValue: PricesSection }>();
 const emit = defineEmits<{ (e: "update:modelValue", value: PricesSection): void }>();
-const { patch } = useDraft(props, emit);
+const { patch, text } = useDraft(props, emit);
+const note = text("description");
 const items = computed(() => props.modelValue.items || []);
 const newOffer = (): PriceItem => ({ title: "", price: 0, currency: "BRL", description: "", badge: "", highlight: false, ctaLabel: "Reservar", ctaMode: "link", ctaLink: "" });
 const currencies = ["BRL", "USD", "EUR", "GBP", "ARS", "CLP", "MXN", "COP", "PEN", "UYU", "CAD", "AUD", "CHF", "JPY"];
