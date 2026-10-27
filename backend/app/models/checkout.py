@@ -19,6 +19,8 @@ class CheckoutSettings(Base):
     coupons_json = Column(JSONB, nullable=False, default=list)
     checkouts_json = Column(JSONB, nullable=False, default=list)
     pixels_json = Column(JSONB, nullable=False, default=list)
+    # Vídeo da capa da página de vendas (player próprio); sem ele, a página usa o do Panda.
+    sales_video_json = Column(JSONB, nullable=True)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow)
 

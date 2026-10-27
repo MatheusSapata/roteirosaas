@@ -44,7 +44,7 @@ import type { VideoVslSection } from "../../../types/page";
 import { sanitizeHtml } from "../../../utils/sanitizeHtml";
 import { createLocalizer, getCurrentLanguage } from "../../../utils/i18n";
 import { normalizeExternalLink } from "../../../utils/links";
-import { extractYoutubeId, normalizeYoutubePlayerUrl } from "../../../utils/video";
+import { extractYoutubeId, normalizeYoutubePlayerUrl, vslProgressPercent } from "../../../utils/video";
 import { lightLogoSrc, resolveMediaUrl } from "../../../utils/media";
 import { usePageDesignContext } from "./designContext";
 import { useEntrance } from "./useEntrance";
@@ -111,16 +111,7 @@ const ctaLabel = computed(() => localize(props.section.ctaLabel).trim() || "Quer
 const ctaLink = computed(() => props.section.ctaLink?.trim() || "");
 const normalizedCtaLink = computed(() => normalizeExternalLink(ctaLink.value) || "#");
 const unlockSeconds = computed(() => Math.max(0, Number(props.section.unlockAfterSeconds) || 0));
-const visualProgress = computed(() => {
-  const elapsed = Math.max(0, currentTime.value);
-  const duration = Math.max(0, videoDuration.value);
-  if (hasEnded.value || (duration > 0 && elapsed >= duration - 0.25)) return 100;
-  if (duration > 0 && duration <= 60) return Math.min(99.5, (elapsed / duration) * 100);
-  if (elapsed <= 30) return Math.min(50, (elapsed / 30) * 50);
-  if (elapsed <= 60) return 50 + ((elapsed - 30) / 30) * 20;
-  if (duration > 60) return Math.min(99.5, 70 + ((elapsed - 60) / (duration - 60)) * 30);
-  return 70;
-});
+const visualProgress = computed(() => vslProgressPercent(currentTime.value, videoDuration.value, hasEnded.value));
 const showButton = computed(() => unlocked.value && props.section.unlockAction !== "reveal_page");
 
 const unlock = () => {

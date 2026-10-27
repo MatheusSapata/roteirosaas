@@ -73,6 +73,59 @@ export const getPublicSalesPlan = async () => {
   return response.data;
 };
 
+export const getPublicSalesVideo = async () => {
+  const response = await api.get<SalesVideo | null>("/checkout/public/sales-video");
+  return response.data;
+};
+
+const SALES_VIDEO_PARALLEL = 3;
+const SALES_VIDEO_RETRIES = 3;
+
+/**
+ * Envia o vídeo da página de vendas em partes (o servidor diz o tamanho de cada uma), até três ao
+ * mesmo tempo e com nova tentativa quando a rede falha. Devolve o endereço do arquivo final.
+ */
+export const uploadSalesVideo = async (file: Blob, onProgress?: (fraction: number) => void): Promise<string> => {
+  const { data: start } = await api.post<{ name: string; chunk_size: number }>("/admin/checkout-settings/sales-video/uploads", {
+    content_type: file.type,
+    size: file.size
+  });
+  const base = `/admin/checkout-settings/sales-video/uploads/${start.name}`;
+  const total = Math.max(1, Math.ceil(file.size / start.chunk_size));
+  const sent = new Array<number>(total).fill(0);
+  const report = () => onProgress?.(Math.min(1, sent.reduce((sum, value) => sum + value, 0) / file.size));
+
+  const sendChunk = async (index: number) => {
+    const part = file.slice(index * start.chunk_size, (index + 1) * start.chunk_size);
+    for (let attempt = 1; ; attempt += 1) {
+      try {
+        await api.put(`${base}/chunks/${index}`, part, {
+          headers: { "Content-Type": "application/octet-stream" },
+          onUploadProgress: event => {
+            sent[index] = event.loaded;
+            report();
+          }
+        });
+        sent[index] = part.size;
+        report();
+        return;
+      } catch (error) {
+        sent[index] = 0;
+        if (attempt >= SALES_VIDEO_RETRIES) throw error;
+        await new Promise(resolve => setTimeout(resolve, 1500 * attempt));
+      }
+    }
+  };
+
+  let next = 0;
+  const worker = async () => {
+    while (next < total) await sendChunk(next++);
+  };
+  await Promise.all(Array.from({ length: Math.min(SALES_VIDEO_PARALLEL, total) }, worker));
+  const { data } = await api.post<{ url: string }>(`${base}/finish`, { chunks: total });
+  return data.url;
+};
+
 export interface CheckoutCoupon {
   code: string;
   title: string;
@@ -83,6 +136,16 @@ export interface CheckoutCoupon {
   usage_count?: number;
 }
 
+/** Vídeo da capa da página de vendas, no player próprio; sem ele, a página usa o do Panda. */
+export interface SalesVideo {
+  url: string;
+  poster_url?: string | null;
+  width?: number | null;
+  height?: number | null;
+  /** Cor do aviso de som e da barra de progresso (#RRGGBB). */
+  color?: string | null;
+}
+
 export interface CheckoutSettings {
   id: number;
   is_active: boolean;
@@ -90,6 +153,7 @@ export interface CheckoutSettings {
   coupons: CheckoutCoupon[];
   checkouts: CheckoutAppearance[];
   pixels: CheckoutPixel[];
+  sales_video?: SalesVideo | null;
   created_at: string;
   updated_at: string;
 }

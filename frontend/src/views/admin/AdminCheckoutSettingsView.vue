@@ -139,6 +139,14 @@
         </div>
       </div>
 
+      <div v-else-if="activeTab === 'sales_page'" class="mt-6 space-y-4">
+        <div>
+          <h2 class="text-lg font-bold text-slate-900">Página de vendas</h2>
+          <p class="text-sm text-slate-500">O que aparece na página de vendas do Roteiro Online (/lp) além dos preços das ofertas.</p>
+        </div>
+        <SalesVideoField v-model="form.sales_video" />
+      </div>
+
       <div v-else-if="activeTab === 'pixels'" class="mt-6 space-y-4">
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -1006,6 +1014,7 @@ import AmIcon from "../../components/admin/master/AmIcon.vue";
 import axios from "axios";
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import ImageUploadField from "../../components/admin/inputs/ImageUploadField.vue";
+import SalesVideoField from "../../components/admin/master/SalesVideoField.vue";
 import {
   getAdminCheckoutOfferReports,
   getAdminCheckoutTrackingDocument,
@@ -1019,13 +1028,14 @@ import {
   type CheckoutOffer,
   type CheckoutPixel,
   type CheckoutSettings,
+  type SalesVideo,
   type CheckoutTrackingItem,
   type CheckoutTrackingDocumentDetail,
 } from "../../services/checkout";
 import { formatBRL, salesPlanMath } from "../../utils/salesPlan";
 import { computedInstallmentValue, installmentPreview } from "../../utils/cardInstallments";
 
-type TabId = "offers" | "pixels" | "coupons" | "checkouts" | "reports" | "tracking";
+type TabId = "offers" | "sales_page" | "pixels" | "coupons" | "checkouts" | "reports" | "tracking";
 
 type OfferRow = CheckoutOffer & { local_id: string };
 type PixelRow = CheckoutPixel & { local_id: string };
@@ -1034,6 +1044,7 @@ type CheckoutRow = CheckoutAppearance & { local_id: string };
 
 const tabs: Array<{ id: TabId; label: string }> = [
   { id: "offers", label: "Ofertas" },
+  { id: "sales_page", label: "Página de vendas" },
   { id: "pixels", label: "Pixels" },
   { id: "coupons", label: "Cupons" },
   { id: "checkouts", label: "Checkouts" },
@@ -1150,12 +1161,14 @@ const form = reactive<{
   pixels: PixelRow[];
   coupons: CouponRow[];
   checkouts: CheckoutRow[];
+  sales_video: SalesVideo | null;
 }>({
   is_active: true,
   offers: [],
   pixels: [],
   coupons: [],
   checkouts: [],
+  sales_video: null,
 });
 
 const offerModal = reactive<{ open: boolean; editingId: string | null; form: OfferRow }>({
@@ -1440,6 +1453,7 @@ const applySettings = (data: Partial<CheckoutSettings> & Record<string, any>) =>
     offer_keys: Array.isArray(item.offer_keys) ? [...item.offer_keys] : [],
   }));
   form.coupons = rawCoupons.map(item => ({ ...item, local_id: nextLocalId("coupon") }));
+  form.sales_video = data.sales_video || null;
 };
 
 const serializePayload = () => ({
@@ -1479,6 +1493,7 @@ const serializePayload = () => ({
     offer_keys: item.offer_keys.map(value => value.trim().toLowerCase()).filter(Boolean),
   })),
   checkouts: form.checkouts.map(({ local_id, ...item }) => item),
+  sales_video: form.sales_video,
 });
 
 const load = async () => {

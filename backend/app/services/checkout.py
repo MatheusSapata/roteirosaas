@@ -14,6 +14,7 @@ from zoneinfo import ZoneInfo
 
 import httpx
 from fastapi import HTTPException
+from pydantic import ValidationError
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, object_session, joinedload
 
@@ -30,6 +31,7 @@ from app.schemas.checkout import (
     CheckoutOfferReportItemOut,
     CheckoutPixelOut,
     CheckoutPixelPublicOut,
+    CheckoutSalesVideo,
     CheckoutSettingsUpdate,
 )
 from app.services import auth as auth_service
@@ -1191,6 +1193,8 @@ def update_checkout_settings(db: Session, payload: CheckoutSettingsUpdate) -> Ch
     record.coupons_json = [item.model_dump(mode="json") for item in payload.coupons]
     record.checkouts_json = checkouts
     record.pixels_json = [item.model_dump(mode="json") for item in payload.pixels]
+    if "sales_video" in payload.model_fields_set:
+        record.sales_video_json = payload.sales_video.model_dump(mode="json") if payload.sales_video else None
     if active_checkouts:
         primary = active_checkouts[0]
         record.theme_mode = primary["theme_mode"]
@@ -1211,9 +1215,22 @@ def serialize_checkout_settings(record: CheckoutSettings) -> dict[str, Any]:
         "coupons": _serialize_coupons(record),
         "checkouts": _serialize_checkouts(record),
         "pixels": _serialize_pixels(record),
+        "sales_video": get_sales_video(record),
         "created_at": record.created_at,
         "updated_at": record.updated_at,
     }
+
+
+def get_sales_video(record: CheckoutSettings) -> dict[str, Any] | None:
+    """Vídeo da capa da página de vendas; None quando não há (a página usa o do Panda)."""
+    raw = record.sales_video_json
+    if not isinstance(raw, dict) or not raw.get("url"):
+        return None
+    try:
+        return CheckoutSalesVideo.model_validate(raw).model_dump()
+    except ValidationError:
+        logger.warning("Vídeo da página de vendas inválido no banco: %s", raw)
+        return None
 
 
 def resolve_offer(db: Session, offer_key: str) -> CheckoutOfferOut:

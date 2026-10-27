@@ -176,12 +176,48 @@ class CheckoutCouponOut(CheckoutCouponIn):
     usage_count: int = 0
 
 
+class CheckoutSalesVideo(BaseModel):
+    """Vídeo da capa da página de vendas, no player próprio (prévia muda, aviso para ativar o som
+    e barra de progresso). Largura e altura vêm do arquivo, para o Admin avisar fora do quadrado."""
+
+    url: str = Field(..., min_length=1, max_length=1000)
+    poster_url: str | None = Field(None, max_length=1000)
+    width: int | None = Field(None, ge=1, le=10000)
+    height: int | None = Field(None, ge=1, le=10000)
+    # Cor do aviso de som e da barra de progresso (#RRGGBB); sem ela, a verde da página.
+    color: str | None = None
+
+    @field_validator("url", "poster_url")
+    @classmethod
+    def only_media_urls(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        if not cleaned:
+            return None
+        if not (cleaned.startswith("https://") or cleaned.startswith("/uploads/")):
+            raise ValueError("Use um arquivo enviado pelo Admin.")
+        return cleaned
+
+    @field_validator("color")
+    @classmethod
+    def hex_color(cls, value: str | None) -> str | None:
+        cleaned = (value or "").strip()
+        if not cleaned:
+            return None
+        if not re.fullmatch(r"#[0-9a-fA-F]{6}", cleaned):
+            raise ValueError("Use uma cor no formato #RRGGBB.")
+        return cleaned.upper()
+
+
 class CheckoutSettingsUpdate(BaseModel):
     is_active: bool = True
     offers: list[CheckoutOfferIn] = Field(default_factory=list)
     coupons: list[CheckoutCouponIn] = Field(default_factory=list)
     checkouts: list[CheckoutAppearanceIn] = Field(default_factory=list)
     pixels: list[CheckoutPixelIn] = Field(default_factory=list)
+    # Só muda quando vem no pedido (None tira o vídeo); sem o campo, fica o que estava.
+    sales_video: CheckoutSalesVideo | None = None
 
 
 class CheckoutSettingsOut(BaseModel):
@@ -191,6 +227,7 @@ class CheckoutSettingsOut(BaseModel):
     coupons: list[CheckoutCouponOut] = Field(default_factory=list)
     checkouts: list[CheckoutAppearanceOut] = Field(default_factory=list)
     pixels: list[CheckoutPixelOut] = Field(default_factory=list)
+    sales_video: CheckoutSalesVideo | None = None
     created_at: datetime
     updated_at: datetime
     model_config = ConfigDict(from_attributes=True)

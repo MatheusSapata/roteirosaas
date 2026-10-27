@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from starlette.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 from datetime import date
 from typing import Literal
@@ -11,6 +12,7 @@ from app.core.request_ip import get_client_ip
 from app.models.user import User
 from app.schemas.checkout import (
     CheckoutSalesPlanOut,
+    CheckoutSalesVideo,
     CheckoutCardStartRequest,
     CheckoutCouponPreviewIn,
     CheckoutCouponPreviewOut,
@@ -41,6 +43,7 @@ from app.services.checkout import (
     get_checkout_session_by_token,
     get_checkout_settings,
     get_public_sales_plan as checkout_service_sales_plan,
+    get_sales_video,
     list_checkout_tracking,
     get_checkout_offer_reports,
     get_checkout_tracking_document_detail,
@@ -57,6 +60,7 @@ from app.services.checkout import (
     update_upgrade_checkout_session_details,
     update_checkout_settings,
 )
+from app.services import sales_video
 
 router = APIRouter()
 admin_router = APIRouter(prefix="/admin/checkout-settings")
@@ -78,6 +82,24 @@ class CheckoutUpgradeSessionCreateIn(BaseModel):
 class CheckoutLegacyUpgradeSessionCreateIn(BaseModel):
     # Só o ciclo: a oferta, o valor e o plano são decididos no servidor.
     billing_cycle: Literal["monthly", "annual"]
+
+
+class SalesVideoUploadStartIn(BaseModel):
+    content_type: str = Field(..., min_length=1, max_length=120)
+    size: int = Field(..., gt=0)
+
+
+class SalesVideoUploadStartOut(BaseModel):
+    name: str
+    chunk_size: int
+
+
+class SalesVideoUploadFinishIn(BaseModel):
+    chunks: int = Field(..., ge=1)
+
+
+class SalesVideoUploadFinishOut(BaseModel):
+    url: str
 
 
 @admin_router.get("", response_model=CheckoutSettingsOut)
@@ -129,6 +151,47 @@ def get_admin_checkout_offer_reports(
 ) -> list[CheckoutOfferReportItemOut]:
     rows = get_checkout_offer_reports(db, start_date=start_date, end_date=end_date)
     return [CheckoutOfferReportItemOut.model_validate(item) for item in rows]
+
+
+# Vídeo da capa da página de vendas: o navegador manda o arquivo em partes de até 4 MB (início,
+# partes, fim); o endereço final entra na configuração ao salvar a tela de Ofertas e checkout.
+@admin_router.post("/sales-video/uploads", response_model=SalesVideoUploadStartOut)
+def start_sales_video_upload(
+    payload: SalesVideoUploadStartIn,
+    current_user: User = Depends(get_current_superuser),
+) -> SalesVideoUploadStartOut:
+    return SalesVideoUploadStartOut.model_validate(sales_video.start_upload(payload.content_type, payload.size))
+
+
+@admin_router.put("/sales-video/uploads/{name}/chunks/{index}", status_code=status.HTTP_204_NO_CONTENT)
+async def upload_sales_video_chunk(
+    name: str,
+    index: int,
+    request: Request,
+    current_user: User = Depends(get_current_superuser),
+) -> None:
+    data = bytearray()
+    async for part in request.stream():
+        data.extend(part)
+        if len(data) > sales_video.SALES_VIDEO_CHUNK_BYTES:
+            raise HTTPException(status_code=413, detail="Parte do vídeo maior que o permitido.")
+    await run_in_threadpool(sales_video.save_chunk, name, index, bytes(data))
+
+
+@admin_router.post("/sales-video/uploads/{name}/finish", response_model=SalesVideoUploadFinishOut)
+def finish_sales_video_upload(
+    name: str,
+    payload: SalesVideoUploadFinishIn,
+    current_user: User = Depends(get_current_superuser),
+) -> SalesVideoUploadFinishOut:
+    return SalesVideoUploadFinishOut(url=sales_video.finish_upload(name, payload.chunks))
+
+
+@router.get("/public/sales-video", response_model=CheckoutSalesVideo | None)
+def get_public_sales_video(db: Session = Depends(get_db)) -> CheckoutSalesVideo | None:
+    """Vídeo da capa da página de vendas; null quando não há (a página usa o do Panda)."""
+    video = get_sales_video(get_checkout_settings(db))
+    return CheckoutSalesVideo.model_validate(video) if video else None
 
 
 @router.get("/public/sales-plan", response_model=CheckoutSalesPlanOut)

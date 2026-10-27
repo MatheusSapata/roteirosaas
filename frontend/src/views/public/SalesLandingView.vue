@@ -24,7 +24,17 @@
         </div>
         <div class="lp-hero-media">
           <div class="lp-hero-video">
+            <!-- Vídeo enviado no Admin Master (player próprio); sem ele, ou se o arquivo falhar, o do Panda. -->
+            <VslVideoPlayer
+              v-if="heroVideo"
+              :src="resolveMediaUrl(heroVideo.url) || heroVideo.url"
+              :poster="resolveMediaUrl(heroVideo.poster_url)"
+              :color="heroVideo.color"
+              title="Roteiro Online em funcionamento"
+              @error="heroVideo = null"
+            />
             <iframe
+              v-else-if="heroVideoChecked"
               :src="HERO_VIDEO"
               title="Roteiro Online em funcionamento"
               allow="accelerometer;gyroscope;autoplay;encrypted-media;picture-in-picture"
@@ -512,7 +522,9 @@ import {
   X,
   Zap
 } from "lucide-vue-next";
-import { getPublicSalesPlan, type SalesPlan } from "../../services/checkout";
+import { getPublicSalesPlan, getPublicSalesVideo, type SalesPlan, type SalesVideo } from "../../services/checkout";
+import VslVideoPlayer from "../../components/public/VslVideoPlayer.vue";
+import { resolveMediaUrl } from "../../utils/media";
 import { formatBRL, salesPlanMath } from "../../utils/salesPlan";
 import { captureAttribution, utmQuery } from "../../utils/attribution";
 import { SALES_META_PIXEL_ID, startMetaPixels } from "../../utils/metaPixel";
@@ -808,6 +820,19 @@ const perDay = computed(() => {
   if (!offer || !Number.isFinite(amount) || amount <= 0) return null;
   return Math.floor(amount / (offer.billing_cycle === "annual" ? 365 : 30)) + 1;
 });
+// Vídeo da capa: o enviado no Admin Master › Ofertas e checkout › Página de vendas; o do Panda só
+// entra depois da resposta (sem vídeo próprio ou com erro), para não carregar os dois.
+const heroVideo = ref<SalesVideo | null>(null);
+const heroVideoChecked = ref(false);
+const loadHeroVideo = async () => {
+  try {
+    heroVideo.value = await getPublicSalesVideo();
+  } catch {
+    heroVideo.value = null;
+  } finally {
+    heroVideoChecked.value = true;
+  }
+};
 const loadSalesPlan = async () => {
   try {
     salesPlan.value = await getPublicSalesPlan();
@@ -915,6 +940,7 @@ onMounted(() => {
   document.title = PAGE_TITLE;
   restoreDescription = setMeta("description", PAGE_DESCRIPTION);
   void loadSalesPlan();
+  void loadHeroVideo();
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   for (const video of [editorVideo.value, aiVideo.value]) {
     if (video && reducedMotion) {
