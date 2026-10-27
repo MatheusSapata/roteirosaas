@@ -24,6 +24,7 @@ from app.models.subscription import Subscription
 from app.models.user import User
 from app.schemas.checkout import CheckoutOfferOut
 from app.services.billing_account import ContractOffer, current_contract_offer
+from app.services.billing_cycles import BILLING_CYCLES, normalize_cycle
 from app.services.company_status import ENDED_STATUSES
 
 # Corte: assinaturas criadas antes de 15/10/2026 00:00 em Brasília são dos planos antigos.
@@ -121,7 +122,7 @@ def legacy_renewal_info(subscription: Subscription | None) -> LegacyRenewalInfo:
 def build_legacy_renewal_offer(subscription: Subscription, amount: Decimal) -> CheckoutOfferOut:
     plan = str(subscription.plan or "").strip().lower()
     name = legacy_plan_name(plan)
-    cycle = "annual" if str(subscription.billing_cycle or "").strip().lower() == "annual" else "monthly"
+    cycle = normalize_cycle(subscription.billing_cycle)
     return CheckoutOfferOut(
         key=LEGACY_RENEWAL_OFFER_KEY,
         title=f"Renovação do plano {name}",
@@ -248,15 +249,15 @@ def require_legacy_upgrade(user: User) -> Subscription:
 
 def create_legacy_upgrade_checkout_session(db: Session, user: User, billing_cycle: str) -> CheckoutSession:
     """Upgrade de Profissional ou Agência antigo para o plano único: a oferta é a ativa do Admin
-    Master para o ciclo escolhido (mensal ou anual), no valor cheio, sem cupom e sem a promoção da
+    Master para o ciclo escolhido (mensal, trimestral ou anual), no valor cheio, sem cupom e sem a promoção da
     1ª mensalidade. Segue o fluxo de upgrade (contrato novo no Asaas, o anterior é encerrado depois
     do pagamento e a nova validade conta a partir do pagamento)."""
     from app.services.checkout import create_upgrade_checkout_session, get_public_sales_plan, resolve_offer
 
     subscription = require_legacy_upgrade(user)
     cycle = str(billing_cycle or "").strip().lower()
-    if cycle not in {"monthly", "annual"}:
-        raise HTTPException(status_code=400, detail="Escolha o pagamento mensal ou anual.")
+    if cycle not in BILLING_CYCLES:
+        raise HTTPException(status_code=400, detail="Escolha o pagamento mensal, trimestral ou anual.")
     chosen = get_public_sales_plan(db).get(cycle)
     if not chosen:
         raise HTTPException(status_code=404, detail="O plano não está disponível no momento. Fale com o suporte.")

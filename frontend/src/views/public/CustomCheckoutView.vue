@@ -246,7 +246,7 @@
 
             <div class="checkout-note-box">
               <p>Após o pagamento, você será redirecionado automaticamente.</p>
-              <p>Ao confirmar no banco, você autoriza a recorrência mensal ou anual do seu plano.</p>
+              <p>Ao confirmar no banco, você autoriza a recorrência {{ cycleLabel(billingCycle).toLowerCase() }} do seu plano.</p>
               <p v-if="promoAmount">Hoje você paga {{ money(promoAmount) }}. As próximas mensalidades são de {{ formattedAmount }}.</p>
               <p v-if="session?.pix_expiration_date">O QR Code expira em {{ pixExpirationLabel }}.</p>
             </div>
@@ -356,7 +356,7 @@
             <p class="cb-summary-title">Resumo do pedido</p>
             <div class="cb-summary-item">
               <span>{{ config.offer.footer_product_label || config.offer.title }}</span>
-              <span>{{ billingCycle === "annual" ? "Anual" : "Mensal" }}</span>
+              <span>{{ cycleLabel(billingCycle) }}</span>
             </div>
             <div v-if="hasAppliedCoupon" class="cb-summary-coupon">
               <TicketPercentIcon aria-hidden="true" />
@@ -474,6 +474,7 @@ import {
   type CheckoutSession
 } from "../../services/checkout";
 import { installmentPreview } from "../../utils/cardInstallments";
+import { cycleLabel, cyclePeriod, normalizeCycle } from "../../utils/billingCycle";
 import { useAuthStore } from "../../store/useAuthStore";
 import { resolveMediaUrl } from "../../utils/media";
 import ColoredLogo from "../../assets/Logo Cor - Roteiro Online.png";
@@ -684,7 +685,7 @@ const footerPrice = computed(() => {
 const footerSuffix = computed(() => {
   if (promoAmount.value) return "no 1º mês";
   if (step.value === "card" && selectedInstallment.value && selectedInstallment.value.count > 1) return "";
-  return billingCycle.value === "annual" ? "/ ano" : "/ mês";
+  return `/ ${cyclePeriod(billingCycle.value)}`;
 });
 const footerNote = computed(() => {
   if (promoAmount.value) return `Depois, ${formattedAmount.value}/mês. Sem fidelidade.`;
@@ -1475,7 +1476,7 @@ onMounted(async () => {
       session.value = isLegacyRenewal.value
         ? await createLegacyRenewalCheckoutSession()
         : isLegacyUpgrade.value
-          ? await createLegacyUpgradeCheckoutSession(config.value.offer.billing_cycle === "annual" ? "annual" : "monthly")
+          ? await createLegacyUpgradeCheckoutSession(normalizeCycle(config.value.offer.billing_cycle))
           : await createUpgradeCheckoutSession(config.value.offer.key, form.coupon_code || null);
       fillFormFromSession(session.value);
       lockUpgradePrefilledFields(session.value);

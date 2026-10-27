@@ -122,6 +122,7 @@ import {
 import { formatBRL, invoiceMonthName, type BillingInvoice } from "../../../services/billing";
 import { useAuthStore } from "../../../store/useAuthStore";
 import { createAdminLocalizer } from "../../../utils/adminI18n";
+import { CYCLE_LABELS, normalizeCycle } from "../../../utils/billingCycle";
 
 const props = defineProps<{
   open: boolean;
@@ -205,7 +206,7 @@ const card = reactive({ holder_name: "", card_number: "", expiry_month: "", expi
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 const invoiceMonth = computed(() => invoiceMonthName(props.invoice?.due_date));
-const cycleLabel = computed(() => (offer.value?.billing_cycle === "annual" ? t({ pt: "Anual", es: "Anual" }) : t({ pt: "Mensal", es: "Mensual" })));
+const cycleLabel = computed(() => t(CYCLE_LABELS[normalizeCycle(offer.value?.billing_cycle)]));
 const todayLabel = computed(() =>
   props.invoice
     ? t({ pt: `Hoje (fatura${invoiceMonth.value ? ` de ${invoiceMonth.value}` : ""})`, es: `Hoy (factura${invoiceMonth.value ? ` de ${invoiceMonth.value}` : ""})` })

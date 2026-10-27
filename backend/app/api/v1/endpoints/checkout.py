@@ -81,7 +81,7 @@ class CheckoutUpgradeSessionCreateIn(BaseModel):
 
 class CheckoutLegacyUpgradeSessionCreateIn(BaseModel):
     # Só o ciclo: a oferta, o valor e o plano são decididos no servidor.
-    billing_cycle: Literal["monthly", "annual"]
+    billing_cycle: Literal["monthly", "quarterly", "annual"]
 
 
 class SalesVideoUploadStartIn(BaseModel):

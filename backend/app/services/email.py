@@ -90,6 +90,8 @@ def _cycle_label(cycle: str | None) -> str:
     normalized = cycle.lower()
     if normalized in {"monthly", "mensal"}:
         return "ciclo mensal"
+    if normalized in {"quarterly", "trimestral"}:
+        return "ciclo trimestral"
     if normalized in {"annual", "anual"}:
         return "ciclo anual"
     return f"ciclo {cycle}"

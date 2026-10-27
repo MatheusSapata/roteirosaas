@@ -15,6 +15,8 @@ CheckoutThemeMode = Literal["light", "dark"]
 CheckoutLayout = Literal["classic", "banner"]
 CheckoutPaymentMethod = Literal["pix", "card"]
 CheckoutDiscountType = Literal["fixed", "percent"]
+# Ciclos de cobrança (regras de cada um em app/services/billing_cycles.py).
+CheckoutBillingCycle = Literal["monthly", "quarterly", "annual"]
 
 
 class CheckoutAppearanceIn(BaseModel):
@@ -69,14 +71,14 @@ class CheckoutOfferIn(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
     footer_product_label: str = Field(default="Plano profissional", min_length=1, max_length=120)
     plan_key: str = Field(default="professional", min_length=1, max_length=50)
-    billing_cycle: Literal["monthly", "annual"] = "monthly"
+    billing_cycle: CheckoutBillingCycle = "monthly"
     amount: Decimal = Field(default=Decimal("49.90"), gt=0)
     active: bool = True
     subtitle: str | None = None
     checkout_key: str | None = Field(default=None, max_length=120)
     # Plano único da página de vendas e da tela de planos: a oferta que aparece como a
-    # assinatura mensal ou a anual. Uma oferta por ciclo, com o mesmo ciclo de cobrança.
-    sales_slot: Literal["monthly", "annual"] | None = None
+    # assinatura mensal, trimestral ou anual. Uma oferta por ciclo, com o mesmo ciclo de cobrança.
+    sales_slot: CheckoutBillingCycle | None = None
     # Parcelas no cartão (só no anual; 1 = só à vista). As parcelas seguem a tabela de repasse
     # das taxas do Asaas (app/services/card_installments.py); um valor fixo por número de
     # parcelas (ex.: {"12": 97.00}) vale no lugar da conta.
@@ -136,10 +138,10 @@ class CheckoutOfferIn(BaseModel):
     @model_validator(mode="after")
     def keep_rules_per_cycle(self) -> "CheckoutOfferIn":
         # Parcelas só no anual; promoção da 1ª mensalidade só no mensal.
-        if self.billing_cycle == "monthly":
+        if self.billing_cycle != "annual":
             self.max_installments = 1
             self.installment_fixed_values = {}
-        else:
+        if self.billing_cycle != "monthly":
             self.first_payment_amount = None
             self.first_payment_ends_at = None
         self.installment_fixed_values = {
@@ -236,7 +238,7 @@ class CheckoutSettingsOut(BaseModel):
 class CheckoutSalesPlanOfferOut(BaseModel):
     key: str
     title: str
-    billing_cycle: Literal["monthly", "annual"]
+    billing_cycle: CheckoutBillingCycle
     amount: Decimal
     # Maior parcelamento no cartão (ex.: 12x de R$ 97,00); 1 = só à vista.
     max_installments: int = 1
@@ -247,9 +249,10 @@ class CheckoutSalesPlanOfferOut(BaseModel):
 
 
 class CheckoutSalesPlanOut(BaseModel):
-    """Plano único à venda: a oferta mensal e a anual (None quando não há)."""
+    """Plano único à venda: a oferta mensal, a trimestral e a anual (None quando não há)."""
 
     monthly: CheckoutSalesPlanOfferOut | None = None
+    quarterly: CheckoutSalesPlanOfferOut | None = None
     annual: CheckoutSalesPlanOfferOut | None = None
 
 

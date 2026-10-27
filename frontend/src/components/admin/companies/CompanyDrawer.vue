@@ -263,6 +263,7 @@ import {
   statusTone
 } from "../master/format";
 import { billingProvider, isCombo, statusDetail } from "./companyStatus";
+import { cycleMonths, cyclePeriod } from "../../../utils/billingCycle";
 
 const props = defineProps<{ company: Company | null; freeDays: number }>();
 const emit = defineEmits<{ (e: "close"): void; (e: "changed", message: string): void }>();
@@ -361,9 +362,9 @@ const methodLabel = computed(() => {
   const method = (props.company?.payment_method || "").toLowerCase();
   return ({ card: "Cartão", credit_card: "Cartão", pix: "Pix", pix_automatic: "Pix automático", boleto: "Boleto" } as Record<string, string>)[method] || "";
 });
-const isAnnual = computed(() => (props.company?.billing_cycle || "").toLowerCase() === "annual");
-const chargeAmount = computed(() => (props.company?.mrr_amount || 0) * (isAnnual.value ? 12 : 1));
-const cycleLabel = computed(() => (isAnnual.value ? "por ano" : "por mês"));
+// O MRR guarda o valor por mês: a cobrança é ele vezes os meses do ciclo.
+const chargeAmount = computed(() => (props.company?.mrr_amount || 0) * cycleMonths((props.company?.billing_cycle || "").toLowerCase()));
+const cycleLabel = computed(() => `por ${cyclePeriod((props.company?.billing_cycle || "").toLowerCase())}`);
 const accessLabel = computed(() => {
   const status = props.company?.status;
   if (status === "trial" || status === "trial_ended") return "Fim do teste";

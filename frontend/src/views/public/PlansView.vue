@@ -3,7 +3,7 @@
     <div class="pv-wrap">
       <header class="pv-head">
         <h1 class="pv-title">{{ t(copy.title) }}</h1>
-        <p class="pv-sub">{{ legacyUpgrade ? t(copy.legacyUpgradeSubtitle) : legacyMode ? t(copy.legacySubtitle) : t(copy.subtitle) }}</p>
+        <p class="pv-sub">{{ legacyUpgrade ? t(copy.legacyUpgradeSubtitle) : legacyMode ? t(copy.legacySubtitle) : `${t(copy.subtitle)} ${payByText}.` }}</p>
       </header>
 
       <div v-if="trialBlocked" class="pv-alert is-danger">
@@ -48,7 +48,7 @@
           <p class="pv-legacy-plan">{{ t(copy.planPrefix) }} {{ getPlanLabel(billingInfo?.plan) }}</p>
           <div v-if="billingInfo?.legacy_renewal_amount" class="pv-price">
             <span class="cur">R$</span><span class="val">{{ priceNumber(billingInfo.legacy_renewal_amount) }}</span>
-            <span class="per">{{ currentCycle === "annual" ? t(copy.perYear) : t(copy.perMonth) }}</span>
+            <span class="per">/{{ periodLabel(currentCycle) }}</span>
           </div>
           <p class="pv-eq">{{ cycleLabel(currentCycle) }}<template v-if="legacyValidityText"> · {{ legacyValidityText }}</template></p>
 
@@ -71,36 +71,34 @@
         <div v-if="legacyUpgrade" class="pv-price-box pv-upgrade">
           <span class="pv-upgrade-eyebrow">{{ t(copy.upgradeTitle) }}</span>
           <p class="pv-legacy-plan">{{ t(copy.planPrefix) }} Roteiro Online</p>
-          <p class="pv-eq">{{ t(copy.upgradeText) }}</p>
-          <div v-if="salesPlan.monthly && salesPlan.annual" class="pv-cycle" role="tablist" :aria-label="t(copy.howToPay)">
-            <button type="button" role="tab" :aria-selected="cycle === 'monthly'" :class="{ on: cycle === 'monthly' }" @click="cycle = 'monthly'">
-              {{ cycleLabel("monthly") }}
-            </button>
-            <button type="button" role="tab" :aria-selected="cycle === 'annual'" :class="{ on: cycle === 'annual' }" @click="cycle = 'annual'">
-              {{ cycleLabel("annual") }}<span v-if="math && math.savingsPercent > 0" class="pv-off">-{{ math.savingsPercent }}%</span>
+          <p class="pv-eq">{{ t(copy.upgradeText) }} {{ payByText }}.</p>
+          <div v-if="availableCycles.length > 1" class="pv-cycle" :class="{ 'is-three': availableCycles.length > 2 }" role="tablist" :aria-label="t(copy.howToPay)">
+            <button v-for="id in availableCycles" :key="id" type="button" role="tab" :aria-selected="cycle === id" :class="{ on: cycle === id }" @click="cycle = id">
+              {{ cycleLabel(id) }}<span v-if="savingsPercentOf(id) > 0" class="pv-off">-{{ savingsPercentOf(id) }}%</span>
             </button>
           </div>
 
           <template v-if="currentOffer">
-            <p v-if="cycle === 'annual' && math && math.savings > 0" class="pv-anchor">
-              {{ t(copy.from) }} <s>{{ formatBRL(math.twelveMonths) }}</s> {{ t(copy.for) }}
+            <p v-if="cycle !== 'monthly' && math && math.savings > 0" class="pv-anchor">
+              {{ t(copy.from) }} <s>{{ formatBRL(math.monthlyTotal) }}</s> {{ t(copy.for) }}
             </p>
             <div v-if="annualInstallment" class="pv-price">
               <span class="cur">{{ annualInstallment.count }}x de R$</span><span class="val">{{ formatBRL(annualInstallment.value, { cents: "always" }).replace(/^R\$\s*/, "") }}</span>
             </div>
             <div v-else class="pv-price">
               <span class="cur">R$</span><span class="val">{{ priceNumber(currentOffer.amount) }}</span>
-              <span class="per">{{ cycle === "annual" ? t(copy.perYear) : t(copy.perMonth) }}</span>
+              <span class="per">/{{ periodLabel(cycle) }}</span>
             </div>
             <p v-if="annualInstallment" class="pv-eq">
               {{ t(copy.or) }} <b>{{ formatBRL(currentOffer.amount) }} {{ t(copy.upfront) }}</b>
             </p>
-            <p v-else-if="cycle === 'annual' && math" class="pv-eq">
+            <p v-else-if="cycle !== 'monthly' && math" class="pv-eq">
               {{ t(copy.equals) }} <b>{{ formatBRL(math.perMonth, { cents: "always" }) }} {{ t(copy.aMonth) }}</b>
             </p>
-            <p v-else class="pv-eq">{{ t(copy.monthlyNote) }}</p>
-            <p v-if="cycle === 'annual' && math && math.savings > 0" class="pv-save">
-              {{ t(copy.save) }} {{ formatBRL(math.savings) }} · {{ t(copy.lessThan) }} {{ math.lessThanMonths }} {{ t(copy.monthsOfMonthly) }}
+            <p v-else class="pv-eq">{{ renewsNote }}</p>
+            <p v-if="cycle !== 'monthly' && math && math.savings > 0" class="pv-save">
+              {{ t(copy.save) }} {{ formatBRL(math.savings) }}<template v-if="math.lessThanMonths < cycleMonths(cycle)">
+                · {{ t(CYCLE_SPANS[cycle]) }} {{ t(copy.lessThan) }} {{ math.lessThanMonths }} {{ t(copy.monthsOfMonthly) }}</template>
             </p>
 
             <div class="pv-upgrade-incl">
@@ -126,25 +124,22 @@
           <ul>
             <li v-for="item in included" :key="item"><Check :size="15" aria-hidden="true" />{{ item }}</li>
           </ul>
-          <p class="pv-incl-foot">{{ t(copy.sameSubscription) }}</p>
+          <p class="pv-incl-foot">{{ cyclesText }}, {{ t(copy.sameSubscription) }}</p>
         </div>
 
         <div class="pv-price-box" :class="{ 'is-current': isCurrentCycle }">
           <span v-if="isScaleActive" class="pv-current">
             <span class="pv-dot" aria-hidden="true"></span>{{ t(copy.yourSubscription) }} · {{ cycleLabel(currentCycle) }}
           </span>
-          <div v-if="salesPlan.monthly && salesPlan.annual" class="pv-cycle" role="tablist" :aria-label="t(copy.howToPay)">
-            <button type="button" role="tab" :aria-selected="cycle === 'monthly'" :class="{ on: cycle === 'monthly' }" @click="cycle = 'monthly'">
-              {{ cycleLabel("monthly") }}
-            </button>
-            <button type="button" role="tab" :aria-selected="cycle === 'annual'" :class="{ on: cycle === 'annual' }" @click="cycle = 'annual'">
-              {{ cycleLabel("annual") }}<span v-if="math && math.savingsPercent > 0" class="pv-off">-{{ math.savingsPercent }}%</span>
+          <div v-if="availableCycles.length > 1" class="pv-cycle" :class="{ 'is-three': availableCycles.length > 2 }" role="tablist" :aria-label="t(copy.howToPay)">
+            <button v-for="id in availableCycles" :key="id" type="button" role="tab" :aria-selected="cycle === id" :class="{ on: cycle === id }" @click="cycle = id">
+              {{ cycleLabel(id) }}<span v-if="savingsPercentOf(id) > 0" class="pv-off">-{{ savingsPercentOf(id) }}%</span>
             </button>
           </div>
 
           <template v-if="currentOffer">
-            <p v-if="cycle === 'annual' && math && math.savings > 0" class="pv-anchor">
-              {{ t(copy.from) }} <s>{{ formatBRL(math.twelveMonths) }}</s> {{ t(copy.for) }}
+            <p v-if="cycle !== 'monthly' && math && math.savings > 0" class="pv-anchor">
+              {{ t(copy.from) }} <s>{{ formatBRL(math.monthlyTotal) }}</s> {{ t(copy.for) }}
             </p>
             <p v-else-if="promoAmount" class="pv-anchor">
               {{ t(copy.from) }} <s>{{ formatBRL(currentOffer.amount) }}</s> {{ t(copy.for) }}
@@ -155,20 +150,21 @@
             </div>
             <div v-else class="pv-price">
               <span class="cur">R$</span><span class="val">{{ priceNumber(promoAmount || currentOffer.amount) }}</span>
-              <span class="per">{{ promoAmount ? t(copy.firstMonth) : cycle === "annual" ? t(copy.perYear) : t(copy.perMonth) }}</span>
+              <span class="per">{{ promoAmount ? t(copy.firstMonth) : `/${periodLabel(cycle)}` }}</span>
             </div>
             <p v-if="annualInstallment" class="pv-eq">
               {{ t(copy.or) }} <b>{{ formatBRL(currentOffer.amount) }} {{ t(copy.upfront) }}</b>
             </p>
-            <p v-else-if="cycle === 'annual' && math" class="pv-eq">
+            <p v-else-if="cycle !== 'monthly' && math" class="pv-eq">
               {{ t(copy.equals) }} <b>{{ formatBRL(math.perMonth, { cents: "always" }) }} {{ t(copy.aMonth) }}</b>
             </p>
             <p v-else-if="promoAmount" class="pv-eq">
               {{ t(copy.thenMonthly) }} <b>{{ formatBRL(currentOffer.amount) }}{{ t(copy.perMonth) }}</b>. {{ t(copy.noLockIn) }}
             </p>
-            <p v-else class="pv-eq">{{ t(copy.monthlyNote) }}</p>
-            <p v-if="cycle === 'annual' && math && math.savings > 0" class="pv-save">
-              {{ t(copy.save) }} {{ formatBRL(math.savings) }} · {{ t(copy.lessThan) }} {{ math.lessThanMonths }} {{ t(copy.monthsOfMonthly) }}
+            <p v-else class="pv-eq">{{ renewsNote }}</p>
+            <p v-if="cycle !== 'monthly' && math && math.savings > 0" class="pv-save">
+              {{ t(copy.save) }} {{ formatBRL(math.savings) }}<template v-if="math.lessThanMonths < cycleMonths(cycle)">
+                · {{ t(CYCLE_SPANS[cycle]) }} {{ t(copy.lessThan) }} {{ math.lessThanMonths }} {{ t(copy.monthsOfMonthly) }}</template>
             </p>
 
             <button type="button" class="pv-btn" :disabled="ctaDisabled || loadingKey === cycle" @click="goToCheckout">
@@ -196,6 +192,16 @@ import { LEGACY_RENEWAL_OFFER_KEY, getPublicSalesPlan, type SalesPlan } from "..
 import { useAuthStore } from "../../store/useAuthStore";
 import { getPlanLabel } from "../../utils/planLabels";
 import { formatBRL, salesPlanMath } from "../../utils/salesPlan";
+import {
+  BILLING_CYCLES,
+  CYCLE_LABELS,
+  CYCLE_PERIODS,
+  CYCLE_SPANS,
+  cycleMonths,
+  joinCycleLabels,
+  normalizeCycle,
+  type BillingCycle
+} from "../../utils/billingCycle";
 import { createLocalizer, getCurrentLanguage } from "../../utils/i18n";
 import type { LocalizedString, SupportedLanguage } from "../../utils/i18n";
 
@@ -215,7 +221,7 @@ const dateLocale = localeByLanguage[currentLanguage] || "pt-BR";
 const L = (pt: string, es: string): LocalizedString => ({ pt, es });
 const copy = {
   title: L("Sua assinatura do Roteiro Online", "Tu suscripción de Roteiro Online"),
-  subtitle: L("Um plano único com tudo incluso. Escolha pagar por mês ou por ano.", "Un plan único con todo incluido. Elige pagar por mes o por año."),
+  subtitle: L("Um plano único com tudo incluso. Escolha pagar", "Un plan único con todo incluido. Elige pagar"),
   trialBlockedTitle: L("Trial encerrado", "Trial finalizado"),
   trialBlockedText: L(
     "Seu período de teste terminou e o painel foi bloqueado. Assine para liberar suas páginas e voltar a publicar.",
@@ -230,32 +236,31 @@ const copy = {
     "Sigue vigente tal como está. Al suscribirte, tienes itinerarios ilimitados, Módulo Leads, dominio propio y notificaciones inteligentes."
   ),
   includedTitle: L("O que vem na assinatura", "Qué incluye la suscripción"),
-  sameSubscription: L("Mensal ou anual, é a mesma assinatura: muda só a forma de pagar.", "Mensual o anual, es la misma suscripción: cambia solo la forma de pago."),
+  sameSubscription: L("é a mesma assinatura: muda só a forma de pagar.", "es la misma suscripción: cambia solo la forma de pago."),
   yourSubscription: L("Sua assinatura", "Tu suscripción"),
   howToPay: L("Forma de pagamento", "Forma de pago"),
-  monthly: L("Mensal", "Mensual"),
-  annual: L("Anual", "Anual"),
   from: L("de", "de"),
   for: L("por", "por"),
-  perYear: L("/ano", "/año"),
   perMonth: L("/mês", "/mes"),
   equals: L("equivale a", "equivale a"),
   aMonth: L("por mês", "por mes"),
-  monthlyNote: L("Renova todo mês. Sem fidelidade.", "Se renueva cada mes. Sin permanencia."),
+  renewsEvery: L("Renova todo", "Se renueva cada"),
+  per: L("por", "por"),
   or: L("ou", "o"),
   upfront: L("à vista", "al contado"),
   firstMonth: L("no 1º mês", "el 1er mes"),
   thenMonthly: L("Depois,", "Después,"),
   noLockIn: L("Sem fidelidade.", "Sin permanencia."),
   save: L("Economize", "Ahorra"),
-  lessThan: L("1 ano por menos de", "1 año por menos de"),
+  lessThan: L("por menos de", "por menos de"),
   monthsOfMonthly: L("meses do mensal", "meses del mensual"),
   subscribe: L("Assinar agora", "Suscribirme ahora"),
   renew: L("Renovar assinatura", "Renovar suscripción"),
   reactivate: L("Reativar assinatura", "Reactivar suscripción"),
-  switchToAnnual: L("Mudar para o anual", "Cambiar al anual"),
-  alreadyAnnual: L("Você já está no anual", "Ya estás en el anual"),
-  alreadyAnnualHint: L("A assinatura anual já inclui tudo. Ela renova no fim do ciclo.", "La suscripción anual ya incluye todo. Se renueva al final del ciclo."),
+  // Completados com o nome do ciclo ("anual", "trimestral").
+  switchTo: L("Mudar para o", "Cambiar al"),
+  alreadyOn: L("Você já está no", "Ya estás en el"),
+  alreadyOnHint: L("A assinatura {cycle} já inclui tudo. Ela renova no fim do ciclo.", "La suscripción {cycle} ya incluye todo. Se renueva al final del ciclo."),
   redirecting: L("Redirecionando...", "Redirigiendo..."),
   unavailable: L("A assinatura não está disponível no momento. Fale com o suporte.", "La suscripción no está disponible por el momento. Habla con soporte."),
   guarantee: L("7 dias de garantia: não gostou, devolvemos 100%.", "7 días de garantía: si no te gusta, devolvemos el 100%."),
@@ -283,7 +288,7 @@ const copy = {
     "Renueva por el mismo valor o mejora al plan Roteiro Online."
   ),
   upgradeTitle: L("Fazer upgrade", "Mejorar plan"),
-  upgradeText: L("Tudo incluso, pago por mês ou por ano.", "Todo incluido, con pago mensual o anual."),
+  upgradeText: L("Tudo incluso, pago", "Todo incluido, con pago"),
   upgradeCta: L("Fazer upgrade", "Mejorar plan"),
   upgradeNoCredit: L(
     "Os dias que ainda restam no seu plano não viram desconto: a nova validade conta a partir do pagamento.",
@@ -306,7 +311,6 @@ const included = [
   L("Duplicar páginas em um clique", "Duplicar páginas con un clic")
 ].map(item => t(item));
 
-type BillingCycle = "monthly" | "annual";
 interface BillingInfo {
   plan: string;
   status: string;
@@ -332,7 +336,7 @@ const trialEndsAtText = computed(() => {
 });
 
 const billingInfo = ref<BillingInfo | null>(null);
-const salesPlan = ref<SalesPlan>({ monthly: null, annual: null });
+const salesPlan = ref<SalesPlan>({ monthly: null, quarterly: null, annual: null });
 const salesPlanLoading = ref(true);
 const cycle = ref<BillingCycle>("monthly");
 const loadingKey = ref<string | null>(null);
@@ -355,11 +359,26 @@ const isSubscriptionInactive = computed(() =>
 const isLegacyPlan = computed(() => ["essencial", "growth"].includes(activePlan.value) && !isSubscriptionInactive.value);
 const isScale = computed(() => activePlan.value === "infinity");
 const isScaleActive = computed(() => isScale.value && !isSubscriptionInactive.value);
-const currentCycle = computed<BillingCycle>(() => (billingInfo.value?.billing_cycle === "annual" ? "annual" : "monthly"));
+const currentCycle = computed<BillingCycle>(() => normalizeCycle(billingInfo.value?.billing_cycle));
 const isCurrentCycle = computed(() => isScaleActive.value && cycle.value === currentCycle.value);
 
-const math = computed(() => salesPlanMath(salesPlan.value.monthly?.amount, salesPlan.value.annual?.amount));
-const currentOffer = computed(() => salesPlan.value[cycle.value] || salesPlan.value.monthly || salesPlan.value.annual);
+// Ciclos à venda, do mais curto ao mais longo (o trimestral só aparece se marcado no Admin Master).
+const availableCycles = computed(() => BILLING_CYCLES.filter(id => salesPlan.value[id]));
+// Trimestral e anual frente às mensalidades do mesmo período (3 ou 12).
+const mathOf = (id: BillingCycle) => (id === "monthly" ? null : salesPlanMath(salesPlan.value.monthly?.amount, salesPlan.value[id]?.amount, cycleMonths(id)));
+const savingsPercentOf = (id: BillingCycle) => mathOf(id)?.savingsPercent || 0;
+const math = computed(() => mathOf(cycle.value));
+const currentOffer = computed(() => salesPlan.value[cycle.value] || salesPlan.value[availableCycles.value[0]] || null);
+const shownCycles = computed<BillingCycle[]>(() => (availableCycles.value.length > 1 ? availableCycles.value : ["monthly", "annual"]));
+// "Mensal ou anual" / "Mensal ou trimestral"; antes dos valores chegarem, mensal ou anual.
+const cyclesText = computed(() => joinCycleLabels(shownCycles.value, currentLanguage === "es" ? "es" : "pt"));
+// "por mês ou por ano" / "por mês, por trimestre ou por ano".
+const payByText = computed(() => {
+  const parts = shownCycles.value.map(id => `${t(copy.per)} ${t(CYCLE_PERIODS[id])}`);
+  return parts.length > 1 ? `${parts.slice(0, -1).join(", ")} ${t(copy.or)} ${parts[parts.length - 1]}` : parts[0];
+});
+const periodLabel = (id: BillingCycle) => t(CYCLE_PERIODS[id]);
+const renewsNote = computed(() => `${t(copy.renewsEvery)} ${periodLabel(cycle.value)}. ${t(copy.noLockIn)}`);
 // Anual no cartão em até 12x (valor da parcela vem do Admin Master).
 const annualInstallment = computed(() => {
   const offer = currentOffer.value;
@@ -373,19 +392,19 @@ const promoAmount = computed(() => {
   if (isLegacyPlan.value || isScale.value || billingInfo.value?.legacy) return "";
   return offer.first_payment_amount;
 });
-const cycleLabel = (value: BillingCycle) => (value === "annual" ? t(copy.annual) : t(copy.monthly));
+const cycleLabel = (value: BillingCycle) => t(CYCLE_LABELS[value]);
 const priceNumber = (amount: string) => formatBRL(amount).replace(/^R\$\s*/, "");
 
-// Quem já assina o anual não troca para o mensal no meio do ciclo.
-const ctaDisabled = computed(() => isScaleActive.value && currentCycle.value === "annual" && cycle.value === "monthly");
+// Quem já assina um ciclo mais longo (anual, trimestral) não troca para um mais curto no meio do ciclo.
+const ctaDisabled = computed(() => isScaleActive.value && cycleMonths(cycle.value) < cycleMonths(currentCycle.value));
 const ctaLabel = computed(() => {
   if (isScale.value && isSubscriptionInactive.value) return t(copy.reactivate);
-  if (ctaDisabled.value) return t(copy.alreadyAnnual);
+  if (ctaDisabled.value) return `${t(copy.alreadyOn)} ${cycleLabel(currentCycle.value).toLowerCase()}`;
   if (isCurrentCycle.value) return t(copy.renew);
-  if (isScaleActive.value && cycle.value === "annual") return t(copy.switchToAnnual);
+  if (isScaleActive.value && cycleMonths(cycle.value) > cycleMonths(currentCycle.value)) return `${t(copy.switchTo)} ${cycleLabel(cycle.value).toLowerCase()}`;
   return t(copy.subscribe);
 });
-const ctaHint = computed(() => (ctaDisabled.value ? t(copy.alreadyAnnualHint) : ""));
+const ctaHint = computed(() => (ctaDisabled.value ? t(copy.alreadyOnHint).replace("{cycle}", cycleLabel(currentCycle.value).toLowerCase()) : ""));
 
 // O checkout de upgrade/renovação exige login (Bearer token no localStorage).
 // O localStorage é por domínio, então precisa abrir no mesmo domínio do app,
@@ -480,7 +499,7 @@ onMounted(async () => {
   salesPlanLoading.value = false;
   // Abre no ciclo de quem já assina; senão no mensal (no anual só se não houver mensal).
   if (isScaleActive.value) cycle.value = currentCycle.value;
-  else if (!salesPlan.value.monthly && salesPlan.value.annual) cycle.value = "annual";
+  else if (!salesPlan.value.monthly && availableCycles.value.length) cycle.value = availableCycles.value[0];
 });
 </script>
 
@@ -684,6 +703,20 @@ onMounted(async () => {
   background: var(--primary);
   color: var(--primary-foreground);
   font-size: 11px;
+}
+/* Mensal, trimestral e anual: três colunas iguais, com o desconto embaixo do nome (cabe no celular). */
+.pv-cycle.is-three {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 100%;
+  border-radius: 18px;
+}
+.pv-cycle.is-three button {
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 4px;
+  border-radius: 14px;
 }
 .pv-anchor,
 .pv-eq {

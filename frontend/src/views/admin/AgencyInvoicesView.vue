@@ -251,6 +251,7 @@ import {
 } from "../../services/billing";
 import { useAuthStore } from "../../store/useAuthStore";
 import { getCustomerPlanLabel } from "../../utils/planLabels";
+import { cycleLabel } from "../../utils/billingCycle";
 
 const route = useRoute();
 const auth = useAuthStore();
@@ -296,7 +297,7 @@ const accessUntilSentence = computed(() =>
 const planName = computed(() => {
   const offer = account.value?.renewal_offer;
   const label = getCustomerPlanLabel(offer?.plan || auth.user?.plan);
-  const cycle = offer ? (offer.billing_cycle === "annual" ? "Anual" : "Mensal") : "";
+  const cycle = offer ? cycleLabel(offer.billing_cycle) : "";
   return cycle ? `${label} · ${cycle}` : label;
 });
 const statusLabel = computed(() => {

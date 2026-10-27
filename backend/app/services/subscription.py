@@ -10,6 +10,7 @@ from app.models.checkout import CheckoutSession
 from app.models.subscription import Subscription
 from app.models.user import User
 from app.services.asaas import AsaasAPIError, AsaasClient, build_default_split_payload
+from app.services.billing_cycles import next_due_date
 from app.services.checkout import (
     apply_pending_subscription_values,
     find_pix_automatic_authorization_id,
@@ -29,17 +30,7 @@ PLAN_PRICING = {
 
 
 def _advance_pix_due_date(base: date, cycle: str) -> date:
-    if str(cycle).strip().lower() == "annual":
-        try:
-            return base.replace(year=base.year + 1)
-        except ValueError:
-            return base.replace(year=base.year + 1, day=28)
-    next_month = 1 if base.month == 12 else base.month + 1
-    next_year = base.year + 1 if base.month == 12 else base.year
-    month_after = 1 if next_month == 12 else next_month + 1
-    year_after = next_year + 1 if next_month == 12 else next_year
-    last_day = (date(year_after, month_after, 1) - timedelta(days=1)).day
-    return date(next_year, next_month, min(base.day, last_day))
+    return next_due_date(base, cycle)
 
 
 def create_due_pix_automatic_instructions(today: date | None = None) -> int:

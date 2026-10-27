@@ -541,6 +541,7 @@ const viewCopy = {
     },
     cycle: {
       annual: t({ pt: "Plano anual", es: "Plan anual" }),
+      quarterly: t({ pt: "Plano trimestral", es: "Plan trimestral" }),
       monthly: t({ pt: "Plano mensal", es: "Plan mensual" }),
       default: t({ pt: "Ciclo padrão", es: "Ciclo estándar" })
     }
@@ -651,6 +652,7 @@ const statusBadgeClass = computed(() => {
 const billingCycleLabel = computed(() => {
   const cycle = billing.value?.billing_cycle;
   if (cycle === "annual") return viewCopy.billing.cycle.annual;
+  if (cycle === "quarterly") return viewCopy.billing.cycle.quarterly;
   if (cycle === "monthly") return viewCopy.billing.cycle.monthly;
   return viewCopy.billing.cycle.default;
 });
@@ -722,6 +724,7 @@ const paymentSummary = computed(() => {
 const cycleShort = computed(() => {
   const cycle = billing.value?.billing_cycle;
   if (cycle === "monthly") return "Mensal";
+  if (cycle === "quarterly") return "Trimestral";
   if (cycle === "annual") return "Anual";
   return billingCycleLabel.value;
 });

@@ -40,6 +40,14 @@ from app.services.card_installments import InstallmentOption, installment_option
 from app.services.email import send_checkout_welcome_email, send_in_background
 from app.services.company_status import mark_subscription_overdue
 from app.services.billing_account import cancel_open_payments
+from app.services.billing_cycles import (
+    CYCLE_LABELS,
+    asaas_cycle,
+    cycle_duration,
+    monthly_amount,
+    next_due_date,
+    pix_automatic_frequency,
+)
 from app.services.legacy_renewal import is_legacy_renewal_session, legacy_renewal_info
 from app.services.hub_funnel import send_hub_event
 from app.services.subscription_notifications import SubscriptionPushScenario, format_brl, publish_subscription_notification
@@ -125,21 +133,11 @@ def _is_comeco_like_plan(value: str | None) -> bool:
 
 
 def _duration_from_cycle(cycle: str) -> timedelta:
-    return timedelta(days=365 if cycle == "annual" else 30)
+    return cycle_duration(cycle)
 
 
 def _next_pix_automatic_due_date(base: date, cycle: str) -> date:
-    if str(cycle).strip().lower() == "annual":
-        try:
-            return base.replace(year=base.year + 1)
-        except ValueError:
-            return base.replace(year=base.year + 1, day=28)
-    next_month = 1 if base.month == 12 else base.month + 1
-    next_year = base.year + 1 if base.month == 12 else base.year
-    month_after = 1 if next_month == 12 else next_month + 1
-    year_after = next_year + 1 if next_month == 12 else next_year
-    last_day = (date(year_after, month_after, 1) - timedelta(days=1)).day
-    return date(next_year, next_month, min(base.day, last_day))
+    return next_due_date(base, cycle)
 
 
 def _parse_decimal(value: Any) -> Decimal:
@@ -154,7 +152,7 @@ def _quantize_money(value: Decimal) -> Decimal:
 
 
 def _resolve_asaas_cycle(cycle: str) -> str:
-    return "YEARLY" if str(cycle).strip().lower() == "annual" else "MONTHLY"
+    return asaas_cycle(cycle)
 
 
 def _extract_asaas_resource_id(resource: Any) -> str | None:
@@ -609,11 +607,7 @@ def _apply_upgrade_after_payment(db: Session, session: CheckoutSession) -> tuple
     subscription.valid_until = _utcnow() + _duration_from_cycle(session.billing_cycle)
     subscription.asaas_customer_id = session.asaas_customer_id or subscription.asaas_customer_id
     subscription.external_reference = f"checkout_upgrade:{session.token}"
-    subscription.mrr_amount = (
-        _parse_decimal(session.amount) / Decimal("12")
-        if session.billing_cycle == "annual"
-        else _parse_decimal(session.amount)
-    )
+    subscription.mrr_amount = monthly_amount(_parse_decimal(session.amount), session.billing_cycle)
     _leave_legacy_plan_after_purchase(session, subscription)
     end_trial(user, db, keep_plan=session.plan_key)
     if not _is_comeco_like_plan(session.plan_key):
@@ -1079,11 +1073,11 @@ def get_checkout_settings(db: Session) -> CheckoutSettings:
     return record
 
 
-SALES_SLOT_LABELS = {"monthly": "Mensal", "annual": "Anual"}
+SALES_SLOT_LABELS = CYCLE_LABELS
 
 
 def _validate_sales_slots(offers: list[CheckoutOfferIn]) -> None:
-    """Plano único: no máximo uma oferta como Mensal e uma como Anual, cada uma com o ciclo
+    """Plano único: no máximo uma oferta por ciclo (Mensal, Trimestral, Anual), cada uma com o ciclo
     de cobrança igual ao que representa (senão a página mostraria um preço e cobraria outro)."""
     seen: dict[str, str] = {}
     for offer in offers:
@@ -1138,18 +1132,21 @@ def offer_installment_options(offer: CheckoutOfferIn) -> list[InstallmentOption]
 
 
 def get_public_sales_plan(db: Session) -> dict[str, Any]:
-    """Ofertas do plano único (mensal e anual) para a página de vendas e a tela de planos.
-    Vale a oferta ativa marcada no Admin Master; sem marcação, a primeira oferta ativa do plano
-    Escala naquele ciclo, para a página não ficar sem preço enquanto a configuração não é feita."""
+    """Ofertas do plano único (mensal, trimestral e anual) para a página de vendas e a tela de planos.
+    Vale a oferta ativa marcada no Admin Master. Sem marcação, o mensal e o anual usam a primeira
+    oferta ativa do plano Escala naquele ciclo, para a página não ficar sem preço enquanto a
+    configuração não é feita; o trimestral só aparece marcado. Com um trimestral marcado, o anual
+    só aparece se também estiver marcado (o trimestral entra no lugar do anual)."""
     record = get_checkout_settings(db)
-    result: dict[str, Any] = {"monthly": None, "annual": None}
+    result: dict[str, Any] = {"monthly": None, "quarterly": None, "annual": None}
     if not record.is_active:
         return result
     active = [CheckoutOfferOut.model_validate(raw) for raw in _serialize_offers(record)]
     active = [offer for offer in active if offer.active]
-    for slot in ("monthly", "annual"):
+    quarterly_marked = any(offer.sales_slot == "quarterly" for offer in active)
+    for slot in ("monthly", "quarterly", "annual"):
         chosen = next((offer for offer in active if offer.sales_slot == slot), None)
-        if chosen is None:
+        if chosen is None and (slot == "monthly" or (slot == "annual" and not quarterly_marked)):
             chosen = next(
                 (offer for offer in active if offer.billing_cycle == slot and _normalize_plan_key(offer.plan_key) == "scale"),
                 None,
@@ -2031,7 +2028,7 @@ def start_pix_payment(db: Session, session: CheckoutSession) -> CheckoutSession:
         phone=session.customer_phone,
     )
     immediate_qr: dict[str, Any] = {}
-    frequency = "ANNUALLY" if session.billing_cycle == "annual" else "MONTHLY"
+    frequency = pix_automatic_frequency(session.billing_cycle)
     start_date = _billing_today()
     # Asaas limita contractId a 35 chars.
     contract_id = f"co:{session.token}"[:35]
@@ -2435,11 +2432,7 @@ def _upsert_paid_user_and_subscription(db: Session, session: CheckoutSession) ->
     if metadata.get("asaas_subscription_id"):
         subscription.asaas_subscription_id = str(metadata["asaas_subscription_id"])
     subscription.external_reference = f"checkout:{session.token}"
-    subscription.mrr_amount = (
-        _parse_decimal(session.amount) / Decimal("12")
-        if session.billing_cycle == "annual"
-        else _parse_decimal(session.amount)
-    )
+    subscription.mrr_amount = monthly_amount(_parse_decimal(session.amount), session.billing_cycle)
     _leave_legacy_plan_after_purchase(session, subscription)
 
     session.user_id = user.id

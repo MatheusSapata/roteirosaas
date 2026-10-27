@@ -872,6 +872,7 @@ import { getCustomerPlanLabel } from "../utils/planLabels";
 import { addTagsToContactByEmail, syncPlanTagForEmail, viajeChatTagIds } from "../services/viajeChat";
 import { normalizeAgencySlugInput, slugify } from "../utils/slugify";
 import { createAdminLocalizer } from "../utils/adminI18n";
+import { cycleLabel } from "../utils/billingCycle";
 import { canAccessPermission, type PermissionKey } from "../utils/permissions";
 
 const route = useRoute();
@@ -2227,7 +2228,7 @@ const blockedAccessEnded = computed(() => formatInvoiceDate(auth.user?.subscript
 const blockedOfferLine = computed(() => {
   const offer = blockedOffer.value;
   if (!offer) return "";
-  return `${offer.title} · ${offer.billing_cycle === "annual" ? "Anual" : "Mensal"}`;
+  return `${offer.title} · ${cycleLabel(offer.billing_cycle)}`;
 });
 
 const loadBlockedInvoice = async () => {

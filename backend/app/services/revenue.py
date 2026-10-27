@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from app.models.asaas import AsaasEventLog
 from app.models.cakto import CaktoEventLog
 from app.models.subscription import Subscription
+from app.services.billing_cycles import CYCLE_LABELS, cycle_months
 from app.models.user import User
 from app.services.asaas import AsaasClient
 from app.services.company_status import COMBO_PROVIDERS, charging_overdue
@@ -31,7 +32,6 @@ ASAAS_PAID_EVENTS = frozenset({"PAYMENT_CONFIRMED", "PAYMENT_RECEIVED", "PAYMENT
 ASAAS_REFUND_EVENTS = frozenset({"PAYMENT_REFUNDED", "PAYMENT_CHARGEBACK_REQUESTED", "PAYMENT_CHARGEBACK_DISPUTE"})
 CAKTO_PAID_EVENTS = frozenset({"purchase_approved", "subscription_renewed"})
 CAKTO_REFUND_EVENTS = frozenset({"refund", "chargeback", "purchase_refunded", "purchase_chargeback"})
-CYCLE_LABELS = {"monthly": "Mensal", "annual": "Anual"}
 METHOD_LABELS = {"card": "Cartão", "credit_card": "Cartão", "pix": "Pix", "boleto": "Boleto"}
 
 
@@ -71,10 +71,12 @@ def is_revenue_subscription(subscription: Subscription) -> bool:
 
 
 def charge_amount(subscription: Subscription) -> Decimal:
-    """Valor de cada cobrança: o mensal, ou o anual cheio (o MRR guarda o anual dividido por 12)."""
+    """Valor de cada cobrança: o mensal, ou o trimestre/ano cheio (o MRR guarda o valor dividido
+    pelos meses do ciclo)."""
     monthly = _decimal(subscription.mrr_amount)
-    if (subscription.billing_cycle or "monthly").lower() == "annual":
-        return (monthly * 12).quantize(CENT, rounding=ROUND_HALF_UP)
+    months = cycle_months(subscription.billing_cycle)
+    if months > 1:
+        return (monthly * months).quantize(CENT, rounding=ROUND_HALF_UP)
     return monthly
 
 
@@ -130,7 +132,7 @@ def _asaas_date(payment: dict[str, Any], *keys: str) -> datetime | None:
 # Referências que o Roteiro Online grava nas cobranças da Asaas (checkout novo e o formato antigo
 # "usuário:plano:ciclo").
 OUR_ASAAS_REFERENCE_PREFIXES = ("checkout:", "checkout_upgrade:", "co:", "scheduled_downgrade:")
-LEGACY_ASAAS_REFERENCE = re.compile(r"^\d+:[a-z_]+:(monthly|annual)$")
+LEGACY_ASAAS_REFERENCE = re.compile(r"^\d+:[a-z_]+:(monthly|quarterly|annual)$")
 
 
 @dataclass

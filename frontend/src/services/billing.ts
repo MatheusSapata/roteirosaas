@@ -1,4 +1,5 @@
 import api from "./api";
+import type { BillingCycle } from "../utils/billingCycle";
 
 export type InvoiceBucket = "paid" | "overdue" | "upcoming" | "replaced";
 
@@ -6,7 +7,7 @@ export type PixAutomaticStatus = "ACTIVE" | "CANCELLED" | "EXPIRED" | "REFUSED";
 
 export interface BillingRenewalOffer {
   plan: string;
-  billing_cycle: "monthly" | "annual";
+  billing_cycle: BillingCycle;
   amount: number;
   title: string;
 }

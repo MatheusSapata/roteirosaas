@@ -1,4 +1,5 @@
 import api from "./api";
+import type { BillingCycle } from "../utils/billingCycle";
 
 export type CheckoutThemeMode = "light" | "dark";
 /** "classic": imagem na coluna lateral; "banner": banner no topo, mobile first (estilo Viaje On). */
@@ -34,13 +35,13 @@ export interface CheckoutOffer {
   title: string;
   footer_product_label: string;
   plan_key: string;
-  billing_cycle: "monthly" | "annual";
+  billing_cycle: BillingCycle;
   amount: string;
   active: boolean;
   subtitle?: string | null;
   checkout_key?: string | null;
-  /** Plano único: esta oferta é a assinatura mensal ou a anual da página de vendas. */
-  sales_slot?: "monthly" | "annual" | null;
+  /** Plano único: esta oferta é a assinatura mensal, trimestral ou anual da página de vendas. */
+  sales_slot?: BillingCycle | null;
   /** Anual: parcelas no cartão (1 = só à vista) e valor fixo por número de parcelas ({"12": "97.00"}). */
   max_installments?: number;
   installment_fixed_values?: Record<string, string>;
@@ -53,7 +54,7 @@ export interface CheckoutOffer {
 export interface SalesPlanOffer {
   key: string;
   title: string;
-  billing_cycle: "monthly" | "annual";
+  billing_cycle: BillingCycle;
   amount: string;
   /** Maior parcelamento no cartão (ex.: 12) e o valor da parcela nele. */
   max_installments?: number;
@@ -65,6 +66,8 @@ export interface SalesPlanOffer {
 
 export interface SalesPlan {
   monthly: SalesPlanOffer | null;
+  /** Só quando marcado no Admin Master; marcado, entra no lugar do anual que não estiver marcado. */
+  quarterly?: SalesPlanOffer | null;
   annual: SalesPlanOffer | null;
 }
 
@@ -374,7 +377,7 @@ export const createLegacyRenewalCheckoutSession = async () => {
  * Upgrade do plano antigo (Profissional ou Agência) para o plano único. O cliente escolhe só o
  * ciclo; a oferta e o valor (cheio, sem promoção) são decididos no servidor.
  */
-export const createLegacyUpgradeCheckoutSession = async (billingCycle: "monthly" | "annual") => {
+export const createLegacyUpgradeCheckoutSession = async (billingCycle: BillingCycle) => {
   const response = await api.post<CheckoutSession>("/checkout/public/session/legacy-upgrade", {
     billing_cycle: billingCycle,
   });
