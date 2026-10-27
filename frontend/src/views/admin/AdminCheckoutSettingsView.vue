@@ -42,14 +42,15 @@
           </button>
         </div>
 
-        <!-- Plano único: as duas ofertas que a página de vendas e a tela de planos mostram. -->
+        <!-- Plano único: as ofertas (mensal, trimestral, anual) que a página de vendas e a tela de planos mostram. -->
         <div class="am-card sp-card">
           <div class="am-card-head">
             <div>
               <div class="am-card-title">Plano à venda</div>
               <div class="am-card-sub">
-                Plano único, sem nome. A página de vendas (/lp) e a tela de planos do painel mostram estas duas ofertas.
-                Para trocar, edite a oferta e escolha "Na página de vendas".
+                Plano único, sem nome. A página de vendas (/lp) e a tela de planos do painel mostram estas ofertas.
+                Para trocar, edite a oferta e escolha "Na página de vendas". O trimestral só aparece marcado e, marcado,
+                entra no lugar do anual (para mostrar os dois, marque também uma oferta como anual).
               </div>
             </div>
           </div>
@@ -62,30 +63,27 @@
                 </span>
               </div>
               <template v-if="slot.offer">
-                <div class="sp-price am-num">{{ formatCurrency(slot.offer.amount) }}<small>{{ slot.id === "annual" ? "/ano" : "/mês" }}</small></div>
+                <div class="sp-price am-num">{{ formatCurrency(slot.offer.amount) }}<small>/{{ cyclePeriod(slot.id) }}</small></div>
                 <div v-if="slotExtra(slot.offer)" class="sp-extra">{{ slotExtra(slot.offer) }}</div>
                 <div class="sp-meta"><b>{{ slot.offer.title }}</b> · <span class="am-mono">/checkout/{{ slot.offer.key }}</span></div>
                 <p v-for="warning in slot.warnings" :key="warning" class="sp-warn">{{ warning }}</p>
               </template>
-              <p v-else class="sp-empty">
-                {{
-                  slot.fallback
-                    ? `Nenhuma oferta marcada. Enquanto isso, a página usa "${slot.fallback.title}" (${formatCurrency(slot.fallback.amount)}).`
-                    : "Nenhuma oferta marcada: a página de vendas fica sem este preço."
-                }}
-              </p>
+              <p v-else class="sp-empty">{{ slot.emptyText }}</p>
               <button type="button" class="sp-btn" @click="slot.offer ? openOfferModal(slot.offer) : openOfferModal(undefined, slot.id)">
                 {{ slot.offer ? "Editar oferta" : `Criar a oferta ${slot.label.toLowerCase()}` }}
               </button>
             </div>
           </div>
-          <p v-if="salesMath && salesMath.savings <= 0" class="sp-warn mt-3">
-            O anual custa o mesmo ou mais que 12 mensalidades: a página não mostra economia no anual.
-          </p>
-          <p v-else-if="salesMath" class="sp-math">
-            No anual: {{ formatBRL(salesMath.perMonth, { cents: "always" }) }} por mês · economia de {{ formatBRL(salesMath.savings) }}
-            ({{ salesMath.savingsPercent }}%) frente a 12 mensalidades · 1 ano por menos de {{ salesMath.lessThanMonths }} meses do mensal.
-          </p>
+          <template v-for="item in salesMaths" :key="item.id">
+            <p v-if="item.math.savings <= 0" class="sp-warn mt-3">
+              O {{ item.name }} custa o mesmo ou mais que {{ item.months }} mensalidades: a página não mostra economia no {{ item.name }}.
+            </p>
+            <p v-else class="sp-math">
+              No {{ item.name }}: {{ formatBRL(item.math.perMonth, { cents: "always" }) }} por mês · economia de {{ formatBRL(item.math.savings) }}
+              ({{ item.math.savingsPercent }}%) frente a {{ item.months }} mensalidades<template v-if="item.math.lessThanMonths < item.months">
+              · {{ cycleSpan(item.id) }} por menos de {{ item.math.lessThanMonths }} meses do mensal</template>.
+            </p>
+          </template>
         </div>
 
         <div class="am-card am-card-flush">
@@ -137,6 +135,14 @@
             </table>
           </div>
         </div>
+      </div>
+
+      <div v-else-if="activeTab === 'sales_page'" class="mt-6 space-y-4">
+        <div>
+          <h2 class="text-lg font-bold text-slate-900">Página de vendas</h2>
+          <p class="text-sm text-slate-500">O que aparece na página de vendas do Roteiro Online (/lp) além dos preços das ofertas.</p>
+        </div>
+        <SalesVideoField v-model="form.sales_video" />
       </div>
 
       <div v-else-if="activeTab === 'pixels'" class="mt-6 space-y-4">
@@ -712,6 +718,7 @@
             <span>Ciclo</span>
             <select v-model="offerModal.form.billing_cycle" class="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm" @change="syncSlotWithCycle">
               <option value="monthly">Mensal</option>
+              <option value="quarterly">Trimestral</option>
               <option value="annual">Anual</option>
             </select>
           </label>
@@ -731,11 +738,16 @@
             <select v-model="offerModal.form.sales_slot" class="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm" @change="syncCycleWithSlot">
               <option :value="null">Não aparece</option>
               <option value="monthly">Assinatura mensal</option>
+              <option value="quarterly">Assinatura trimestral</option>
               <option value="annual">Assinatura anual</option>
             </select>
             <span class="block text-xs font-normal text-slate-500">
               A página de vendas e a tela de planos mostram esta oferta. Se outra oferta estava nesse lugar, ela sai dele.
-              O plano interno deve ser o Escala (roteiros ilimitados, Leads e domínio).
+              O plano interno deve ser o Escala (roteiros ilimitados, Leads e domínio). O trimestral entra no lugar do anual
+              que não estiver marcado.
+            </span>
+            <span v-if="offerModal.form.billing_cycle === 'quarterly'" class="block text-xs font-normal text-slate-500">
+              Trimestral: cobra a cada 3 meses (cartão e Pix automático), à vista, sem parcelas e sem promoção de 1ª mensalidade.
             </span>
           </label>
           <!-- Anual: parcelas no cartão. Vazio = taxa padrão; preenchido = valor fixo da parcela. -->
@@ -1006,6 +1018,7 @@ import AmIcon from "../../components/admin/master/AmIcon.vue";
 import axios from "axios";
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import ImageUploadField from "../../components/admin/inputs/ImageUploadField.vue";
+import SalesVideoField from "../../components/admin/master/SalesVideoField.vue";
 import {
   getAdminCheckoutOfferReports,
   getAdminCheckoutTrackingDocument,
@@ -1019,13 +1032,15 @@ import {
   type CheckoutOffer,
   type CheckoutPixel,
   type CheckoutSettings,
+  type SalesVideo,
   type CheckoutTrackingItem,
   type CheckoutTrackingDocumentDetail,
 } from "../../services/checkout";
 import { formatBRL, salesPlanMath } from "../../utils/salesPlan";
+import { BILLING_CYCLES, cycleLabel, cycleMonths, cyclePeriod, cycleSpan, type BillingCycle } from "../../utils/billingCycle";
 import { computedInstallmentValue, installmentPreview } from "../../utils/cardInstallments";
 
-type TabId = "offers" | "pixels" | "coupons" | "checkouts" | "reports" | "tracking";
+type TabId = "offers" | "sales_page" | "pixels" | "coupons" | "checkouts" | "reports" | "tracking";
 
 type OfferRow = CheckoutOffer & { local_id: string };
 type PixelRow = CheckoutPixel & { local_id: string };
@@ -1034,6 +1049,7 @@ type CheckoutRow = CheckoutAppearance & { local_id: string };
 
 const tabs: Array<{ id: TabId; label: string }> = [
   { id: "offers", label: "Ofertas" },
+  { id: "sales_page", label: "Página de vendas" },
   { id: "pixels", label: "Pixels" },
   { id: "coupons", label: "Cupons" },
   { id: "checkouts", label: "Checkouts" },
@@ -1061,15 +1077,15 @@ let localSeed = 0;
 
 const nextLocalId = (prefix: string) => `${prefix}-${localSeed++}`;
 
-// Venda nova é o plano único (interno: Escala), sem nome para o cliente.
+// Venda nova é o plano único (interno: Escala), sem nome para o cliente. O trimestral começa sem valor.
 const blankOffer = (slot: SalesSlot | null = null): OfferRow => ({
   local_id: nextLocalId("offer"),
-  key: slot ? `roteiro-online-${slot === "annual" ? "anual" : "mensal"}` : "",
-  title: slot ? `Roteiro Online ${slot === "annual" ? "anual" : "mensal"}` : "",
+  key: slot ? `roteiro-online-${cycleLabel(slot).toLowerCase()}` : "",
+  title: slot ? `Roteiro Online ${cycleLabel(slot).toLowerCase()}` : "",
   footer_product_label: "",
   plan_key: "scale",
   billing_cycle: slot || "monthly",
-  amount: slot === "annual" ? "997.00" : "137.00",
+  amount: slot === "annual" ? "997.00" : slot === "quarterly" ? "" : "137.00",
   active: true,
   subtitle: "",
   checkout_key: "",
@@ -1150,12 +1166,14 @@ const form = reactive<{
   pixels: PixelRow[];
   coupons: CouponRow[];
   checkouts: CheckoutRow[];
+  sales_video: SalesVideo | null;
 }>({
   is_active: true,
   offers: [],
   pixels: [],
   coupons: [],
   checkouts: [],
+  sales_video: null,
 });
 
 const offerModal = reactive<{ open: boolean; editingId: string | null; form: OfferRow }>({
@@ -1324,8 +1342,6 @@ const pixelOfferSummary = (offerKeys: string[]) => {
   return offerKeys.map(offerTitleByKey).join(", ");
 };
 
-const cycleLabel = (cycle: string) => (cycle === "annual" ? "Anual" : "Mensal");
-
 const planLabel = (plan: string) => {
   if (plan === "agency") return "Agência";
   if (plan === "scale") return "Escala";
@@ -1440,12 +1456,14 @@ const applySettings = (data: Partial<CheckoutSettings> & Record<string, any>) =>
     offer_keys: Array.isArray(item.offer_keys) ? [...item.offer_keys] : [],
   }));
   form.coupons = rawCoupons.map(item => ({ ...item, local_id: nextLocalId("coupon") }));
+  form.sales_video = data.sales_video || null;
 };
 
 const serializePayload = () => ({
   is_active: form.is_active,
   offers: form.offers.map(({ local_id, ...item }) => {
     const annual = item.billing_cycle === "annual";
+    const monthly = item.billing_cycle === "monthly";
     const fixedValues = Object.fromEntries(
       Object.entries(item.installment_fixed_values || {})
         .map(([count, value]) => [count, String(value ?? "").replace(/[^\d,.]/g, "")])
@@ -1461,8 +1479,8 @@ const serializePayload = () => ({
       max_installments: annual ? Number(item.max_installments || 1) : 1,
       installment_fixed_values: annual ? fixedValues : {},
       // Sem fuso: o servidor entende como horário de Brasília (o mesmo do campo).
-      first_payment_amount: !annual && promo ? normalizeMoneyInput(promo) : null,
-      first_payment_ends_at: !annual && promo && item.first_payment_ends_at ? item.first_payment_ends_at : null,
+      first_payment_amount: monthly && promo ? normalizeMoneyInput(promo) : null,
+      first_payment_ends_at: monthly && promo && item.first_payment_ends_at ? item.first_payment_ends_at : null,
     };
   }),
   pixels: form.pixels.map(({ local_id, ...item }) => ({
@@ -1479,6 +1497,7 @@ const serializePayload = () => ({
     offer_keys: item.offer_keys.map(value => value.trim().toLowerCase()).filter(Boolean),
   })),
   checkouts: form.checkouts.map(({ local_id, ...item }) => item),
+  sales_video: form.sales_video,
 });
 
 const load = async () => {
@@ -1629,25 +1648,38 @@ const syncSlotWithCycle = () => {
 };
 
 // Plano à venda: a oferta marcada em cada ciclo e, sem marcação, a mesma alternativa do
-// servidor (primeira oferta ativa do plano Escala naquele ciclo).
-type SalesSlot = "monthly" | "annual";
+// servidor (primeira oferta ativa do plano Escala no mensal e no anual; o trimestral só marcado e,
+// marcado, tira essa alternativa do anual).
+type SalesSlot = BillingCycle;
 const isScalePlan = (plan?: string | null) => ["scale", "escala", "infinity"].includes(String(plan || "").toLowerCase());
-const salesSlots = computed(() =>
-  (["monthly", "annual"] as SalesSlot[]).map(id => {
+const salesSlots = computed(() => {
+  const quarterlyMarked = form.offers.some(item => item.active && item.sales_slot === "quarterly");
+  return BILLING_CYCLES.map(id => {
     const offer = form.offers.find(item => item.sales_slot === id) || null;
-    const fallback = offer?.active ? null : form.offers.find(item => item.active && item.billing_cycle === id && isScalePlan(item.plan_key)) || null;
+    const canFallback = id === "monthly" || (id === "annual" && !quarterlyMarked);
+    const fallback =
+      offer?.active || !canFallback ? null : form.offers.find(item => item.active && item.billing_cycle === id && isScalePlan(item.plan_key)) || null;
     const warnings: string[] = [];
     if (offer && !offer.active) warnings.push("Inativa: a página não mostra esta oferta.");
     if (offer && !isScalePlan(offer.plan_key)) warnings.push("O plano interno não é o Escala: quem comprar não terá roteiros ilimitados, Leads e domínio.");
-    return { id, label: id === "annual" ? "Anual" : "Mensal", offer, fallback, warnings };
-  })
-);
-const salesMath = computed(() => {
+    let emptyText = "Nenhuma oferta marcada: a página de vendas fica sem este preço.";
+    if (fallback) emptyText = `Nenhuma oferta marcada. Enquanto isso, a página usa "${fallback.title}" (${formatCurrency(fallback.amount)}).`;
+    else if (id === "quarterly") emptyText = "Nenhuma oferta marcada: a página de vendas não mostra o trimestral.";
+    else if (id === "annual" && quarterlyMarked) emptyText = "O trimestral está no lugar do anual. Para mostrar os dois, marque uma oferta como anual.";
+    return { id, label: cycleLabel(id), offer, fallback, warnings, emptyText };
+  });
+});
+// Economia do trimestral e do anual que estão na página, frente às mensalidades do mesmo período.
+const salesMaths = computed(() => {
   const pick = (id: SalesSlot) => {
     const slot = salesSlots.value.find(item => item.id === id);
     return slot?.offer?.active ? slot.offer : slot?.fallback;
   };
-  return salesPlanMath(pick("monthly")?.amount, pick("annual")?.amount);
+  const monthly = pick("monthly");
+  return (["quarterly", "annual"] as SalesSlot[]).flatMap(id => {
+    const math = salesPlanMath(monthly?.amount, pick(id)?.amount, cycleMonths(id));
+    return math ? [{ id, name: cycleLabel(id).toLowerCase(), months: cycleMonths(id), math }] : [];
+  });
 });
 
 const closeOfferModal = () => {
@@ -1861,7 +1893,7 @@ watch(reportPeriodPreset, value => {
 /* Plano à venda */
 .sp-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 .sp-slot {

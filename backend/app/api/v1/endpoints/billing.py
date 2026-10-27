@@ -19,6 +19,7 @@ from app.models.revenue import RevenueTotal
 from app.models.asaas import AsaasEventLog
 from app.models.checkout import CheckoutSession
 from app.services.asaas import AsaasAPIError, AsaasClient, build_default_split_payload
+from app.services.billing_cycles import asaas_cycle, cycle_duration, cycle_from_asaas, normalize_cycle
 from app.services.cakto import CaktoAPIError, CaktoIntegrationService
 from app.services.billing_account import (
     cancel_open_payments,
@@ -231,7 +232,7 @@ class BillingRenewalOffer(BaseModel):
     """Plano, ciclo e valor do contrato do cliente (a renovação nunca usa a vitrine nem a tabela antiga)."""
 
     plan: str
-    billing_cycle: Literal["monthly", "annual"]
+    billing_cycle: Literal["monthly", "quarterly", "annual"]
     amount: float
     title: str
 
@@ -421,9 +422,7 @@ def _ensure_subscription(user: User) -> Subscription:
 
 
 def _cycle_duration(cycle: str) -> timedelta:
-    normalized = (cycle or DEFAULT_CYCLE).lower()
-    days_map = {"monthly": 30, "annual": 365}
-    return timedelta(days=days_map.get(normalized, 30))
+    return cycle_duration(cycle or DEFAULT_CYCLE)
 
 
 def _parse_decimal_value(raw_value: Any) -> Decimal:
@@ -463,7 +462,7 @@ def _renewal_offer_out(db: Session | None, user: User) -> BillingRenewalOffer | 
         return None
     return BillingRenewalOffer(
         plan=offer.plan_key,
-        billing_cycle="annual" if offer.billing_cycle == "annual" else "monthly",
+        billing_cycle=normalize_cycle(offer.billing_cycle),
         amount=float(offer.amount),
         title=offer.title,
     )
@@ -839,9 +838,9 @@ def _apply_asaas_event_once(db: Session, payload: dict[str, Any], event: str) ->
         if sub_id:
             subscription = db.query(Subscription).filter(Subscription.asaas_subscription_id == sub_id).first()
             if subscription:
-                cycle = str(sub_payload.get("cycle") or "").upper()
-                if cycle in {"MONTHLY", "YEARLY"}:
-                    subscription.billing_cycle = "annual" if cycle == "YEARLY" else "monthly"
+                cycle = cycle_from_asaas(sub_payload.get("cycle"))
+                if cycle:
+                    subscription.billing_cycle = cycle
                 if (sub_payload.get("status") or "").upper() in {"ACTIVE"}:
                     subscription.status = "active"
                 db.add(subscription)
@@ -1236,13 +1235,13 @@ def _switch_pix_automatic_to_card(
 
     valid_until = subscription.valid_until
     next_due = valid_until.date() if valid_until is not None and valid_until.replace(tzinfo=None) > datetime.utcnow() else date.today()
-    cycle_name = "annual" if contract.billing_cycle == "annual" else "monthly"
+    cycle_name = normalize_cycle(contract.billing_cycle)
     created = client.create_subscription(
         {
             "customer": customer_id,
             "billingType": "CREDIT_CARD",
             "nextDueDate": next_due.isoformat(),
-            "cycle": "YEARLY" if cycle_name == "annual" else "MONTHLY",
+            "cycle": asaas_cycle(cycle_name),
             "value": float(contract.amount),
             "description": contract.title,
             "externalReference": _build_external_reference(user.id, contract.plan_key, cycle_name),

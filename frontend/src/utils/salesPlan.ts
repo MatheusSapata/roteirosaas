@@ -1,29 +1,30 @@
-// Contas do plano único (assinatura mensal e anual) usadas na página de vendas, na tela de
-// planos e no Admin Master: economia do anual, valor por mês e "1 ano por menos de N meses".
+// Contas do plano único usadas na página de vendas, na tela de planos e no Admin Master: quanto o
+// trimestral ou o anual economiza frente às mensalidades, o valor por mês e "1 ano por menos de N
+// meses do mensal".
 export interface SalesPlanMath {
-  /** 12 mensalidades. */
-  twelveMonths: number;
-  /** Quanto o anual economiza frente a 12 mensalidades. */
+  /** As mensalidades do período (12 no anual, 3 no trimestral). */
+  monthlyTotal: number;
+  /** Quanto o período economiza frente às mensalidades. */
   savings: number;
   /** Economia em %, arredondada. */
   savingsPercent: number;
-  /** Valor do anual dividido por 12. */
+  /** Valor do período dividido pelos meses. */
   perMonth: number;
-  /** O anual custa menos que este número de mensalidades. */
+  /** O período custa menos que este número de mensalidades. */
   lessThanMonths: number;
 }
 
-export const salesPlanMath = (monthly?: number | string | null, annual?: number | string | null): SalesPlanMath | null => {
+export const salesPlanMath = (monthly?: number | string | null, period?: number | string | null, months = 12): SalesPlanMath | null => {
   const m = Number(monthly);
-  const a = Number(annual);
-  if (!Number.isFinite(m) || !Number.isFinite(a) || m <= 0 || a <= 0) return null;
-  const twelveMonths = m * 12;
-  const savings = Math.max(0, twelveMonths - a);
+  const a = Number(period);
+  if (!Number.isFinite(m) || !Number.isFinite(a) || m <= 0 || a <= 0 || months <= 1) return null;
+  const monthlyTotal = m * months;
+  const savings = Math.max(0, monthlyTotal - a);
   return {
-    twelveMonths,
+    monthlyTotal,
     savings,
-    savingsPercent: Math.round((savings / twelveMonths) * 100),
-    perMonth: a / 12,
+    savingsPercent: Math.round((savings / monthlyTotal) * 100),
+    perMonth: a / months,
     lessThanMonths: Math.ceil(a / m - 1e-9),
   };
 };

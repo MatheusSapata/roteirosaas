@@ -8,7 +8,7 @@ from typing import Iterator, Optional
 from uuid import uuid4
 
 from azure.core.exceptions import ResourceExistsError
-from azure.storage.blob import BlobClient, BlobServiceClient, ContentSettings
+from azure.storage.blob import BlobBlock, BlobClient, BlobServiceClient, ContentSettings
 
 from app.core.config import get_settings
 from app.services.image_optimizer import variant_name
@@ -107,6 +107,40 @@ class MediaStorage:
         file_path = self._local_dir / blob_name
         with open(file_path, "wb") as buffer:
             buffer.write(data)
+        return f"/uploads/{blob_name}"
+
+    # --- Envio em partes (arquivos maiores que uma requisição, como vídeos) ---
+
+    def stage_chunk(self, blob_name: str, index: int, data: bytes) -> None:
+        """Guarda uma parte do arquivo; ele só aparece depois de commit_chunks."""
+        if self.is_remote:
+            self._build_blob_client(blob_name).stage_block(block_id=f"{index:06d}", data=data, length=len(data))
+            return
+        parts_dir = self._local_dir / ".chunks" / blob_name
+        parts_dir.mkdir(parents=True, exist_ok=True)
+        (parts_dir / f"{index:06d}").write_bytes(data)
+
+    def commit_chunks(self, blob_name: str, count: int, content_type: Optional[str] = None) -> str:
+        """Junta as partes 0..count-1 no arquivo final e devolve o endereço dele.
+        Falta de alguma parte: FileNotFoundError (local) ou erro do Azure (lista de blocos inválida)."""
+        if self.is_remote:
+            blob_client = self._build_blob_client(blob_name)
+            content_settings = ContentSettings(content_type=content_type, cache_control=IMMUTABLE_CACHE)
+            blob_client.commit_block_list([BlobBlock(block_id=f"{index:06d}") for index in range(count)], content_settings=content_settings)
+            assert self._base_url
+            return f"{self._base_url}/{blob_name}"
+
+        parts_dir = self._local_dir / ".chunks" / blob_name
+        parts = [parts_dir / f"{index:06d}" for index in range(count)]
+        missing = [part.name for part in parts if not part.is_file()]
+        if missing:
+            raise FileNotFoundError(f"Partes que faltam: {', '.join(missing)}")
+        with open(self._local_dir / blob_name, "wb") as buffer:
+            for part in parts:
+                buffer.write(part.read_bytes())
+        for part in parts_dir.iterdir():
+            part.unlink()
+        parts_dir.rmdir()
         return f"/uploads/{blob_name}"
 
     # --- Ciclo de vida dos arquivos (arquivamento e limpeza) ---

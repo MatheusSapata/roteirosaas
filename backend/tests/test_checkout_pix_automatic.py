@@ -92,7 +92,7 @@ def configure_pix_dependencies(monkeypatch: pytest.MonkeyPatch, client: FakePixA
 
 @pytest.mark.parametrize(
     ("cycle", "expected_frequency"),
-    [("monthly", "MONTHLY"), ("annual", "ANNUALLY")],
+    [("monthly", "MONTHLY"), ("quarterly", "QUARTERLY"), ("annual", "ANNUALLY")],
 )
 def test_pix_checkout_always_creates_automatic_authorization(
     monkeypatch: pytest.MonkeyPatch,

@@ -11,10 +11,9 @@
     <section class="lp-sec is-night lp-hero">
       <div class="lp-wrap lp-hero-grid">
         <div class="lp-hero-copy">
-          <!-- No celular vira o cabeçalho: logo à esquerda e a demonstração à direita (sai de baixo do botão principal). -->
+          <!-- No celular vira o cabeçalho: logo à esquerda, com uma linha fina embaixo. -->
           <div class="lp-hero-top">
             <img :src="logoWhite" alt="Roteiro Online" class="lp-logo" width="240" height="72" />
-            <a :href="DEMO_URL" class="lp-top-demo" target="_blank" rel="noopener"><CalendarDays :size="14" aria-hidden="true" />Agendar demonstração</a>
           </div>
           <span class="lp-pill">Aumente a sua conversão!</span>
           <h1 class="lp-h1">Seu cliente não compra o que <span class="is-brand">não consegue imaginar!</span></h1>
@@ -25,7 +24,17 @@
         </div>
         <div class="lp-hero-media">
           <div class="lp-hero-video">
+            <!-- Vídeo enviado no Admin Master (player próprio); sem ele, ou se o arquivo falhar, o do Panda. -->
+            <VslVideoPlayer
+              v-if="heroVideo"
+              :src="resolveMediaUrl(heroVideo.url) || heroVideo.url"
+              :poster="resolveMediaUrl(heroVideo.poster_url)"
+              :color="heroVideo.color"
+              title="Roteiro Online em funcionamento"
+              @error="heroVideo = null"
+            />
             <iframe
+              v-else-if="heroVideoChecked"
               :src="HERO_VIDEO"
               title="Roteiro Online em funcionamento"
               allow="accelerometer;gyroscope;autoplay;encrypted-media;picture-in-picture"
@@ -45,7 +54,6 @@
         <div class="lp-hero-actions">
           <div class="lp-ctas">
             <a href="#planos" class="lp-btn" @click.prevent="goToPlans()">Quero assinar <ArrowRight :size="18" aria-hidden="true" /></a>
-            <a :href="DEMO_URL" class="lp-btn-ghost" target="_blank" rel="noopener">Agendar demonstração</a>
           </div>
           <p class="lp-note"><ShieldCheck :size="15" aria-hidden="true" /><span>Plano único com tudo incluso · 7 dias de garantia<span class="lp-hide-sm"> · Sem fidelidade</span></span></p>
         </div>
@@ -338,7 +346,7 @@
       </div>
     </section>
 
-    <!-- 11 Assinatura (escura): plano único, mensal ou anual (ofertas do Admin Master) -->
+    <!-- 11 Assinatura (escura): plano único, mensal, trimestral ou anual (ofertas do Admin Master) -->
     <section id="planos" class="lp-sec is-night lp-sec-plans">
       <div class="lp-wrap">
         <p class="lp-kicker">Assinatura</p>
@@ -355,23 +363,22 @@
             <div class="lp-offer-trust">
               <span v-for="item in TRUST" :key="item.label"><component :is="item.icon" :size="18" aria-hidden="true" />{{ item.label }}</span>
             </div>
-            <p class="lp-offer-foot">Mensal ou anual, é a mesma assinatura: muda só a forma de pagar.</p>
+            <p class="lp-offer-foot">{{ cyclesText }}, é a mesma assinatura: muda só a forma de pagar.</p>
           </div>
           <div class="lp-price-box" :class="{ 'is-loading': salesPlanLoading }">
-            <span v-if="cycle === 'annual' && salesMath && salesMath.savings > 0 && currentOffer" class="lp-best">Melhor escolha</span>
+            <span v-if="cycle !== 'monthly' && cycle === bestCycle && currentOffer" class="lp-best">Melhor escolha</span>
             <span v-else-if="cycle === 'monthly' && monthlyPromo" class="lp-best is-urgent">Oferta por tempo limitado</span>
-            <div v-if="salesPlan.monthly && salesPlan.annual" class="lp-cycle" role="tablist" aria-label="Forma de pagamento">
-              <button type="button" role="tab" :aria-selected="cycle === 'monthly'" :class="{ on: cycle === 'monthly' }" @click="cycle = 'monthly'">Mensal</button>
-              <button type="button" role="tab" :aria-selected="cycle === 'annual'" :class="{ on: cycle === 'annual' }" @click="cycle = 'annual'">
-                Anual<span v-if="salesMath && salesMath.savingsPercent > 0" class="lp-cycle-off">-{{ salesMath.savingsPercent }}%</span>
+            <div v-if="availableCycles.length > 1" class="lp-cycle" :class="{ 'is-three': availableCycles.length > 2 }" role="tablist" aria-label="Forma de pagamento">
+              <button v-for="id in availableCycles" :key="id" type="button" role="tab" :aria-selected="cycle === id" :class="{ on: cycle === id }" @click="cycle = id">
+                {{ cycleLabel(id) }}<span v-if="savingsPercentOf(id) > 0" class="lp-cycle-off">-{{ savingsPercentOf(id) }}%</span>
               </button>
             </div>
             <template v-if="currentOffer">
               <p v-if="cycle === 'monthly' && monthlyPromo && promoCountdown" class="lp-promo-clock">
                 <Timer :size="14" aria-hidden="true" />termina em <b>{{ promoCountdown }}</b>
               </p>
-              <p v-if="cycle === 'annual' && salesMath && salesMath.savings > 0" class="lp-anchor">
-                de <s>{{ formatBRL(salesMath.twelveMonths) }}</s> por
+              <p v-if="cycle !== 'monthly' && salesMath && salesMath.savings > 0" class="lp-anchor">
+                de <s>{{ formatBRL(salesMath.monthlyTotal) }}</s> por
               </p>
               <p v-else-if="cycle === 'monthly' && monthlyPromo" class="lp-anchor">
                 de <s>{{ formatBRL(currentOffer.amount) }}</s> por
@@ -384,16 +391,16 @@
                 <span class="cur">R$</span><span class="val">{{ priceNumber(monthlyPromo.amount) }}</span><span class="per">no 1º mês</span>
               </div>
               <div v-else class="lp-price">
-                <span class="cur">R$</span><span class="val">{{ priceNumber(currentOffer.amount) }}</span><span class="per">{{ cycle === "annual" ? "/ano" : "/mês" }}</span>
+                <span class="cur">R$</span><span class="val">{{ priceNumber(currentOffer.amount) }}</span><span class="per">/{{ cyclePeriod(cycle) }}</span>
               </div>
               <p v-if="annualInstallment" class="lp-price-eq">ou <b>{{ formatBRL(currentOffer.amount) }} à vista</b></p>
-              <p v-else-if="cycle === 'annual' && salesMath" class="lp-price-eq">
+              <p v-else-if="cycle !== 'monthly' && salesMath" class="lp-price-eq">
                 equivale a <b>{{ formatBRL(salesMath.perMonth, { cents: "always" }) }} por mês</b>
               </p>
               <p v-else-if="monthlyPromo" class="lp-price-eq">Depois, <b>{{ formatBRL(currentOffer.amount) }}/mês</b>. Sem fidelidade.</p>
-              <p v-else class="lp-price-eq">Renova todo mês, sem fidelidade.</p>
-              <p v-if="cycle === 'annual' && salesMath && salesMath.savings > 0" class="lp-price-save">
-                Economize {{ formatBRL(salesMath.savings) }}<span class="lp-hide-sm">: 1 ano por menos de {{ salesMath.lessThanMonths }} meses do mensal</span>
+              <p v-else class="lp-price-eq">Renova todo {{ cyclePeriod(cycle) }}, sem fidelidade.</p>
+              <p v-if="cycle !== 'monthly' && salesMath && salesMath.savings > 0" class="lp-price-save">
+                Economize {{ formatBRL(salesMath.savings) }}<span v-if="salesMath.lessThanMonths < cycleMonths(cycle)" class="lp-hide-sm">: {{ cycleSpan(cycle) }} por menos de {{ salesMath.lessThanMonths }} meses do mensal</span>
               </p>
               <p v-if="perDay" class="lp-price-day">
                 <Zap :size="14" aria-hidden="true" /><span>Menos de R$ {{ perDay }} por dia<span class="lp-hide-sm">: uma venda a mais já paga a assinatura</span>.</span>
@@ -401,8 +408,7 @@
               <RouterLink :to="{ path: `/checkout/${currentOffer.key}`, query: checkoutQuery }" class="lp-btn lp-btn-block">Quero assinar agora <ArrowRight :size="18" aria-hidden="true" /></RouterLink>
             </template>
             <template v-else-if="!salesPlanLoading">
-              <p class="lp-price-eq">Fale com a gente para assinar.</p>
-              <a :href="DEMO_URL" class="lp-btn lp-btn-block" target="_blank" rel="noopener">Falar com a equipe <ArrowRight :size="18" aria-hidden="true" /></a>
+              <p class="lp-price-eq">Não conseguimos carregar os valores agora. Recarregue a página em instantes.</p>
             </template>
             <p class="lp-price-guarantee"><ShieldCheck :size="15" aria-hidden="true" /><span>7 dias de garantia<span class="lp-hide-sm">: não gostou, devolvemos 100%</span>.</span></p>
             <p class="lp-price-pay">Cartão de crédito ou Pix automático</p>
@@ -441,9 +447,6 @@
             <p>
               {{ item.a }}
               <template v-if="item.strong"><strong>{{ item.strong }}</strong> {{ item.after }}</template>
-              <template v-if="item.demo">
-                <a :href="DEMO_URL" target="_blank" rel="noopener">Agende uma demonstração aqui</a> {{ item.after }}
-              </template>
             </p>
           </details>
         </div>
@@ -463,7 +466,6 @@
         </p>
         <div class="lp-ctas">
           <a href="#planos" class="lp-btn" @click.prevent="goToPlans()">Quero assinar <ArrowRight :size="18" aria-hidden="true" /></a>
-          <a :href="DEMO_URL" class="lp-btn-ghost" target="_blank" rel="noopener">Agendar demonstração</a>
         </div>
         <p class="lp-final-note">Sem fidelidade · 7 dias de garantia · Cancelamento simples</p>
         <RouterLink to="/login" class="lp-login">Já é cliente? Entrar</RouterLink>
@@ -519,8 +521,11 @@ import {
   X,
   Zap
 } from "lucide-vue-next";
-import { getPublicSalesPlan, type SalesPlan } from "../../services/checkout";
+import { getPublicSalesPlan, getPublicSalesVideo, type SalesPlan, type SalesVideo } from "../../services/checkout";
+import VslVideoPlayer from "../../components/public/VslVideoPlayer.vue";
+import { resolveMediaUrl } from "../../utils/media";
 import { formatBRL, salesPlanMath } from "../../utils/salesPlan";
+import { BILLING_CYCLES, cycleDays, cycleLabel, cycleMonths, cyclePeriod, cycleSpan, joinCycleLabels, type BillingCycle } from "../../utils/billingCycle";
 import { captureAttribution, utmQuery } from "../../utils/attribution";
 import { SALES_META_PIXEL_ID, startMetaPixels } from "../../utils/metaPixel";
 import logoWhite from "../../assets/lp/logo-branco.webp";
@@ -539,7 +544,6 @@ import exemploItalia from "../../assets/lp/exemplo-italia.webp";
  * para dentro do sistema. A assinatura leva direto ao checkout próprio (/checkout/:offerKey).
  */
 const HERO_VIDEO = "https://player-vz-19330b59-441.tv.pandavideo.com.br/embed/?v=13897fe0-22c6-420f-ad7c-523e37f8fd7f";
-const DEMO_URL = "https://cal.com/viajeon/roteiro-online";
 const PAGE_TITLE = "Roteiro Online | Páginas de roteiro que vendem";
 const PAGE_DESCRIPTION =
   "Crie páginas profissionais de roteiro em minutos e faça seu cliente sentir o valor antes mesmo de saber o preço.";
@@ -762,12 +766,20 @@ const TRUST = [
 // A faixa corre em laço: a lista vai duas vezes (a cópia fica escondida do leitor de tela).
 const marqueeItems = [...INCLUDED, ...INCLUDED];
 
-// Plano único: oferta mensal e anual configuradas em Admin Master › Ofertas e checkout.
-const salesPlan = ref<SalesPlan>({ monthly: null, annual: null });
+// Plano único: ofertas mensal, trimestral e anual configuradas em Admin Master › Ofertas e checkout.
+const salesPlan = ref<SalesPlan>({ monthly: null, quarterly: null, annual: null });
 const salesPlanLoading = ref(true);
-const cycle = ref<"monthly" | "annual">("monthly");
-const salesMath = computed(() => salesPlanMath(salesPlan.value.monthly?.amount, salesPlan.value.annual?.amount));
-const currentOffer = computed(() => salesPlan.value[cycle.value] || salesPlan.value.monthly || salesPlan.value.annual);
+const cycle = ref<BillingCycle>("monthly");
+// Ciclos à venda, do mais curto ao mais longo (o trimestral só aparece se marcado no Admin Master).
+const availableCycles = computed(() => BILLING_CYCLES.filter(id => salesPlan.value[id]));
+// Trimestral e anual frente às mensalidades do mesmo período (3 ou 12).
+const mathOf = (id: BillingCycle) => (id === "monthly" ? null : salesPlanMath(salesPlan.value.monthly?.amount, salesPlan.value[id]?.amount, cycleMonths(id)));
+const savingsPercentOf = (id: BillingCycle) => mathOf(id)?.savingsPercent || 0;
+const salesMath = computed(() => mathOf(cycle.value));
+// "Melhor escolha": o ciclo mais longo à venda que sai mais barato que as mensalidades.
+const bestCycle = computed(() => [...availableCycles.value].reverse().find(id => (mathOf(id)?.savings || 0) > 0) || null);
+const currentOffer = computed(() => salesPlan.value[cycle.value] || salesPlan.value[availableCycles.value[0]] || null);
+const cyclesText = computed(() => (availableCycles.value.length > 1 ? joinCycleLabels(availableCycles.value) : "Mensal ou anual"));
 const priceNumber = (amount: string) => formatBRL(amount, { cents: "auto" }).replace(/^R\$\s*/, "");
 const centsNumber = (amount: string) => formatBRL(amount, { cents: "always" }).replace(/^R\$\s*/, "");
 // Anual parcelado no cartão (ex.: 12x de R$ 97,00), configurado na oferta no Admin Master.
@@ -814,21 +826,35 @@ const perDay = computed(() => {
   const offer = currentOffer.value;
   const amount = Number(offer?.amount);
   if (!offer || !Number.isFinite(amount) || amount <= 0) return null;
-  return Math.floor(amount / (offer.billing_cycle === "annual" ? 365 : 30)) + 1;
+  return Math.floor(amount / cycleDays(offer.billing_cycle)) + 1;
 });
+// Vídeo da capa: o enviado no Admin Master › Ofertas e checkout › Página de vendas; o do Panda só
+// entra depois da resposta (sem vídeo próprio ou com erro), para não carregar os dois.
+const heroVideo = ref<SalesVideo | null>(null);
+const heroVideoChecked = ref(false);
+const loadHeroVideo = async () => {
+  try {
+    heroVideo.value = await getPublicSalesVideo();
+  } catch {
+    heroVideo.value = null;
+  } finally {
+    heroVideoChecked.value = true;
+  }
+};
 const loadSalesPlan = async () => {
   try {
     salesPlan.value = await getPublicSalesPlan();
-    // Abre no mensal; sem mensal, no anual.
-    if (!salesPlan.value.monthly && salesPlan.value.annual) cycle.value = "annual";
+    // Abre no mensal; sem mensal, no primeiro ciclo à venda.
+    if (!salesPlan.value.monthly && availableCycles.value.length) cycle.value = availableCycles.value[0];
   } catch {
-    salesPlan.value = { monthly: null, annual: null };
+    salesPlan.value = { monthly: null, quarterly: null, annual: null };
   } finally {
     salesPlanLoading.value = false;
   }
 };
 
-type FaqItem = { q: string; a: string; strong?: string; after?: string; demo?: boolean };
+type FaqItem = { q: string; a: string; strong?: string; after?: string };
+const CANCEL_QUESTION = "Posso cancelar quando quiser?";
 const FAQ: FaqItem[] = [
   {
     q: "Preciso saber programar ou contratar um designer?",
@@ -838,10 +864,8 @@ const FAQ: FaqItem[] = [
     q: "Quanto tempo leva para publicar o primeiro roteiro?",
     a: "Em média 15 a 30 minutos para o primeiro. A partir do segundo, com a duplicação de páginas, você cria um novo em menos de 5 minutos trocando destino, fotos e valores."
   },
-  {
-    q: "Posso cancelar quando quiser?",
-    a: "Pode. No mensal não existe fidelidade: cancelou, não renova. No anual, cancelar impede a renovação do ano seguinte. E nos dois você tem 7 dias de garantia: se não gostar, devolvemos 100% do valor sem justificativa obrigatória."
-  },
+  // Resposta montada em faqItems, com os ciclos à venda.
+  { q: CANCEL_QUESTION, a: "" },
   {
     q: "E se eu for agência de receptivo, guia ou operadora, funciona pra mim?",
     a: "Funciona. A plataforma foi desenhada para agências de excursão, operadoras, receptivos, guias e agentes de viagem. Também é usada por hotéis com day use, pousadas com roteiros para hóspedes e operadores de experiência (gastronomia, aventura, cultural, corporativo)."
@@ -867,12 +891,6 @@ const FAQ: FaqItem[] = [
   {
     q: "Tem limite de roteiros?",
     a: "Não. A assinatura inclui roteiros ilimitados no ar, com todos os recursos liberados, do primeiro ao último."
-  },
-  {
-    q: "Consigo falar com alguém antes de assinar?",
-    a: "Consegue.",
-    demo: true,
-    after: "e a gente mostra a plataforma na prática, tira dúvidas e valida se faz sentido para o seu modelo de operação."
   }
 ];
 
@@ -882,27 +900,40 @@ const faqAll = ref(false);
 const editorVideo = ref<HTMLVideoElement | null>(null);
 const aiVideo = ref<HTMLVideoElement | null>(null);
 
-// "Mensal ou anual?" com os valores do admin; sem eles, a resposta sem números.
+// "Mensal ou anual?" (ou trimestral) com os valores do admin; sem eles, a resposta sem números.
+// Antes dos valores chegarem, os textos falam do anual, como sempre foi.
 const faqItems = computed<FaqItem[]>(() => {
   const m = salesPlan.value.monthly;
-  const a = salesPlan.value.annual;
-  const math = salesMath.value;
+  const longCycles = availableCycles.value.filter(id => id !== "monthly");
+  const periods: BillingCycle[] = longCycles.length ? longCycles : ["annual"];
   const promo = monthlyPromo.value;
-  const installments =
-    a && (a.max_installments || 1) > 1 && a.installment_value
-      ? ` à vista ou em ${a.max_installments}x de ${formatBRL(a.installment_value, { cents: "always" })} no cartão`
-      : "";
   const promoNote = promo ? ` Por tempo limitado, a 1ª mensalidade sai por ${formatBRL(promo.amount, { cents: "auto" })}.` : "";
+  const periodSentence = (id: BillingCycle) => {
+    const offer = salesPlan.value[id];
+    const math = mathOf(id);
+    if (!offer || !math || math.savings <= 0) return "";
+    const installments =
+      (offer.max_installments || 1) > 1 && offer.installment_value
+        ? ` à vista ou em ${offer.max_installments}x de ${formatBRL(offer.installment_value, { cents: "always" })} no cartão`
+        : "";
+    const months = cycleMonths(id);
+    return ` No ${cycleLabel(id).toLowerCase()} paga ${formatBRL(offer.amount)}${installments} pelos ${months} meses e economiza ${formatBRL(math.savings)} frente a ${months} mensalidades.`;
+  };
+  const sentences = longCycles.map(periodSentence);
   const cycleAnswer =
-    m && a && math && math.savings > 0
-      ? `Nenhuma nos recursos: é a mesma assinatura, com tudo incluso. No mensal você paga ${formatBRL(m.amount)} por mês, sem fidelidade.${promoNote} No anual paga ${formatBRL(a.amount)}${installments} pelos 12 meses e economiza ${formatBRL(math.savings)} frente a 12 mensalidades.`
-      : "Nenhuma nos recursos: é a mesma assinatura, com tudo incluso. Muda só a forma de pagar: mês a mês, sem fidelidade, ou o ano inteiro com desconto.";
-  const items = [...FAQ];
-  items.splice(2, 0, { q: "Qual a diferença entre o mensal e o anual?", a: cycleAnswer });
+    m && longCycles.length && sentences.every(Boolean)
+      ? `Nenhuma nos recursos: é a mesma assinatura, com tudo incluso. No mensal você paga ${formatBRL(m.amount)} por mês, sem fidelidade.${promoNote}${sentences.join("")}`
+      : `Nenhuma nos recursos: é a mesma assinatura, com tudo incluso. Muda só a forma de pagar: mês a mês, sem fidelidade, ou o ${periods.map(cyclePeriod).join(" ou o ")} inteiro com desconto.`;
+  const names = ["mensal", ...periods.map(id => cycleLabel(id).toLowerCase())];
+  const cycleQuestion = `Qual a diferença entre o ${names.slice(0, -1).join(", o ")} e o ${names[names.length - 1]}?`;
+  const renewals = periods.map(id => `No ${cycleLabel(id).toLowerCase()}, cancelar impede a renovação do ${cyclePeriod(id)} seguinte.`).join(" ");
+  const cancelAnswer = `Pode. No mensal não existe fidelidade: cancelou, não renova. ${renewals} E ${periods.length > 1 ? "em todos" : "nos dois"} você tem 7 dias de garantia: se não gostar, devolvemos 100% do valor sem justificativa obrigatória.`;
+  const items = FAQ.map(item => (item.q === CANCEL_QUESTION ? { ...item, a: cancelAnswer } : item));
+  items.splice(2, 0, { q: cycleQuestion, a: cycleAnswer });
   return items;
 });
 
-const goToPlans = (target?: "monthly" | "annual") => {
+const goToPlans = (target?: BillingCycle) => {
   if (target && salesPlan.value[target]) cycle.value = target;
   document.getElementById("planos")?.scrollIntoView({ behavior: "smooth", block: "start" });
 };
@@ -929,6 +960,7 @@ onMounted(() => {
   document.title = PAGE_TITLE;
   restoreDescription = setMeta("description", PAGE_DESCRIPTION);
   void loadSalesPlan();
+  void loadHeroVideo();
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   for (const video of [editorVideo.value, aiVideo.value]) {
     if (video && reducedMotion) {
@@ -1124,8 +1156,7 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 12px;
 }
-.lp-btn,
-.lp-btn-ghost {
+.lp-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1148,17 +1179,7 @@ onBeforeUnmount(() => {
   background: var(--t-btn-hover);
   transform: translateY(-1px);
 }
-.lp-btn-ghost {
-  border: 1px solid var(--t-line);
-  background: transparent;
-  color: var(--t-ink);
-}
-.lp-btn-ghost:hover {
-  border-color: var(--t-accent);
-  color: var(--t-accent);
-}
-.lp .lp-btn:focus-visible,
-.lp .lp-btn-ghost:focus-visible {
+.lp .lp-btn:focus-visible {
   outline: 2px solid var(--t-accent);
   outline-offset: 3px;
 }
@@ -1229,10 +1250,6 @@ onBeforeUnmount(() => {
 .lp-hero-top {
   display: flex;
   align-items: center;
-}
-/* Só no cabeçalho do celular; no computador a demonstração fica ao lado do botão principal. */
-.lp-top-demo {
-  display: none;
 }
 .lp-pill {
   display: inline-flex;
@@ -2659,6 +2676,20 @@ onBeforeUnmount(() => {
   color: #fff;
   font-size: 11px;
 }
+/* Mensal, trimestral e anual: três colunas iguais, com o desconto embaixo do nome (cabe no celular). */
+.lp-cycle.is-three {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 100%;
+  border-radius: 18px;
+}
+.lp-cycle.is-three button {
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 4px;
+  border-radius: 14px;
+}
 .lp-anchor {
   color: var(--muted);
   font-size: 14px;
@@ -2858,10 +2889,6 @@ onBeforeUnmount(() => {
 .lp-faq p strong {
   color: var(--ink);
 }
-.lp-faq a {
-  color: var(--green-dark);
-  font-weight: 700;
-}
 .lp-faq-more {
   display: none;
 }
@@ -3002,33 +3029,15 @@ onBeforeUnmount(() => {
     gap: 10px;
     text-align: center;
   }
-  /* Cabeçalho: logo à esquerda, demonstração à direita, com uma linha fina embaixo. */
+  /* Cabeçalho: logo à esquerda, com uma linha fina embaixo. */
   .lp-hero-top {
     align-self: stretch;
-    justify-content: space-between;
-    gap: 12px;
     margin-bottom: 6px;
     padding-bottom: 10px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   }
   .lp-logo {
     width: min(112px, 30vw);
-  }
-  .lp-top-demo {
-    display: inline-flex;
-    flex: none;
-    align-items: center;
-    gap: 6px;
-    height: 32px;
-    padding: 0 12px;
-    border: 1px solid rgba(29, 233, 160, 0.4);
-    border-radius: 999px;
-    background: rgba(29, 233, 160, 0.08);
-    color: var(--mint);
-    font-size: 12.5px;
-    font-weight: 600;
-    text-decoration: none;
-    white-space: nowrap;
   }
   .lp-pill {
     padding: 5px 10px;
@@ -3060,10 +3069,6 @@ onBeforeUnmount(() => {
     flex-direction: column;
     align-items: stretch;
     gap: 8px;
-  }
-  /* Na capa do celular, "Agendar demonstração" sobe para o cabeçalho. */
-  .lp-hero-actions .lp-btn-ghost {
-    display: none;
   }
   .lp-hide-sm {
     display: none;
@@ -3294,13 +3299,6 @@ onBeforeUnmount(() => {
   .lp-promo-bar {
     font-size: 12px;
     letter-spacing: -0.01em;
-  }
-  .lp-top-demo {
-    padding: 0 10px;
-    font-size: 12px;
-  }
-  .lp-top-demo svg {
-    display: none;
   }
 }
 

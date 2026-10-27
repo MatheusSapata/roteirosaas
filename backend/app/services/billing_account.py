@@ -7,7 +7,6 @@ Marcas de pagamento ficam em asaas_event_logs (event_id único), sem tabela nova
 """
 from __future__ import annotations
 
-import calendar
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
@@ -20,6 +19,7 @@ from app.models.asaas import AsaasEventLog
 from app.models.checkout import CheckoutSession
 from app.models.user import User
 from app.services.asaas import AsaasAPIError, AsaasClient
+from app.services.billing_cycles import add_months, cycle_months, next_due_date, normalize_cycle
 
 APPLIED_PREFIX = "applied:"
 REPLACED_PREFIX = "replaced:"
@@ -103,19 +103,11 @@ def parse_date(value: Any) -> date | None:
         return None
 
 
-def add_months(base: date, months: int) -> date:
-    index = base.month - 1 + months
-    year = base.year + index // 12
-    month = index % 12 + 1
-    return date(year, month, min(base.day, calendar.monthrange(year, month)[1]))
-
-
 def covered_period(due: date | None, cycle: str | None) -> tuple[date, date] | None:
     """Período que a fatura cobre: do vencimento até um ciclo depois (o fim não entra)."""
     if due is None:
         return None
-    months = 12 if str(cycle or "").strip().lower() == "annual" else 1
-    return due, add_months(due, months)
+    return due, next_due_date(due, cycle)
 
 
 def covered_by_paid(due: date | None, paid_periods: list[tuple[date, date]]) -> bool:
@@ -159,7 +151,7 @@ def current_contract_offer(db: Session, user: User) -> ContractOffer | None:
     plan = str(subscription.plan or "").strip().lower()
     if not plan or plan in {"free", "trial", "teste", "test"}:
         return None
-    cycle = "annual" if str(subscription.billing_cycle or "").strip().lower() == "annual" else "monthly"
+    cycle = normalize_cycle(subscription.billing_cycle)
 
     legacy = legacy_renewal_info(subscription)
     if legacy.legacy and legacy.amount is not None:
@@ -178,7 +170,7 @@ def current_contract_offer(db: Session, user: User) -> ContractOffer | None:
         if amount is not None:
             return ContractOffer(
                 str(last_paid.plan_key or plan).strip().lower() or plan,
-                "annual" if str(last_paid.billing_cycle or "").strip().lower() == "annual" else "monthly",
+                normalize_cycle(last_paid.billing_cycle),
                 amount,
                 str(last_paid.product_name or "").strip() or "Renovação da assinatura",
             )
@@ -186,7 +178,7 @@ def current_contract_offer(db: Session, user: User) -> ContractOffer | None:
     mrr = _decimal(subscription.mrr_amount)
     if mrr is None:
         return None
-    amount = mrr * 12 if cycle == "annual" else mrr
+    amount = mrr * cycle_months(cycle)
     return ContractOffer(plan, cycle, amount.quantize(Decimal("0.01")), "Renovação da assinatura")
 
 

@@ -56,3 +56,19 @@ export const toVideoEmbedUrl = (raw?: string | null): string => {
 /** Só estes endereços podem virar vídeo dentro de um texto publicado. */
 export const isAllowedVideoEmbed = (src?: string | null) =>
   /^https:\/\/(www\.youtube\.com\/embed\/|www\.youtube-nocookie\.com\/embed\/|player\.vimeo\.com\/video\/)/i.test(String(src || ""));
+
+/**
+ * Barra de progresso das VSLs (estilo Panda): anda rápido no começo e devagar depois, para o vídeo
+ * parecer curto. Até 1 minuto de vídeo, é a real; acima disso, 50% em 30 s, 70% em 1 min e o resto
+ * até o fim.
+ */
+export const vslProgressPercent = (currentTime: number, duration: number, ended = false): number => {
+  const elapsed = Math.max(0, currentTime);
+  const total = Math.max(0, duration);
+  if (ended || (total > 0 && elapsed >= total - 0.25)) return 100;
+  if (total > 0 && total <= 60) return Math.min(99.5, (elapsed / total) * 100);
+  if (elapsed <= 30) return Math.min(50, (elapsed / 30) * 50);
+  if (elapsed <= 60) return 50 + ((elapsed - 30) / 30) * 20;
+  if (total > 60) return Math.min(99.5, 70 + ((elapsed - 60) / (total - 60)) * 30);
+  return 70;
+};
