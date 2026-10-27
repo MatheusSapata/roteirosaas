@@ -289,12 +289,17 @@ def _notify_checkout_subscription_push(
 ) -> None:
     payment_method = _humanize_payment_method(session.payment_method)
     plan_name = session.product_name or session.offer_key or session.plan_key or "Assinatura"
+    # Compra nova ou troca de plano: o que entrou foi a 1ª cobrança (promocional, quando houver),
+    # não o valor cheio da mensalidade. Renovação cobra o valor cheio.
+    charged = session.amount
+    if scenario != SubscriptionPushScenario.RENEWED:
+        charged = session_first_payment_amount(session) or session.amount
     try:
         publish_subscription_notification(
             scenario=scenario,
             user_name=user.name or session.customer_name or "Não informado",
             payment_method=payment_method,
-            amount=session.amount,
+            amount=charged,
             plan_name=plan_name,
             offer_name=session.product_name or session.offer_key,
             previous_plan_name=previous_plan_name,
