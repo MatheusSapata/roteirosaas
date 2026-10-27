@@ -209,3 +209,17 @@ def test_seller_code_reaches_session_hub_and_paid_event(client, db_session, meta
         customer_email="ana@example.com",
     )
     assert paid[-1]["event"] == "subscription_cancelled"
+
+
+def test_paid_event_carries_the_first_payment_not_the_full_monthly_price(client, db_session, meta, monkeypatch):
+    """Oferta com 1º mês promocional (R$ 67, depois R$ 137): o Hub recebe o que foi pago, R$ 67."""
+    body = _create(client, MONTHLY)
+    session = db_session.query(CheckoutSession).filter_by(token=body["token"]).one()
+    seen: list[dict] = []
+    monkeypatch.setattr(checkout, "publish_subscription_notification", lambda **kwargs: seen.append(kwargs))
+    buyer = SimpleNamespace(name="Ana", email="ana@example.com", whatsapp=None)
+    scenario = checkout.SubscriptionPushScenario
+    checkout._notify_checkout_subscription_push(scenario=scenario.NEW, session=session, user=buyer)
+    checkout._notify_checkout_subscription_push(scenario=scenario.RENEWED, session=session, user=buyer)
+    assert float(seen[0]["amount"]) == 67.0
+    assert float(seen[1]["amount"]) == 137.0
