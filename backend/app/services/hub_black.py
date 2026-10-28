@@ -200,6 +200,12 @@ def build_request_text(title: str, description: str, general_info: str, stock_im
             'endereços de imagem e não use links de fotos de outros sites. Seção sem foto enviada fica sem "Imagem:".'
         )
     )
+    photos = (
+        "Fotos do cliente: toda foto enviada é para a página (não é só referência). Use o MÁXIMO possível: cada foto "
+        'de "IMAGENS ENVIADAS PELO CLIENTE" deve aparecer uma vez, sem repetir, na seção que mais combina. Distribua '
+        'entre o Banner Inicial, Foto em destaque, Artigo, Roteiro dia a dia (uma por dia, na ordem) e Texto e '
+        'Imagens (aceita várias, separadas por "|"). Só deixe uma foto de fora se não houver onde colocá-la.'
+    )
     return "\n".join(
         [
             "Monte agora a estrutura completa da página deste roteiro, pronta para aplicar.",
@@ -211,6 +217,7 @@ def build_request_text(title: str, description: str, general_info: str, stock_im
             "Informações gerais do roteiro:",
             general_info.strip(),
             "",
+            photos,
             images,
         ]
     ).strip()
@@ -253,6 +260,91 @@ def restrict_images_to_allowed(sections: list[Any], allowed_urls: set[str]) -> i
 
     walk(sections)
     return replaced
+
+
+STORY_MAX_IMAGES = 6
+SINGLE_PHOTO_FIELDS = {
+    "hero": ("backgroundImage", "mobileBackgroundImage"),
+    "banner_card": ("backgroundImage",),
+    "photo": ("image",),
+    "biography": ("image", "mobileImage"),
+}
+
+
+def _used_image_urls(node: Any) -> set[str]:
+    used: set[str] = set()
+    if isinstance(node, list):
+        for item in node:
+            used |= _used_image_urls(item)
+    elif isinstance(node, dict):
+        for key, value in node.items():
+            if key in IMAGE_FIELDS and isinstance(value, str):
+                used.add(value)
+            elif key in IMAGE_FIELDS and isinstance(value, list):
+                used.update(item for item in value if isinstance(item, str))
+            else:
+                used |= _used_image_urls(value)
+    return used
+
+
+def distribute_client_photos(sections: list[Any], photos: list[str]) -> int:
+    """Usa o máximo das fotos do cliente: as que a IA deixou de fora entram, na ordem, nas vagas que
+    ficaram com a imagem provisória (banner, foto em destaque, artigo, dias do roteiro) e, se ainda
+    sobrarem, em Texto e Imagens (até STORY_MAX_IMAGES por seção). Devolve quantas foram colocadas."""
+    from app.services.ai_assistant import AI_IMAGE_PLACEHOLDER
+
+    unused = [url for url in dict.fromkeys(photos) if url not in _used_image_urls(sections)]
+    placed = 0
+
+    def take() -> str | None:
+        nonlocal placed
+        if not unused:
+            return None
+        placed += 1
+        return unused.pop(0)
+
+    def is_empty(value: Any) -> bool:
+        return not value or value == AI_IMAGE_PLACEHOLDER
+
+    touched: list[dict[str, Any]] = []
+    for section in sections:
+        if not isinstance(section, dict) or not unused:
+            continue
+        kind = section.get("type")
+        if kind in SINGLE_PHOTO_FIELDS:
+            fields = SINGLE_PHOTO_FIELDS[kind]
+            if is_empty(section.get(fields[0])) and (url := take()):
+                for field_name in fields:
+                    section[field_name] = url
+                touched.append(section)
+        elif kind == "itinerary":
+            for day in [day for day in section.get("days") or [] if isinstance(day, dict)]:
+                if is_empty(day.get("image")) and (url := take()):
+                    day["image"] = url
+                    touched.append(section)
+        elif kind == "story":
+            current = [item for item in section.get("images") or [] if not is_empty(item)]
+            if not current:
+                added = [url for url in (take(), take(), take()) if url]
+                if added:
+                    section["images"] = added
+                    touched.append(section)
+
+    stories = [section for section in sections if isinstance(section, dict) and section.get("type") == "story"]
+    while unused and stories:
+        grew = False
+        for section in stories:
+            images = [item for item in section.get("images") or [] if not is_empty(item)]
+            if len(images) < STORY_MAX_IMAGES and (url := take()):
+                section["images"] = [*images, url]
+                touched.append(section)
+                grew = True
+        if not grew:
+            break
+
+    for section in touched:
+        section.pop("aiImageQuery", None)  # foto do cliente tem prioridade sobre o banco
+    return placed
 
 
 def start_page(db: Session, agency: Agency, title: str, page_id: int | None = None) -> Page:
@@ -333,8 +425,8 @@ async def _generate(db: Session, page: Page, payload: dict[str, Any]) -> None:
     context = build_agency_context(db, page, [], include_images=stock_images)
     if sent_photos:
         lines = [
-            "IMAGENS ENVIADAS PELO CLIENTE (já estão na biblioteca de mídia da agência). Use cada uma na seção que "
-            'combina, escrevendo "Imagem: endereço" com o endereço abaixo (sem "Busca de imagem"):'
+            "IMAGENS ENVIADAS PELO CLIENTE (já estão na biblioteca de mídia da agência). Use TODAS, cada uma uma vez, "
+            'na seção que combina, escrevendo "Imagem: endereço" com o endereço abaixo (sem "Busca de imagem"):'
         ]
         lines.extend(f"- {name}: {url}" for name, url in sent_photos)
         context = f"{context}\n" + "\n".join(lines)
@@ -370,6 +462,14 @@ async def _generate(db: Session, page: Page, payload: dict[str, Any]) -> None:
     base = _config_dict(page)
     base.pop(MARKER, None)
     config, suggested_title = build_page_base_config_from_reply(reply, base)
+    client_photos = [url for _name, url in [*sent_photos, *pdf_photos]]
+    if not stock_images:
+        clear_photo_queries(config["sections"])
+        # Sem consentimento, só entram as fotos que o cliente enviou (anexos e fotos extraídas do PDF).
+        if restrict_images_to_allowed(config["sections"], set(client_photos)):
+            logger.warning("hub_black_foreign_images_removed page=%s", page.id)
+    # Foto do cliente que a IA deixou de fora entra nas vagas livres, antes de qualquer foto de banco.
+    distribute_client_photos(config["sections"], client_photos)
     if stock_images:
         try:
             fill_section_photos(db, config["sections"], page.agency_id, exclude_page_id=page.id)
@@ -377,12 +477,6 @@ async def _generate(db: Session, page: Page, payload: dict[str, Any]) -> None:
             logger.exception("hub_black_stock_photos_failed")
             db.rollback()
             clear_photo_queries(config["sections"])
-    else:
-        clear_photo_queries(config["sections"])
-        # Sem consentimento, só entram as fotos que o cliente enviou (anexos e fotos extraídas do PDF).
-        allowed_urls = {url for _name, url in [*sent_photos, *pdf_photos]}
-        if restrict_images_to_allowed(config["sections"], allowed_urls):
-            logger.warning("hub_black_foreign_images_removed page=%s", page.id)
     for section in config["sections"]:
         for key in ("aiReplaces", "aiStockPhoto", "aiPhotoOrigins", "aiSetKeys", "aiFlights"):
             section.pop(key, None)
