@@ -43,6 +43,7 @@ class WhatsAppConnectionStatusOut(BaseModel):
     instance_name: str = Field(..., alias="instanceName")
     status: str
     raw_state: Optional[str] = Field(None, alias="rawState")
+    phone_number: Optional[str] = Field(None, alias="phoneNumber")
     raw: dict[str, Any] = {}
 
     model_config = ConfigDict(populate_by_name=True)

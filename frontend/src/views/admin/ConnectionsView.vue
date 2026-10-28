@@ -367,37 +367,10 @@ const formatPhone = (raw: string) => {
   const local = country ? digits.slice(2) : digits;
   if (local.length < 10) return `+${digits}`;
   const ddd = local.slice(0, 2);
-  const prefix = local.length >= 9 ? local.slice(2, 7) : local.slice(2, 6);
-  const suffix = local.length >= 9 ? local.slice(7, 11) : local.slice(6, 10);
+  const prefix = local.length >= 11 ? local.slice(2, 7) : local.slice(2, 6);
+  const suffix = local.length >= 11 ? local.slice(7, 11) : local.slice(6, 10);
   const cc = country || "55";
   return `+${cc} ${ddd} ${prefix}-${suffix}`;
-};
-
-const normalizePhoneCandidate = (input: unknown): string | null => {
-  if (!input) return null;
-  const raw = String(input);
-  const clean = raw.replace(/@s\.whatsapp\.net$/i, "").replace(/\D+/g, "");
-  if (clean.length < 10) return null;
-  return clean;
-};
-
-const extractPhoneFromStatusPayload = (payload: unknown): string | null => {
-  if (!payload || typeof payload !== "object") return null;
-  const queue: unknown[] = [payload];
-  const keys = ["phone", "phoneNumber", "number", "ownerJid", "wid", "user"];
-  while (queue.length) {
-    const current = queue.shift();
-    if (!current || typeof current !== "object") continue;
-    const record = current as Record<string, unknown>;
-    for (const key of keys) {
-      const phone = normalizePhoneCandidate(record[key]);
-      if (phone) return phone;
-    }
-    for (const value of Object.values(record)) {
-      if (value && typeof value === "object") queue.push(value);
-    }
-  }
-  return null;
 };
 
 const updateStatus = async () => {
@@ -405,9 +378,8 @@ const updateStatus = async () => {
   try {
     const response = await getWhatsAppConnectionStatus(connection.value.id, agencyId.value);
     statusValue.value = (response.status as WhatsAppConnectionStatus) || "disconnected";
-    const extractedPhone = extractPhoneFromStatusPayload(response.raw);
-    if (extractedPhone && connection.value) {
-      connection.value = { ...connection.value, phoneNumber: extractedPhone };
+    if (connection.value) {
+      connection.value = { ...connection.value, phoneNumber: response.phoneNumber ?? null };
     }
     markUpdated();
     if (statusNormalized.value === "connected") {

@@ -117,7 +117,7 @@ class WhatsAppDomainService:
         phone = status_data.get("phone")
 
         connection.status = self._normalize_connection_status(mapped)
-        if isinstance(phone, str) and phone.strip():
+        if connection.status == "connected" and isinstance(phone, str) and phone.strip():
             connection.phone_number = phone.strip()
         now = datetime.now(timezone.utc)
         if connection.status == "connected":
