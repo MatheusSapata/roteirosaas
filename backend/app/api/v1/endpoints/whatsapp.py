@@ -311,6 +311,11 @@ def get_connection_qr(
     _ensure_whatsapp_connection_access(db, user=current_user, agency_id=agency_id)
     connection = domain_service.get_connection_or_404(db=db, agency_id=agency_id, connection_id=connection_id)
     qr_data = evolution_service.get_qr_code(instance_name=connection.instance_name)
+    if qr_data.get("recovered") == "recreated" and connection.phone_number:
+        # Instância nova = sessão nova; o número volta quando o celular ler o QR.
+        connection.phone_number = None
+        db.add(connection)
+        db.commit()
     return {
         "connectionId": connection.id,
         "instanceName": connection.instance_name,
@@ -350,6 +355,7 @@ def get_connection_status(
         instanceName=connection.instance_name,
         status=status,
         rawState=raw_state,
+        phoneNumber=connection.phone_number,
         raw=raw if isinstance(raw, dict) else {"data": raw},
     )
 

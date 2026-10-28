@@ -20,6 +20,7 @@ export interface WhatsAppConnectionStatusResponse {
   instanceName: string;
   status: string;
   rawState?: string | null;
+  phoneNumber?: string | null;
   raw?: Record<string, unknown>;
 }
 

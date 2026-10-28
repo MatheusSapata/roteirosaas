@@ -181,7 +181,7 @@ class EvolutionService:
             "status": "reapplied",
         }
 
-    def get_qr_code(self, instance_name: str | None = None) -> dict[str, Any]:
+    def get_qr_code(self, instance_name: str | None = None, *, recover: bool = True) -> dict[str, Any]:
         name = (instance_name or self.test_instance_name).strip()
         attempts: list[dict[str, Any]] = []
         candidates: list[tuple[str, str]] = [
@@ -190,8 +190,10 @@ class EvolutionService:
             ("GET", f"/instance/qrcode/{name}"),
             ("GET", f"/instance/qrCode/{name}"),
         ]
+        # EVOLUTION_PAIRING_NUMBER é um número fixo do ambiente: só serve para a instância de teste,
+        # nunca para a conexão de uma agência.
         pairing_number = "".join(ch for ch in (self.settings.evolution_pairing_number or "") if ch.isdigit())
-        if pairing_number:
+        if pairing_number and name == self.test_instance_name:
             candidates.append(("GET", f"/instance/connect/{name}?number={pairing_number}"))
 
         last_exc: Exception | None = None
@@ -213,6 +215,18 @@ class EvolutionService:
             except Exception as exc:
                 last_exc = exc
                 attempts.append({"endpoint": path, "ok": False, "error": str(exc)})
+
+        if recover:
+            try:
+                recovered = self._recover_instance_for_qr(name)
+            except Exception as exc:
+                logger.warning("Could not recover Evolution instance=%s for QR error=%s", name, exc)
+                recovered = None
+            if recovered:
+                retry = self.get_qr_code(instance_name=name, recover=False)
+                retry["recovered"] = recovered
+                retry["attempts"] = attempts + list(retry.get("attempts") or [])
+                return retry
 
         diagnostics = self._collect_qr_diagnostics(name)
         logger.warning(
@@ -248,22 +262,16 @@ class EvolutionService:
                 ("GET", f"/instance/fetchInstances"),
             ]
         )
+        # O fallback /instance/fetchInstances devolve as instâncias de TODAS as agências.
+        # Só aproveitamos a linha desta instância; o resto nunca sai daqui.
+        result = self._scope_instances_payload(result, name)
         state = self._extract_state(result, name)
         mapped = self._map_status(state)
         phone = self._extract_phone_from_payload(result)
         if not phone:
-            instances = self._best_effort_request("GET", "/instance/fetchInstances")
-            payload = instances.get("payload")
-            if isinstance(payload, list):
-                for row in payload:
-                    if not isinstance(row, dict):
-                        continue
-                    row_name = row.get("name") or row.get("instanceName")
-                    if row_name != name:
-                        continue
-                    phone = self._extract_phone_from_payload(row)
-                    if phone:
-                        break
+            row = self._find_instance_row(name)
+            if row:
+                phone = self._extract_phone_from_payload(row)
         return {"instance": name, "status": mapped, "raw_state": state, "raw": result, "phone": phone}
 
     def send_text(self, number: str, text: str, instance_name: str | None = None) -> dict[str, Any]:
@@ -403,14 +411,19 @@ class EvolutionService:
 
     def disconnect_instance(self, instance_name: str | None = None) -> dict[str, Any]:
         name = (instance_name or self.test_instance_name).strip()
-        return self._request_with_fallbacks(
-            [
-                ("DELETE", f"/instance/logout/{name}"),
-                ("DELETE", f"/instance/delete/{name}"),
-                ("POST", f"/instance/logout/{name}"),
-            ],
-            expected_statuses={200, 201, 204},
-        )
+        # Desconectar nunca apaga a instância: sem ela, o QR Code não volta mais.
+        # Se o logout falhar (ex.: o celular já tinha desconectado), seguimos como desconectado.
+        try:
+            return self._request_with_fallbacks(
+                [
+                    ("DELETE", f"/instance/logout/{name}"),
+                    ("POST", f"/instance/logout/{name}"),
+                ],
+                expected_statuses={200, 201, 204},
+            )
+        except Exception as exc:
+            logger.warning("Evolution logout failed for instance=%s error=%s", name, exc)
+            return {"status": "logout_failed", "error": str(exc)}
 
     def get_media_base64_from_message(
         self,
@@ -592,11 +605,13 @@ class EvolutionService:
     def _collect_qr_diagnostics(self, instance_name: str) -> dict[str, Any]:
         info = self.get_server_info()
         state = self._best_effort_request("GET", f"/instance/connectionState/{instance_name}")
-        instances = self._best_effort_request("GET", "/instance/fetchInstances")
+        # Só a linha desta instância (sem token): a lista completa tem dados de outras agências.
+        row = self._find_instance_row(instance_name)
+        keys = ("name", "connectionStatus", "ownerJid", "disconnectionReasonCode", "disconnectionAt")
         return {
             "server_info": info,
             "connection_state": state,
-            "instances": instances,
+            "instance": {key: row.get(key) for key in keys} if row else None,
         }
 
     def get_server_info(self) -> dict[str, Any]:
@@ -675,34 +690,78 @@ class EvolutionService:
     def _extract_phone_from_payload(self, payload: Any) -> str | None:
         if not payload:
             return None
-        keys = {"phone", "phoneNumber", "number", "ownerJid", "wid", "user"}
-        values = self._find_values(payload, keys)
-        for value in values:
-            digits = self._digits_from_phone_like(value)
-            if digits:
-                return digits
+        # "number" fica de fora: na Evolution é o número usado no pareamento, não o do aparelho conectado.
+        for key in ("ownerJid", "wid", "phoneNumber", "phone"):
+            for value in self._find_values(payload, {key}):
+                digits = self._digits_from_phone_like(value)
+                if digits:
+                    return digits
         return None
 
     def _digits_from_phone_like(self, value: Any) -> str | None:
         if value is None:
             return None
-        raw = str(value).replace("@s.whatsapp.net", "")
+        raw = str(value)
+        if raw.endswith("@lid"):
+            return None
+        raw = raw.split("@", 1)[0].split(":", 1)[0]
         digits = "".join(ch for ch in raw if ch.isdigit())
         if len(digits) < 10:
             return None
         return digits
 
     def _instance_exists(self, instance_name: str) -> bool:
+        return self._find_instance_row(instance_name) is not None
+
+    def _find_instance_row(self, instance_name: str) -> dict[str, Any] | None:
         rows = self._best_effort_request("GET", "/instance/fetchInstances")
         payload = rows.get("payload")
         if not isinstance(payload, list):
-            return False
+            return None
         for row in payload:
-            if not isinstance(row, dict):
-                continue
-            if (row.get("name") or row.get("instanceName")) == instance_name:
-                return True
-        return False
+            if isinstance(row, dict) and self._instance_row_name(row) == instance_name:
+                return row
+        return None
+
+    def _instance_row_name(self, row: dict[str, Any]) -> str | None:
+        name = row.get("name") or row.get("instanceName")
+        if not name and isinstance(row.get("instance"), dict):
+            name = row["instance"].get("instanceName") or row["instance"].get("name")
+        return name if isinstance(name, str) else None
+
+    def _scope_instances_payload(self, payload: dict[str, Any], instance_name: str) -> dict[str, Any]:
+        rows = payload.get("data")
+        if not isinstance(rows, list):
+            return payload
+        own = [row for row in rows if isinstance(row, dict) and self._instance_row_name(row) == instance_name]
+        return {"data": own}
+
+    def _recover_instance_for_qr(self, instance_name: str) -> str | None:
+        """Deixa a instância pronta para gerar um QR novo quando a Evolution não devolve nenhum.
+
+        - Instância apagada na Evolution: recria com o mesmo nome.
+        - Instância existe mas ficou presa sem sessão: faz logout para a Evolution gerar QR de novo.
+        Nunca mexe numa instância conectada.
+        """
+        row = self._find_instance_row(instance_name)
+        if row is None:
+            try:
+                self.create_instance(instance_name)
+            except Exception as exc:
+                logger.warning("Could not recreate Evolution instance=%s error=%s", instance_name, exc)
+                return None
+            logger.info("Evolution instance recreated for QR instance=%s", instance_name)
+            return "recreated"
+        state = self._map_status(row.get("connectionStatus") or row.get("status") or row.get("state") or "")
+        if state == "connected":
+            return None
+        result = self._best_effort_request("DELETE", f"/instance/logout/{instance_name}")
+        logger.info(
+            "Evolution instance logged out to regenerate QR instance=%s status_code=%s",
+            instance_name,
+            result.get("status_code"),
+        )
+        return "logged_out"
 
     def _extract_base64_from_unknown(self, payload: Any) -> str | None:
         if isinstance(payload, str):
