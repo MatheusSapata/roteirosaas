@@ -75,3 +75,30 @@ def test_sem_consentimento_so_ficam_as_fotos_enviadas():
 
     assert "EXPRESSAMENTE PROIBIDO" in build_request_text("t", "d", "g", False)
     assert "AUTORIZOU" in build_request_text("t", "d", "g", True)
+
+
+def test_usa_o_maximo_das_fotos_do_cliente():
+    from app.services.ai_assistant import AI_IMAGE_PLACEHOLDER as VAZIA
+    from app.services.hub_black import build_request_text, distribute_client_photos
+
+    fotos = [f"/uploads/1/f{n}.jpg" for n in range(1, 9)]
+    sections = [
+        {"type": "hero", "backgroundImage": fotos[0], "mobileBackgroundImage": fotos[0]},  # a IA já usou f1
+        {"type": "photo", "image": VAZIA, "aiImageQuery": "praia"},
+        {"type": "itinerary", "days": [{"image": VAZIA}, {"image": VAZIA}]},
+        {"type": "story", "images": [VAZIA]},
+        {"type": "faq"},
+    ]
+    colocadas = distribute_client_photos(sections, fotos)
+    assert colocadas == 7
+    assert sections[0]["backgroundImage"] == fotos[0]
+    assert sections[1]["image"] == fotos[1] and "aiImageQuery" not in sections[1]
+    assert [day["image"] for day in sections[2]["days"]] == [fotos[2], fotos[3]]
+    assert sections[3]["images"] == fotos[4:8]  # 3 na vaga livre + 1 que sobrou
+    usadas = [sections[0]["backgroundImage"], sections[1]["image"], *(d["image"] for d in sections[2]["days"]), *sections[3]["images"]]
+    assert sorted(usadas) == sorted(fotos)  # todas entraram, nenhuma repetida
+
+    # não repete foto já usada e não inventa foto quando o cliente não mandou nenhuma
+    de_novo = [{"type": "photo", "image": VAZIA}]
+    assert distribute_client_photos(de_novo, []) == 0 and de_novo[0]["image"] == VAZIA
+    assert "MÁXIMO" in build_request_text("t", "d", "g", False)
