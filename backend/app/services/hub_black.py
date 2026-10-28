@@ -194,7 +194,11 @@ def build_request_text(title: str, description: str, general_info: str, stock_im
     images = (
         "Imagens: o cliente AUTORIZOU usar imagens de bancos de imagens onde faltar foto."
         if stock_images
-        else "Imagens: o cliente NÃO autorizou imagens de bancos de imagens. Use só as fotos enviadas."
+        else (
+            "Imagens: o cliente NÃO autorizou imagens de bancos de imagens. É EXPRESSAMENTE PROIBIDO usar qualquer imagem "
+            'que não esteja em "IMAGENS ENVIADAS PELO CLIENTE": não escreva "Busca de imagem", não invente nem copie '
+            'endereços de imagem e não use links de fotos de outros sites. Seção sem foto enviada fica sem "Imagem:".'
+        )
     )
     return "\n".join(
         [
@@ -210,6 +214,45 @@ def build_request_text(title: str, description: str, general_info: str, stock_im
             images,
         ]
     ).strip()
+
+
+# Campos de uma seção que guardam endereço de imagem (texto ou lista), inclusive dentro de dias e itens.
+IMAGE_FIELDS = frozenset({"backgroundImage", "mobileBackgroundImage", "image", "mobileImage", "images"})
+
+
+def restrict_images_to_allowed(sections: list[Any], allowed_urls: set[str]) -> int:
+    """Sem consentimento para bancos de imagens, só valem as fotos enviadas pelo cliente: qualquer outro
+    endereço de imagem (inclusive um que a IA tenha escrito em "Imagem:") volta para a imagem provisória.
+    Devolve quantas imagens foram trocadas."""
+    from app.services.ai_assistant import AI_IMAGE_PLACEHOLDER
+
+    def allowed(value: Any) -> bool:
+        return not isinstance(value, str) or not value.strip() or value == AI_IMAGE_PLACEHOLDER or value in allowed_urls
+
+    replaced = 0
+
+    def walk(node: Any) -> None:
+        nonlocal replaced
+        if isinstance(node, list):
+            for item in node:
+                walk(item)
+            return
+        if not isinstance(node, dict):
+            return
+        for key, value in node.items():
+            if key in IMAGE_FIELDS and isinstance(value, str):
+                if not allowed(value):
+                    node[key] = AI_IMAGE_PLACEHOLDER
+                    replaced += 1
+            elif key in IMAGE_FIELDS and isinstance(value, list):
+                kept = [item for item in value if allowed(item)]
+                replaced += len(value) - len(kept)
+                node[key] = kept or ([AI_IMAGE_PLACEHOLDER] if value else [])
+            else:
+                walk(value)
+
+    walk(sections)
+    return replaced
 
 
 def start_page(db: Session, agency: Agency, title: str, page_id: int | None = None) -> Page:
@@ -336,6 +379,10 @@ async def _generate(db: Session, page: Page, payload: dict[str, Any]) -> None:
             clear_photo_queries(config["sections"])
     else:
         clear_photo_queries(config["sections"])
+        # Sem consentimento, só entram as fotos que o cliente enviou (anexos e fotos extraídas do PDF).
+        allowed_urls = {url for _name, url in [*sent_photos, *pdf_photos]}
+        if restrict_images_to_allowed(config["sections"], allowed_urls):
+            logger.warning("hub_black_foreign_images_removed page=%s", page.id)
     for section in config["sections"]:
         for key in ("aiReplaces", "aiStockPhoto", "aiPhotoOrigins", "aiSetKeys", "aiFlights"):
             section.pop(key, None)

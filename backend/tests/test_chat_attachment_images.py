@@ -50,3 +50,28 @@ def test_conversa_nunca_manda_imagem_como_arquivo():
     content = items[-1]["content"]
     assert [part["type"] for part in content] == ["input_text", "input_image"]
     assert content[1]["image_url"].startswith("data:image/jpeg;base64,")
+
+
+def test_sem_consentimento_so_ficam_as_fotos_enviadas():
+    from app.services.ai_assistant import AI_IMAGE_PLACEHOLDER
+    from app.services.hub_black import build_request_text, restrict_images_to_allowed
+
+    enviada = "/uploads/1/cliente.jpg"
+    sections = [
+        {"type": "hero", "backgroundImage": enviada, "mobileBackgroundImage": "https://images.unsplash.com/x.jpg"},
+        {"type": "story", "images": [enviada, "https://exemplo.com/outra.jpg"]},
+        {"type": "itinerary", "days": [{"image": "https://pixabay.com/y.jpg"}, {"image": enviada}]},
+        {"type": "photo", "image": AI_IMAGE_PLACEHOLDER},
+    ]
+    assert restrict_images_to_allowed(sections, {enviada}) == 3
+    assert sections[0] == {"type": "hero", "backgroundImage": enviada, "mobileBackgroundImage": AI_IMAGE_PLACEHOLDER}
+    assert sections[1]["images"] == [enviada]
+    assert [day["image"] for day in sections[2]["days"]] == [AI_IMAGE_PLACEHOLDER, enviada]
+    assert sections[3]["image"] == AI_IMAGE_PLACEHOLDER
+
+    lista_toda_estranha = [{"type": "story", "images": ["https://exemplo.com/a.jpg"]}]
+    restrict_images_to_allowed(lista_toda_estranha, set())
+    assert lista_toda_estranha[0]["images"] == [AI_IMAGE_PLACEHOLDER]
+
+    assert "EXPRESSAMENTE PROIBIDO" in build_request_text("t", "d", "g", False)
+    assert "AUTORIZOU" in build_request_text("t", "d", "g", True)
