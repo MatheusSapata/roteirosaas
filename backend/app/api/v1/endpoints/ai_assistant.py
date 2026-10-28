@@ -32,6 +32,7 @@ from app.schemas.page import PageOut
 from app.api.v1.endpoints.flight_sections import import_flight_journeys
 from app.services.ai_assistant import (
     CHAT_IMAGE_TYPES,
+    normalize_chat_attachment,
     ChatAttachment,
     ChatMessage,
     build_page_base_config_from_reply,
@@ -168,9 +169,11 @@ async def _prepare_chat(
     attachment_payload: list[ChatAttachment] = []
     for upload in attachments or []:
         data = await upload.read()
-        attachment_payload.append(
+        attachment = normalize_chat_attachment(
             ChatAttachment(filename=upload.filename or "arquivo", content_type=upload.content_type, data=data)
         )
+        if attachment is not None:
+            attachment_payload.append(attachment)
     sent_photos = await _save_chat_photos(db, page.agency_id, attachment_payload)
     # Fotos de dentro de um PDF (folheto, roteiro da operadora). Com "Inserir imagens" desligado,
     # a IA não põe fotos novas na página: nada é extraído.

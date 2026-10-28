@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 import base64
 import html
+import io
 from copy import deepcopy
 from datetime import datetime, timedelta
 import logging
@@ -13,6 +14,7 @@ from pathlib import Path
 from typing import Any, Iterator, Literal
 
 from fastapi import HTTPException
+from PIL import Image, ImageOps
 from pydantic import BaseModel
 
 from app.core.config import get_settings
@@ -413,6 +415,37 @@ class ChatAttachment:
     filename: str
     content_type: str | None
     data: bytes
+
+
+# A OpenAI só lê JPEG, PNG, WEBP e GIF como imagem. AVIF, BMP, TIFF etc. são convertidos antes do envio.
+CHAT_IMAGE_MAX_SIDE = 2400
+
+
+def normalize_chat_attachment(attachment: ChatAttachment) -> ChatAttachment | None:
+    """Devolve o anexo pronto para a IA: imagem fora da lista aceita vira JPEG (ou PNG, se tiver
+    transparência). Imagem que não dá para converter devolve None (fica de fora, sem derrubar a geração)."""
+    mime_type = (attachment.content_type or "").split(";")[0].strip().lower()
+    if mime_type in CHAT_IMAGE_TYPES or not mime_type.startswith("image/"):
+        return attachment
+    try:
+        with Image.open(io.BytesIO(attachment.data)) as source:
+            if getattr(source, "is_animated", False):
+                source.seek(0)
+            image = ImageOps.exif_transpose(source)
+            image.thumbnail((CHAT_IMAGE_MAX_SIDE, CHAT_IMAGE_MAX_SIDE), Image.Resampling.LANCZOS)
+            has_alpha = image.mode in {"RGBA", "LA", "PA"} or (image.mode == "P" and "transparency" in image.info)
+            buffer = io.BytesIO()
+            if has_alpha:
+                image.convert("RGBA").save(buffer, "PNG")
+                new_type, extension = "image/png", "png"
+            else:
+                image.convert("RGB").save(buffer, "JPEG", quality=90)
+                new_type, extension = "image/jpeg", "jpg"
+    except Exception:
+        logger.warning("chat_attachment_image_skipped name=%s type=%s", attachment.filename, mime_type)
+        return None
+    stem = (attachment.filename or "imagem").rsplit(".", 1)[0] or "imagem"
+    return ChatAttachment(filename=f"{stem}.{extension}", content_type=new_type, data=buffer.getvalue())
 
 
 def load_system_prompt() -> str:
@@ -2105,7 +2138,10 @@ def _build_ai_conversation_input(
             or "Analise os arquivos anexados e responda seguindo o formato do Construtor Roteiro Online.",
         }
     ]
-    for attachment in attachments or []:
+    for raw_attachment in attachments or []:
+        attachment = normalize_chat_attachment(raw_attachment)
+        if attachment is None:
+            continue
         encoded_file = base64.b64encode(attachment.data).decode("ascii")
         mime_type = attachment.content_type or "application/octet-stream"
         if mime_type.lower() in CHAT_IMAGE_TYPES:

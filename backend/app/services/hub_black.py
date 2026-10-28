@@ -238,7 +238,7 @@ def start_page(db: Session, agency: Agency, title: str, page_id: int | None = No
 
 
 async def _download_files(files: list[dict[str, Any]]) -> list[Any]:
-    from app.services.ai_assistant import ChatAttachment
+    from app.services.ai_assistant import ChatAttachment, normalize_chat_attachment
 
     attachments: list[ChatAttachment] = []
     async with httpx.AsyncClient(timeout=DOWNLOAD_TIMEOUT, follow_redirects=True) as client:
@@ -255,9 +255,12 @@ async def _download_files(files: list[dict[str, Any]]) -> list[Any]:
             if not response.content or len(response.content) > MAX_FILE_BYTES:
                 continue
             content_type = (item.get("content_type") or response.headers.get("content-type") or "").split(";")[0].strip()
-            attachments.append(
+            # AVIF e outros formatos que a OpenAI não lê viram JPEG/PNG; o que não converte fica de fora.
+            attachment = normalize_chat_attachment(
                 ChatAttachment(filename=str(item.get("name") or "arquivo"), content_type=content_type or None, data=response.content)
             )
+            if attachment is not None:
+                attachments.append(attachment)
     return attachments
 
 
