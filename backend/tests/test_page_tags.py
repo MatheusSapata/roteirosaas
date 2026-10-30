@@ -212,3 +212,24 @@ def test_quem_nao_e_membro_nao_mexe_nas_tags(client, db_session, agency):
     assert client.get("/api/v1/page-tags", params={"agency_id": agency.id}).status_code == 403
     assert client.put(f"/api/v1/pages/{page.id}/tags", json={"tag_ids": [europa]}).status_code == 403
     assert client.delete(f"/api/v1/page-tags/{europa}").status_code == 403
+
+
+def test_preco_do_checkout_e_datas_da_excursao_entram_no_card(client, db_session, agency):
+    europa = _tag(client, agency, "Europa")["id"]
+    _page(db_session, agency, "vitrine", sections=[_tag_section([europa])])
+    checkout = {
+        "type": "viajeon_checkout",
+        "enabled": True,
+        "checkoutSnapshot": {
+            "excursion": {"departure_date": "2099-07-01T00:00:00", "return_date": "2099-07-08"},
+            "packages": [
+                {"id": "a", "name": "Duplo", "price": 4200, "active": True},
+                {"id": "b", "name": "Inativo", "price": 100, "active": False},
+            ],
+        },
+    }
+    page = _page(db_session, agency, "bariloche", sections=[_hero(), _prices(5000), checkout])
+    _set_tags(client, page, europa)
+    card = _public_items(client)[0]
+    assert card["priceValue"] == "R$ 4.200"
+    assert (card["departureDate"], card["returnDate"]) == ("2099-07-01", "2099-07-08")

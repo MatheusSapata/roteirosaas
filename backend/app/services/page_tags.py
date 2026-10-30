@@ -96,29 +96,51 @@ def page_card_data(page: Page) -> dict[str, Any]:
     if len(description) > 220:
         description = description[:217].rstrip() + "…"
 
-    lowest: Optional[tuple[float, str]] = None
+    # Menor preço entre a seção Preços e os pacotes do Checkout (valores em reais).
+    candidates: list[tuple[Any, str]] = []
+    excursion: dict = {}
     for section in sections:
-        if section.get("type") != "prices" or section.get("enabled") is False:
+        if section.get("enabled") is False:
             continue
-        for item in section.get("items") or []:
-            if not isinstance(item, dict):
-                continue
-            try:
-                price = float(item.get("price") or 0)
-            except (TypeError, ValueError):
-                continue
-            currency = str(item.get("currency") or "BRL")
-            if price <= 0 or (lowest and currency != lowest[1]):
-                continue
-            if not lowest or price < lowest[0]:
-                lowest = (price, currency)
+        if section.get("type") == "prices":
+            candidates += [
+                (item.get("price"), str(item.get("currency") or "BRL"))
+                for item in section.get("items") or []
+                if isinstance(item, dict)
+            ]
+        elif section.get("type") == "viajeon_checkout":
+            snapshot = section.get("checkoutSnapshot") if isinstance(section.get("checkoutSnapshot"), dict) else {}
+            candidates += [
+                (item.get("price"), "BRL")
+                for item in snapshot.get("packages") or []
+                if isinstance(item, dict) and item.get("active") is not False
+            ]
+            if not excursion and isinstance(snapshot.get("excursion"), dict):
+                excursion = snapshot["excursion"]
+    lowest: Optional[tuple[float, str]] = None
+    for raw_price, currency in candidates:
+        try:
+            price = float(raw_price or 0)
+        except (TypeError, ValueError):
+            continue
+        if price <= 0 or (lowest and currency != lowest[1]):
+            continue
+        if not lowest or price < lowest[0]:
+            lowest = (price, currency)
+
+    # Datas do Banner; sem elas, as da excursão do Checkout.
+    departure = _valid_date(hero.get("departureDate"))
+    return_date = _valid_date(hero.get("returnDate"))
+    if not departure and not return_date:
+        departure = _valid_date(str(excursion.get("departure_date") or "")[:10])
+        return_date = _valid_date(str(excursion.get("return_date") or "")[:10])
 
     return {
         "title": (page.seo_title or page.title or "").strip(),
         "description": description,
         "image": hero.get("backgroundImage") or page.cover_image_url or "",
-        "departureDate": _valid_date(hero.get("departureDate")),
-        "returnDate": _valid_date(hero.get("returnDate")),
+        "departureDate": departure,
+        "returnDate": return_date,
         "price": _format_price(*lowest) if lowest else "",
     }
 

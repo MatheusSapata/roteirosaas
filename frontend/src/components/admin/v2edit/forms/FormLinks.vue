@@ -111,7 +111,7 @@
                 <option value="">{{ loadingPages ? "Carregando…" : "Escolher página…" }}</option>
                 <option v-for="page in pages" :key="page.id" :value="page.id">{{ page.title }}</option>
               </select>
-              <span class="ved-hint">Foto, título e texto vêm da página; dá para mudar abaixo.</span>
+              <span class="ved-hint">Foto, título, texto, datas e menor preço vêm da página; dá para mudar abaixo.</span>
             </label>
             <template v-else>
               <EdText :model-value="item.url" label="Endereço" type="url" placeholder="https://" @update:model-value="update({ url: $event })" />
@@ -169,6 +169,7 @@ import api from "../../../../services/api";
 import { errorDetail, usePageTags } from "../../../../composables/usePageTags";
 import { useAgencyStore } from "../../../../store/useAgencyStore";
 import { tagStyle } from "../../../../types/pageTag";
+import { pageCardPrefillFields } from "../../../../utils/pageCardPrefill";
 import type { LinkCardItem, LinksSection } from "../../../../types/page";
 import ImageUploadField from "../../inputs/ImageUploadField.vue";
 import EdAlign from "../EdAlign.vue";
@@ -299,7 +300,9 @@ const pageCard = (page: AgencyPage) => {
   return {
     title: (page.seo_title || page.title || "").trim(),
     description: plainText(hero.subtitle) || plainText(config.general?.shortDescription) || page.seo_description || "",
-    image: hero.backgroundImage || page.cover_image_url || ""
+    image: hero.backgroundImage || page.cover_image_url || "",
+    // Datas do Banner e menor preço (Preços ou Checkout) já vêm preenchidos; dá para mudar abaixo.
+    ...pageCardPrefillFields(config)
   };
 };
 const pickPage = (pageId: number, update: (changes: Record<string, any>) => void) => {
