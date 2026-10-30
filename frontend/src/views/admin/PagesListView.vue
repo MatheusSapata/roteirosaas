@@ -519,7 +519,6 @@
     <PageTagManager
       :open="tagManagerOpen"
       :agency-id="agencyStore.currentAgencyId"
-      :pages="pages"
       :can-edit="canEditPages"
       @close="tagManagerOpen = false"
       @pages-changed="refreshPageTags"

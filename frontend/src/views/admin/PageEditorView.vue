@@ -1760,7 +1760,6 @@
     <PageTagManager
       :open="pageTagManagerOpen"
       :agency-id="page?.agency_id"
-      :pages="pageTagManagerPages"
       :can-edit="canEditPageTags"
       @close="pageTagManagerOpen = false"
       @pages-changed="onPageTagManagerChanged"
@@ -1973,7 +1972,6 @@ const pageTags = ref<PageTagBrief[]>([]);
 const pageTagsError = ref("");
 const pageTagInputRef = ref<{ focus: () => void } | null>(null);
 const pageTagManagerOpen = ref(false);
-const pageTagManagerPages = ref<{ id: number; title: string; status: string; tags?: PageTagBrief[] }[]>([]);
 watch(
   () => page.value?.agency_id,
   agencyId => loadAgencyTags(agencyId),
@@ -2024,24 +2022,18 @@ const openTagsTab = () => {
   if (sectionPanelOpen.value || activeSettingsTab.value !== "tags" || !leftPanelOpen.value) openRailTab("tags");
   nextTick(() => pageTagInputRef.value?.focus());
 };
-const loadPageTagManagerPages = async () => {
-  if (!page.value?.agency_id) return;
-  try {
-    const res = await api.get<typeof pageTagManagerPages.value>("/pages", { params: { agency_id: page.value.agency_id } });
-    pageTagManagerPages.value = res.data;
-  } catch {
-    pageTagManagerPages.value = [];
-  }
-};
-const openPageTagManager = async () => {
+const openPageTagManager = () => {
   pageTagManagerOpen.value = true;
-  await loadPageTagManagerPages();
 };
-// Renomear, juntar ou apagar no painel muda as tags desta página também.
+// Renomear, juntar ou excluir no modal muda as tags desta página também.
 const onPageTagManagerChanged = async () => {
-  await loadPageTagManagerPages();
-  const self = pageTagManagerPages.value.find(item => item.id === page.value?.id);
-  if (self && page.value) page.value = { ...page.value, tags: self.tags || [] };
+  if (!page.value) return;
+  try {
+    const res = await api.get<Page>(`/pages/${page.value.id}`);
+    if (page.value) page.value = { ...page.value, tags: res.data.tags || [] };
+  } catch {
+    // Sem rede, as tags do topo só atualizam ao recarregar.
+  }
 };
 const pageTitle = ref("");
 const pageSlug = ref("");
