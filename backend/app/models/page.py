@@ -38,3 +38,4 @@ class Page(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+    tags = relationship("PageTag", secondary="page_tag_links", back_populates="pages", order_by="PageTag.name")

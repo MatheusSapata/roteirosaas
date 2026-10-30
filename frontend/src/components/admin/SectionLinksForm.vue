@@ -83,6 +83,7 @@
 </template>
 
 <script setup lang="ts">
+import { pageCardPrefillFields } from "../../utils/pageCardPrefill";
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import Sortable from "sortablejs";
 import api from "../../services/api";
@@ -161,7 +162,9 @@ const addPage = () => {
   const agencySlug = agency?.slug || "";
   const metadata=pageCardMetadata(page);
   const url = buildPublicPagePath(page.slug, agencySlug, agencyStore.currentPrimaryDomain);
-  local.items.push({ id:makeId(), source:"page", pageId:page.id, url, image:metadata.image, title:metadata.title, description:metadata.description, buttonLabel:"Abrir roteiro", openInNewTab:false, showDates:false, showPrice:false });
+  let config:Record<string,any>={};
+  try { config=typeof page.config_json === "string" ? JSON.parse(page.config_json) : (page.config_json || {}); } catch { config={}; }
+  local.items.push({ id:makeId(), source:"page", pageId:page.id, url, image:metadata.image, title:metadata.title, description:metadata.description, buttonLabel:"Abrir roteiro", openInNewTab:false, ...pageCardPrefillFields(config) });
   expandedIndex.value=local.items.length-1;
   selectedPageId.value="";
 };

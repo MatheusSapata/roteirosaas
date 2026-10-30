@@ -38,6 +38,13 @@
             <i v-else></i>
             {{ hasUnsavedChanges ? "Alterações não salvas" : "Tudo salvo" }}
           </span>
+          <span v-if="newEditor && page && !phoneEditor" class="ed-title-tags">
+            <span v-for="tag in pageTags.slice(0, 3)" :key="tag.id" class="page-tag" :style="tagStyle(tag.color)">{{ tag.name }}</span>
+            <span v-if="pageTags.length > 3" class="ed-title-tags-more">+{{ pageTags.length - 3 }}</span>
+            <button type="button" class="ed-title-tags-btn" @click="openTagsTab">
+              <TagIcon aria-hidden="true" />{{ pageTags.length ? "Editar tags" : "Adicionar tag" }}
+            </button>
+          </span>
         </div>
       </div>
       <div class="ed-actions">
@@ -482,6 +489,7 @@
         >
           <component :is="tab.icon" aria-hidden="true" />
           <span v-if="tab.id === 'pixels' && !selectedPixels.meta && !selectedPixels.ga" class="ed-rail-dot" aria-hidden="true"></span>
+          <span v-if="tab.id === 'tags' && page && !pageTags.length" class="ed-rail-dot" aria-hidden="true"></span>
         </button>
       </nav>
       <section v-if="sectionPanelOpen && editingSectionDraft" class="ed-section-panel" aria-label="Editar seção">
@@ -565,6 +573,37 @@
                 :model-value="resolveMediaUrl(pageShareImage) || pageShareImage"
                 @update:model-value="pageShareImage = $event"
               />
+            </EdGroup>
+          </template>
+
+          <template v-else-if="activeSettingsTab === 'tags'">
+            <EdGroup title="Tags desta página" kind="items" start-open>
+              <PageTagInput
+                ref="pageTagInputRef"
+                v-model="pageTags"
+                :agency-id="page?.agency_id"
+                input-id="editor-page-tags"
+                :disabled="!canEditPageTags"
+                @update:model-value="savePageTags"
+              />
+              <p class="ved-hint">
+                Organizam a lista de páginas e colocam este roteiro nas seções Links/Roteiros que mostram roteiros por tag.
+                As tags são salvas na hora.
+              </p>
+              <p v-if="pageTagsError" class="esv-tags-error" role="alert">{{ pageTagsError }}</p>
+              <div class="esv-tags-where">
+                <h4>{{ isPublished ? "Aparece agora em" : "Quando publicar, vai aparecer em" }}</h4>
+                <ul v-if="pageTagSections.length">
+                  <li v-for="use in pageTagSections" :key="use.pageId">
+                    <span class="esv-tags-ico"><LayoutGridIcon aria-hidden="true" /></span>
+                    <span><b>Links/Roteiros</b> em {{ use.pageTitle }}<small>pela tag {{ use.via.join(", ") }}</small></span>
+                  </li>
+                </ul>
+                <p v-else-if="!pageTags.length">Sem tag, esta página fica em "Sem tag" na lista de páginas e não entra em nenhuma seção por tag.</p>
+                <p v-else>Nenhuma seção mostra essas tags ainda. A página entra assim que alguma seção Links/Roteiros usar uma delas.</p>
+                <p v-if="pageTagSections.length" class="esv-tags-note">Viagens que já saíram e rascunhos ficam de fora, se a seção estiver configurada assim.</p>
+              </div>
+              <button type="button" class="esv-tags-manage" @click="openPageTagManager"><PencilIcon aria-hidden="true" />Gerenciar tags</button>
             </EdGroup>
           </template>
 
@@ -1718,6 +1757,14 @@
       </div>
     </transition>
     </div>
+    <PageTagManager
+      :open="pageTagManagerOpen"
+      :agency-id="page?.agency_id"
+      :pages="pageTagManagerPages"
+      :can-edit="canEditPageTags"
+      @close="pageTagManagerOpen = false"
+      @pages-changed="onPageTagManagerChanged"
+    />
     </template>
   </div>
 </template>
@@ -1753,10 +1800,12 @@ import {
   PanelsTopLeftIcon,
   PaperclipIcon,
   LayersIcon,
+  LayoutGridIcon,
   LoaderCircleIcon,
   MicIcon,
   Settings2Icon,
   PencilIcon,
+  TagIcon,
   PlaneIcon,
   PlusIcon,
   SendIcon,
@@ -1836,6 +1885,10 @@ import { useAgencyPages, type AgencyPage } from "../../components/admin/v2edit/u
 import { PHOTO_CREDITS_KEY, buildPhotoCredits } from "../../components/public/v2/photoCredits";
 import { getLocalizedValue } from "../../utils/i18n";
 import SectionPickerV2 from "../../components/admin/SectionPickerV2.vue";
+import PageTagInput from "../../components/admin/tags/PageTagInput.vue";
+import PageTagManager from "../../components/admin/tags/PageTagManager.vue";
+import { errorDetail, usePageTags } from "../../composables/usePageTags";
+import { tagStyle, type PageTagBrief } from "../../types/pageTag";
 import EdGroup from "../../components/admin/v2edit/EdGroup.vue";
 import EdText from "../../components/admin/v2edit/EdText.vue";
 import EdToggle from "../../components/admin/v2edit/EdToggle.vue";
@@ -1848,6 +1901,7 @@ import { DEFAULT_ACCENT, PAGE_DESIGN_KEY } from "../../components/public/v2/desi
 import { getReadableTextColor } from "../../utils/colorContrast";
 import { useLeadFeatureGate } from "../../composables/useLeadFeatureGate";
 import { createAdminLocalizer } from "../../utils/adminI18n";
+import { hasAnyPermission } from "../../utils/permissions";
 import { normalizeWhatsappDigits } from "../../utils/whatsapp";
 import heroThumb from "../../assets/hero-thumb.jpg";
 import headerThumb from "../../assets/header-thumb.png";
@@ -1879,6 +1933,7 @@ interface Page {
   cover_image_url?: string;
   seo_title?: string | null;
   design_v2_enabled?: boolean;
+  tags?: PageTagBrief[];
 }
 
 interface SectionCatalogItem {
@@ -1911,6 +1966,83 @@ onBeforeRouteLeave((to, _from, next) => {
 });
 
 const page = ref<Page | null>(null);
+
+// Tags da página: salvas na hora (não dependem do botão Salvar), na aba "Tags" do menu lateral.
+const { tags: agencyTags, load: loadAgencyTags, setPageTags } = usePageTags();
+const pageTags = ref<PageTagBrief[]>([]);
+const pageTagsError = ref("");
+const pageTagInputRef = ref<{ focus: () => void } | null>(null);
+const pageTagManagerOpen = ref(false);
+const pageTagManagerPages = ref<{ id: number; title: string; status: string; tags?: PageTagBrief[] }[]>([]);
+watch(
+  () => page.value?.agency_id,
+  agencyId => loadAgencyTags(agencyId),
+  { immediate: true }
+);
+watch(
+  () => page.value?.tags,
+  tags => {
+    pageTags.value = tags ? [...tags] : [];
+  },
+  { immediate: true }
+);
+const canEditPageTags = computed(() => {
+  const user = auth.user;
+  if (!user || user.is_superuser) return true;
+  if (user.is_owner ?? true) return true;
+  if ((user.role || "member").toLowerCase() === "admin") return true;
+  return hasAnyPermission(user.effective_permissions || [], ["pages_editor"]);
+});
+const savePageTags = async (next: PageTagBrief[]) => {
+  if (!page.value) return;
+  const previous = page.value.tags || [];
+  pageTagsError.value = "";
+  try {
+    const saved = await setPageTags(page.value.id, next.map(tag => tag.id));
+    page.value = { ...page.value, tags: saved };
+  } catch (err) {
+    pageTags.value = [...previous];
+    pageTagsError.value = errorDetail(err, "Não deu para salvar as tags. Tente de novo.");
+  }
+};
+// Seções Links/Roteiros por tag (de outras páginas) que vão mostrar esta página.
+const pageTagSections = computed(() => {
+  const mine = new Map(pageTags.value.map(tag => [tag.id, tag.name]));
+  const byPage = new Map<number, { pageId: number; pageTitle: string; via: string[] }>();
+  for (const tag of agencyTags.value) {
+    if (!mine.has(tag.id)) continue;
+    for (const use of tag.sections) {
+      if (use.page_id === page.value?.id) continue;
+      const entry = byPage.get(use.page_id) || { pageId: use.page_id, pageTitle: use.page_title, via: [] };
+      if (!entry.via.includes(tag.name)) entry.via.push(tag.name);
+      byPage.set(use.page_id, entry);
+    }
+  }
+  return [...byPage.values()];
+});
+const openTagsTab = () => {
+  if (sectionPanelOpen.value || activeSettingsTab.value !== "tags" || !leftPanelOpen.value) openRailTab("tags");
+  nextTick(() => pageTagInputRef.value?.focus());
+};
+const loadPageTagManagerPages = async () => {
+  if (!page.value?.agency_id) return;
+  try {
+    const res = await api.get<typeof pageTagManagerPages.value>("/pages", { params: { agency_id: page.value.agency_id } });
+    pageTagManagerPages.value = res.data;
+  } catch {
+    pageTagManagerPages.value = [];
+  }
+};
+const openPageTagManager = async () => {
+  pageTagManagerOpen.value = true;
+  await loadPageTagManagerPages();
+};
+// Renomear, juntar ou apagar no painel muda as tags desta página também.
+const onPageTagManagerChanged = async () => {
+  await loadPageTagManagerPages();
+  const self = pageTagManagerPages.value.find(item => item.id === page.value?.id);
+  if (self && page.value) page.value = { ...page.value, tags: self.tags || [] };
+};
 const pageTitle = ref("");
 const pageSlug = ref("");
 const pageShortDescription = ref("");
@@ -2284,7 +2416,7 @@ const markUnsavedChanges = () => {
 const isPublished = computed(() => page.value?.status === "published");
 const isFreePlan = computed(() => (auth.user?.plan || "free") === "free");
 const canUseAiAssistant = computed(() => !!auth.user);
-const activeSettingsTab = ref<"content" | "general" | "colors" | "pixels" | "capture">("content");
+const activeSettingsTab = ref<"content" | "general" | "tags" | "colors" | "pixels" | "capture">("content");
 const topbarMenuOpen = ref(false);
 const settingsSidebarRef = ref<HTMLElement | null>(null);
 const settingsPanelRef = ref<HTMLElement | null>(null);
@@ -2301,7 +2433,7 @@ const syncSettingsPanelHeight = () => {
   if (nextHeight > 0) settingsPanelHeight.value = nextHeight;
 };
 
-const selectSettingsTab = (tab: "content" | "general" | "colors" | "pixels" | "capture") => {
+const selectSettingsTab = (tab: "content" | "general" | "tags" | "colors" | "pixels" | "capture") => {
   activeSettingsTab.value = tab;
   if (tab === "general") {
     nextTick(syncSettingsPanelHeight);
@@ -2531,9 +2663,10 @@ const openPhonePanel = (panel: "layers" | "settings" | "ai") => {
   else if (panel === "settings") leftPanelOpen.value = true;
   else toggleAiAssistant();
 };
-type RailTab = "general" | "colors" | "pixels" | "capture";
+type RailTab = "general" | "tags" | "colors" | "pixels" | "capture";
 const railTabs: { id: RailTab; label: string; icon: Component }[] = [
   { id: "general", label: "Título e link", icon: PencilIcon },
+  { id: "tags", label: "Tags", icon: TagIcon },
   { id: "colors", label: "Cores", icon: PaletteIcon },
   { id: "pixels", label: "Rastreamento", icon: ActivityIcon },
   { id: "capture", label: "Captação de leads", icon: UserPlusIcon }
@@ -6132,8 +6265,12 @@ const sectionSummary = (section: PageSection) => {
     case "inclusions":
       return `${data.included?.length || 0} incluem · ${data.excluded?.length || 0} não`;
     case "reasons":
-    case "links":
       return countLabel(data.items?.length || 0, "item", "itens");
+    case "links": {
+      if (data.mode !== "tag") return countLabel(data.items?.length || 0, "item", "itens");
+      const names = (data.tagIds || []).map((id: number) => agencyTags.value.find(tag => tag.id === id)?.name).filter(Boolean);
+      return names.length ? `Por tag: ${names.join(", ")}` : "Por tag: escolha as tags";
+    }
   }
   const text = describeSection(section);
   return typeof text === "string" ? text.replace(/<[^>]+>/g, "") : "";
@@ -8893,6 +9030,27 @@ onMounted(async () => {
 @media (max-width: 1023px) { .ed-sk-side { display: none; } }
 @keyframes ed-sk { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 @media (prefers-reduced-motion: reduce) { .ed-sk { animation: none; } }
+
+/* Tags da página (topo e aba "Tags" do menu lateral) */
+.ed-title-tags { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+.ed-title-tags .page-tag { height: 22px; font-size: 11px; }
+.ed-title-tags-more { font-size: 11px; font-weight: 600; color: var(--muted-foreground); }
+.ed-title-tags-btn { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 8px; border: 1px dashed var(--border); border-radius: 999px; font-size: 11px; font-weight: 600; color: var(--muted-foreground); }
+.ed-title-tags-btn:hover { border-color: var(--muted-foreground); color: var(--foreground); }
+.ed-title-tags-btn svg { width: 12px; height: 12px; }
+.esv-tags-error { margin: 0; font-size: 12px; color: #dc2626; }
+.esv-tags-where { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 14px; background: var(--card); }
+.esv-tags-where h4 { margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted-foreground); }
+.esv-tags-where ul { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.esv-tags-where li { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; }
+.esv-tags-where li small { display: block; font-size: 12px; color: var(--muted-foreground); }
+.esv-tags-where p { margin: 0; font-size: 12.5px; color: var(--muted-foreground); }
+.esv-tags-where .esv-tags-note { font-size: 12px; }
+.esv-tags-ico { display: grid; place-items: center; flex-shrink: 0; width: 26px; height: 26px; border-radius: 8px; background: var(--accent); color: var(--accent-foreground); }
+.esv-tags-ico svg { width: 14px; height: 14px; }
+.esv-tags-manage { display: inline-flex; align-self: flex-start; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border-radius: 999px; font-size: 12.5px; font-weight: 600; color: var(--accent-foreground); }
+.esv-tags-manage:hover { background: var(--accent); }
+.esv-tags-manage svg { width: 14px; height: 14px; }
 </style>
 
 

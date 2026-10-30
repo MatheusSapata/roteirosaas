@@ -2,7 +2,7 @@
   <!-- Como na seção antiga: sem cards, a seção não aparece na página; na prévia do editor, um aviso. -->
   <V2Section v-if="items.length || previewDevice" type="links" :background="section.backgroundColor" :anchor-id="section.anchorId">
     <V2Head :label="label" :title="title" :subtitle-html="subtitleHtml" :align="headAlign" />
-    <p v-if="!items.length" class="v2-links-empty">Adicione cards em Links/Roteiros. Sem cards, a seção não aparece na página.</p>
+    <p v-if="!items.length" class="v2-links-empty">{{ section.mode === "tag" ? "Nenhum roteiro publicado com essas tags agora." : "Adicione cards em Links/Roteiros." }} Sem cards, a seção não aparece na página.</p>
     <div v-else class="v2-links" :class="isCarousel ? 'is-carousel' : 'is-grid'" :style="layoutVars">
       <div ref="track" class="v2-links-track">
         <a

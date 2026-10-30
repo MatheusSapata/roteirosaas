@@ -760,3 +760,38 @@ html.dark body.admin-shell .hover\:text-slate-900:hover {
 html.dark body.admin-shell .hover\:border-slate-300:hover {
   border-color: rgba(148, 163, 184, 0.6);
 }
+
+/* Tags de páginas: fundo e texto de cada cor, no claro e no escuro. */
+:root {
+  --tag-blue-bg: #e0ecff; --tag-blue-fg: #1e4fa8;
+  --tag-amber-bg: #fff1d6; --tag-amber-fg: #8a5300;
+  --tag-rose-bg: #ffe4ec; --tag-rose-fg: #a3214e;
+  --tag-violet-bg: #efe7ff; --tag-violet-fg: #5b2fb3;
+  --tag-teal-bg: #d9f6f3; --tag-teal-fg: #0f6b63;
+  --tag-orange-bg: #ffe8dc; --tag-orange-fg: #a3410d;
+  --tag-slate-bg: #e8edf3; --tag-slate-fg: #334155;
+  --tag-green-bg: #ddf7e9; --tag-green-fg: #116b43;
+}
+html.dark {
+  --tag-blue-bg: #17284a; --tag-blue-fg: #9cc1ff;
+  --tag-amber-bg: #33260c; --tag-amber-fg: #f7c66a;
+  --tag-rose-bg: #3a1424; --tag-rose-fg: #ff9cbc;
+  --tag-violet-bg: #2a1d4a; --tag-violet-fg: #c7aefc;
+  --tag-teal-bg: #0f302d; --tag-teal-fg: #7fe3d8;
+  --tag-orange-bg: #3a1e10; --tag-orange-fg: #ffad80;
+  --tag-slate-bg: #222a33; --tag-slate-fg: #c3ccd6;
+  --tag-green-bg: #10301f; --tag-green-fg: #7ce5a9;
+}
+.page-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: var(--tag-bg, var(--muted));
+  color: var(--tag-fg, var(--muted-foreground));
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}

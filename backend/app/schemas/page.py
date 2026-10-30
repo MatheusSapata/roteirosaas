@@ -4,6 +4,8 @@ import json
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
+from app.schemas.page_tag import PageTagBrief
+
 
 class PageBase(BaseModel):
     title: str
@@ -64,6 +66,7 @@ class PageOut(PageBase):
     updated_at: Optional[datetime] = None
     is_default: bool = False
     design_v2_enabled: bool = False
+    tags: list[PageTagBrief] = []
     model_config = ConfigDict(from_attributes=True)
 
 

@@ -11,6 +11,7 @@ from app.models import (
     agency,
     page_template,
     page,
+    page_tag,
     media,
     stock_image,
     media_archive,
