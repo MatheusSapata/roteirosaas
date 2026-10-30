@@ -2252,6 +2252,7 @@ const computeStateSnapshot = () => {
   return JSON.stringify({
     title: pageTitle.value,
     slug: pageSlug.value,
+    general: { shortDescription: pageShortDescription.value, shareImage: pageShareImage.value },
     theme: themeSnapshot,
     editor: editorSnapshot,
     design: useLegacyDesign.value ? "legacy" : "default",
