@@ -352,10 +352,62 @@
       </div>
     </transition>
 
-    <div v-if="filteredPages.length" class="pl-cards">
-      <article v-for="(page, index) in filteredPages" :key="page.id" class="pl-card">
-        <div class="pl-cover" :style="coverStyle(page, index)">
+    <div v-if="tags.length || canEditPages" class="pl-tagbar" role="group" aria-label="Filtrar por tag">
+      <span class="pl-tagbar-label"><TagIcon aria-hidden="true" />Tags</span>
+      <button
+        v-for="tag in tags"
+        :key="tag.id"
+        type="button"
+        class="pl-tchip"
+        :class="{ on: tagFilter.includes(tag.id) }"
+        :style="tagStyle(tag.color)"
+        :aria-pressed="tagFilter.includes(tag.id)"
+        @click="toggleTagFilter(tag.id)"
+      >
+        <i aria-hidden="true"></i>{{ tag.name }}<span>{{ tagPageCount(tag.id) }}</span>
+      </button>
+      <button v-if="tags.length" type="button" class="pl-tchip is-dashed" :class="{ on: untaggedFilter }" :aria-pressed="untaggedFilter" @click="untaggedFilter = !untaggedFilter">
+        Sem tag<span>{{ untaggedCount }}</span>
+      </button>
+      <label v-if="tagFilter.length > 1" class="pl-match">
+        Mostrar páginas com
+        <select v-model="tagMatch">
+          <option value="any">qualquer uma</option>
+          <option value="all">todas</option>
+        </select>
+      </label>
+      <button v-if="tagFilter.length || untaggedFilter" type="button" class="pl-linkbtn" @click="clearTagFilter">Limpar</button>
+      <p v-if="!tags.length" class="pl-tagbar-hint">Crie tags para organizar as páginas por destino, tipo de viagem ou o que fizer sentido para a agência.</p>
+      <span class="pl-grow"></span>
+      <div v-if="tags.length" class="pl-viewtoggle" role="group" aria-label="Exibição">
+        <button type="button" :class="{ on: !groupByTag }" :aria-pressed="!groupByTag" @click="setGroupByTag(false)"><LayoutGridIcon aria-hidden="true" />Grade</button>
+        <button type="button" :class="{ on: groupByTag }" :aria-pressed="groupByTag" @click="setGroupByTag(true)"><FolderIcon aria-hidden="true" />Por tag</button>
+      </div>
+      <button type="button" class="pl-linkbtn" @click="openTagManager()"><PencilIcon aria-hidden="true" />{{ tags.length ? "Gerenciar tags" : "Criar tags" }}</button>
+    </div>
+
+    <div v-if="filteredPages.length" class="pl-groups">
+      <section v-for="group in pageGroups" :key="group.key" class="pl-group" :class="{ closed: collapsedGroups.includes(group.key) }">
+      <button
+        v-if="group.label"
+        type="button"
+        class="pl-group-head"
+        :style="group.tag ? tagStyle(group.tag.color) : undefined"
+        :aria-expanded="!collapsedGroups.includes(group.key)"
+        @click="toggleGroup(group.key)"
+      >
+        <span class="pl-folder"><FolderIcon aria-hidden="true" /></span>
+        <b>{{ group.label }}</b>
+        <span class="pl-group-count">{{ group.pages.length }} {{ group.pages.length === 1 ? "página" : "páginas" }}</span>
+        <ChevronDownIcon class="pl-chev" aria-hidden="true" />
+      </button>
+      <div v-show="!collapsedGroups.includes(group.key)" class="pl-cards">
+      <article v-for="page in group.pages" :key="page.id" class="pl-card" :class="{ 'is-selected': selectedPageIds.includes(page.id) }">
+        <div class="pl-cover" :style="coverStyle(page, pageIndex(page))">
           <div class="pl-cover-badges">
+            <label v-if="canEditPages" class="pl-check" :title="`Selecionar ${page.title}`">
+              <input type="checkbox" :checked="selectedPageIds.includes(page.id)" :aria-label="`Selecionar ${page.title}`" @change="toggleSelected(page.id)" />
+            </label>
             <span class="pl-pill"><i :class="page.status === 'published' ? 'dot-on' : 'dot-off'"></i>{{ getStatusLabel(page.status) }}</span>
             <span v-if="page.is_default" class="pl-pill">
               <StarIcon class="pl-star" aria-hidden="true" />
@@ -367,6 +419,27 @@
           </div>
         </div>
         <div class="pl-body">
+          <div v-if="page.tags?.length || canEditPages" class="pl-tags">
+            <span v-for="tag in page.tags || []" :key="tag.id" class="page-tag" :style="tagStyle(tag.color)">{{ tag.name }}</span>
+            <button
+              v-if="canEditPages"
+              type="button"
+              class="pl-tag-add"
+              :aria-expanded="tagPopoverId === page.id"
+              @click.stop="toggleTagPopover(page.id)"
+            >
+              <TagIcon aria-hidden="true" />{{ page.tags?.length ? "Editar" : "Adicionar tag" }}
+            </button>
+            <div v-if="tagPopoverId === page.id" class="pl-tag-pop" @click.stop>
+              <p>Tags desta página</p>
+              <PageTagInput
+                :model-value="page.tags || []"
+                :agency-id="agencyStore.currentAgencyId"
+                :input-id="`page-tags-${page.id}`"
+                @update:model-value="savePageTags(page, $event)"
+              />
+            </div>
+          </div>
           <div class="pl-link">
             <GlobeIcon aria-hidden="true" />
             <template v-if="page.status === 'published' && pagePublicUrl(page)">
@@ -423,10 +496,34 @@
           </div>
         </div>
       </article>
+      </div>
+      </section>
     </div>
     <div v-else class="pl-empty">
-      {{ viewCopy.emptyStates.noPages.title }}
+      {{ pages.length ? "Nenhuma página com esses filtros." : viewCopy.emptyStates.noPages.title }}
     </div>
+
+    <div v-if="selectedPageIds.length" class="pl-bulk" role="region" aria-label="Ações em lote">
+      <span><b>{{ selectedPageIds.length }}</b> {{ selectedPageIds.length === 1 ? "selecionada" : "selecionadas" }}</span>
+      <select :disabled="bulkBusy || !tags.length" aria-label="Aplicar tag" @change="onBulkSelect($event, 'add')">
+        <option value="">Aplicar tag…</option>
+        <option v-for="tag in tags" :key="tag.id" :value="tag.id">{{ tag.name }}</option>
+      </select>
+      <select v-if="selectedTagsInUse.length" :disabled="bulkBusy" aria-label="Remover tag" @change="onBulkSelect($event, 'remove')">
+        <option value="">Remover tag…</option>
+        <option v-for="tag in selectedTagsInUse" :key="tag.id" :value="tag.id">{{ tag.name }}</option>
+      </select>
+      <button type="button" @click="selectedPageIds = []">Limpar seleção</button>
+    </div>
+
+    <PageTagManager
+      :open="tagManagerOpen"
+      :agency-id="agencyStore.currentAgencyId"
+      :pages="pages"
+      :can-edit="canEditPages"
+      @close="tagManagerOpen = false"
+      @pages-changed="refreshPageTags"
+    />
 
     <div
       v-if="duplicateDialogOpen"
@@ -521,17 +618,24 @@ import { applyTemplateBranding } from "../../utils/pageTemplates";
 import { sanitizeDigits, buildWhatsappLink } from "../../utils/whatsapp";
 import { resolveMediaUrl } from "../../utils/media";
 import { hasAnyPermission } from "../../utils/permissions";
+import PageTagInput from "../../components/admin/tags/PageTagInput.vue";
+import PageTagManager from "../../components/admin/tags/PageTagManager.vue";
+import { errorDetail, usePageTags } from "../../composables/usePageTags";
+import { tagStyle, type PageTagBrief } from "../../types/pageTag";
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
+  ChevronDownIcon,
   CircleAlertIcon,
   EllipsisVerticalIcon,
   EyeIcon,
   FilePlus2Icon,
   FileTextIcon,
+  FolderIcon,
   GlobeIcon,
   InfoIcon,
   LayersIcon,
+  LayoutGridIcon,
   LayoutTemplateIcon,
   MonitorIcon,
   MousePointer2Icon,
@@ -542,6 +646,7 @@ import {
   SearchIcon,
   SmartphoneIcon,
   StarIcon,
+  TagIcon,
   UserPlusIcon,
   XIcon
 } from "lucide-vue-next";
@@ -555,6 +660,7 @@ interface Page {
   config_json?: unknown;
   template_id?: number | null;
   is_default?: boolean;
+  tags?: PageTagBrief[];
 }
 
 interface PageStatsSummary {
@@ -1124,6 +1230,7 @@ const loadPages = async () => {
   try {
     const res = await api.get<Page[]>("/pages", { params: { agency_id: agencyStore.currentAgencyId } });
     pages.value = res.data;
+    void loadTags(agencyStore.currentAgencyId, true);
     await loadPageStats();
   } catch (err) {
     console.error(err);
@@ -1537,6 +1644,8 @@ const confirmDuplicate = async () => {
       template_id: fullPage.template_id || null,
       config_json: fullPage.config_json || null
     });
+    const sourceTagIds = (duplicateSourcePage.value.tags || []).map(tag => tag.id);
+    if (sourceTagIds.length) await setPageTags(res.data.id, sourceTagIds).catch(() => undefined);
     showSnackbar(viewCopy.messages.duplicateSuccess);
     closeDuplicateDialog();
     router.push(`/admin/pages/${res.data.id}/edit`);
@@ -1691,12 +1800,132 @@ const getPageHeroThumbnail = (page: Page) => {
   return resolveMediaUrl(raw) || raw;
 };
 
+// Tags: filtro, agrupamento "Por tag", seleção em lote e painel de gestão.
+const { tags, load: loadTags, reload: reloadTags, setPageTags, bulk: bulkTags } = usePageTags();
+const TAG_VIEW_KEY = "pages-list-tag-view";
+const readTagView = () => {
+  try {
+    return JSON.parse(localStorage.getItem(TAG_VIEW_KEY) || "{}") || {};
+  } catch {
+    return {};
+  }
+};
+const savedTagView = readTagView();
+const tagFilter = ref<number[]>(Array.isArray(savedTagView.tags) ? savedTagView.tags : []);
+const untaggedFilter = ref(savedTagView.untagged === true);
+const tagMatch = ref<"any" | "all">(savedTagView.match === "all" ? "all" : "any");
+const groupByTag = ref(savedTagView.group === true);
+const collapsedGroups = ref<string[]>([]);
+const selectedPageIds = ref<number[]>([]);
+const tagPopoverId = ref<number | null>(null);
+const tagManagerOpen = ref(false);
+const bulkBusy = ref(false);
+watch([tagFilter, untaggedFilter, tagMatch, groupByTag], () => {
+  try {
+    localStorage.setItem(
+      TAG_VIEW_KEY,
+      JSON.stringify({ tags: tagFilter.value, untagged: untaggedFilter.value, match: tagMatch.value, group: groupByTag.value })
+    );
+  } catch {
+    // Sem armazenamento local, a lista só não lembra o filtro.
+  }
+});
+// Tag apagada some do filtro.
+watch(tags, list => {
+  const ids = new Set(list.map(tag => tag.id));
+  if (tagFilter.value.some(id => !ids.has(id))) tagFilter.value = tagFilter.value.filter(id => ids.has(id));
+});
+const pageTagIds = (page: Page) => (page.tags || []).map(tag => tag.id);
+const matchesTagFilter = (page: Page) => {
+  if (!tagFilter.value.length && !untaggedFilter.value) return true;
+  const ids = pageTagIds(page);
+  if (untaggedFilter.value && !ids.length) return true;
+  if (!tagFilter.value.length) return false;
+  return tagMatch.value === "all" ? tagFilter.value.every(id => ids.includes(id)) : tagFilter.value.some(id => ids.includes(id));
+};
+const tagPageCount = (tagId: number) => pages.value.filter(page => pageTagIds(page).includes(tagId)).length;
+const untaggedCount = computed(() => pages.value.filter(page => !page.tags?.length).length);
+const toggleTagFilter = (tagId: number) => {
+  tagFilter.value = tagFilter.value.includes(tagId) ? tagFilter.value.filter(id => id !== tagId) : [...tagFilter.value, tagId];
+};
+const clearTagFilter = () => {
+  tagFilter.value = [];
+  untaggedFilter.value = false;
+};
+const setGroupByTag = (value: boolean) => {
+  groupByTag.value = value;
+};
+const toggleGroup = (key: string) => {
+  collapsedGroups.value = collapsedGroups.value.includes(key) ? collapsedGroups.value.filter(item => item !== key) : [...collapsedGroups.value, key];
+};
+const toggleSelected = (pageId: number) => {
+  selectedPageIds.value = selectedPageIds.value.includes(pageId)
+    ? selectedPageIds.value.filter(id => id !== pageId)
+    : [...selectedPageIds.value, pageId];
+};
+const selectedTagsInUse = computed(() => {
+  const used = new Set(pages.value.filter(page => selectedPageIds.value.includes(page.id)).flatMap(pageTagIds));
+  return tags.value.filter(tag => used.has(tag.id));
+});
+const toggleTagPopover = (pageId: number) => {
+  tagPopoverId.value = tagPopoverId.value === pageId ? null : pageId;
+  if (tagPopoverId.value) nextTick(() => document.getElementById(`page-tags-${pageId}`)?.focus());
+};
+const closeTagPopover = () => {
+  tagPopoverId.value = null;
+};
+const openTagManager = () => {
+  tagPopoverId.value = null;
+  tagManagerOpen.value = true;
+};
+const savePageTags = async (page: Page, next: PageTagBrief[]) => {
+  const previous = page.tags || [];
+  page.tags = next;
+  try {
+    page.tags = await setPageTags(page.id, next.map(tag => tag.id));
+  } catch (err) {
+    page.tags = previous;
+    showSnackbar(errorDetail(err, "Não deu para salvar as tags da página."), "error");
+  }
+};
+// Depois de mudar tags no painel (renomear, juntar, apagar, tirar de uma página), a lista busca as tags de novo.
+const refreshPageTags = async () => {
+  if (!agencyStore.currentAgencyId) return;
+  try {
+    const res = await api.get<Page[]>("/pages", { params: { agency_id: agencyStore.currentAgencyId } });
+    const byId = new Map(res.data.map(page => [page.id, page.tags || []]));
+    pages.value = pages.value.map(page => ({ ...page, tags: byId.get(page.id) ?? page.tags }));
+  } catch (err) {
+    console.error(err);
+  }
+};
+const onBulkSelect = async (event: Event, mode: "add" | "remove") => {
+  const select = event.target as HTMLSelectElement;
+  const tagId = Number(select.value);
+  select.value = "";
+  if (!tagId || !agencyStore.currentAgencyId) return;
+  const tag = tags.value.find(item => item.id === tagId);
+  const ids = [...selectedPageIds.value];
+  bulkBusy.value = true;
+  try {
+    await bulkTags(agencyStore.currentAgencyId, ids, mode === "add" ? [tagId] : [], mode === "remove" ? [tagId] : []);
+    await refreshPageTags();
+    const count = ids.length;
+    const pagesLabel = `${count} ${count === 1 ? "página" : "páginas"}`;
+    showSnackbar(mode === "add" ? `Tag "${tag?.name}" aplicada em ${pagesLabel}.` : `Tag "${tag?.name}" removida de ${pagesLabel}.`);
+  } catch (err) {
+    showSnackbar(errorDetail(err, "Não deu para mudar as tags das páginas."), "error");
+  } finally {
+    bulkBusy.value = false;
+  }
+};
+
 const filteredPages = computed(() => {
   const term = searchQuery.value.trim().toLowerCase();
   const filtered = pages.value.filter(page => {
     const matchesTerm = !term || page.title.toLowerCase().includes(term) || (page.slug || "").toLowerCase().includes(term);
     const matchesStatus = !statusFilter.value || page.status === statusFilter.value;
-    return matchesTerm && matchesStatus;
+    return matchesTerm && matchesStatus && matchesTagFilter(page);
   });
 
   const sorted = [...filtered];
@@ -1719,6 +1948,19 @@ const filteredPages = computed(() => {
     return b.id - a.id;
   });
   return sorted;
+});
+
+const pageIndex = (page: Page) => filteredPages.value.findIndex(item => item.id === page.id);
+const pageGroups = computed(() => {
+  const list = filteredPages.value;
+  if (!groupByTag.value || !tags.value.length) return [{ key: "all", label: "", tag: null, pages: list }];
+  const visibleTags = tagFilter.value.length ? tags.value.filter(tag => tagFilter.value.includes(tag.id)) : tags.value;
+  const groups = visibleTags
+    .map(tag => ({ key: `tag-${tag.id}`, label: tag.name, tag, pages: list.filter(page => pageTagIds(page).includes(tag.id)) }))
+    .filter(group => group.pages.length);
+  const untagged = list.filter(page => !page.tags?.length);
+  if (untagged.length) groups.push({ key: "untagged", label: "Sem tag", tag: null as any, pages: untagged });
+  return groups;
 });
 
 const publishedPagesCount = computed(() => pages.value.filter(page => page.status === "published").length);
@@ -1748,6 +1990,7 @@ const runMenu = (action: () => unknown) => {
 };
 const closeMenuOnOutside = () => {
   openMenuId.value = null;
+  closeTagPopover();
 };
 const totalPageVisits = computed(() => pages.value.reduce((total, page) => total + getPageVisits(page.id), 0));
 const totalPageLeads = computed(() => pages.value.reduce((total, page) => total + getPageLeads(page.id), 0));
@@ -3094,4 +3337,48 @@ onMounted(async () => {
     border-right: 0;
   }
 }
+
+/* Tags */
+.pl-viewtoggle { display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--muted); }
+.pl-viewtoggle button { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; color: var(--muted-foreground); }
+.pl-viewtoggle button svg { width: 14px; height: 14px; }
+.pl-viewtoggle button.on { background: var(--card); color: var(--foreground); box-shadow: var(--shadow-card); }
+.pl-tagbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 16px; background: var(--card); box-shadow: var(--shadow-card); }
+.pl-tagbar-label { display: inline-flex; align-items: center; gap: 6px; margin-right: 4px; font-size: 12px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted-foreground); }
+.pl-tagbar-label svg { width: 14px; height: 14px; }
+.pl-tagbar-hint { margin: 0; font-size: 12.5px; color: var(--muted-foreground); }
+.pl-tchip { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border: 1px solid transparent; border-radius: 999px; background: var(--muted); font-size: 12.5px; font-weight: 600; color: var(--muted-foreground); }
+.pl-tchip i { width: 8px; height: 8px; border-radius: 999px; background: var(--tag-fg, var(--muted-foreground)); }
+.pl-tchip span { font-size: 11px; opacity: 0.75; font-variant-numeric: tabular-nums; }
+.pl-tchip.on { border-color: color-mix(in srgb, var(--tag-fg, var(--foreground)) 35%, transparent); background: var(--tag-bg, var(--card)); color: var(--tag-fg, var(--foreground)); }
+.pl-tchip.is-dashed { border: 1px dashed var(--border); background: transparent; }
+.pl-tchip.is-dashed.on { border-style: solid; background: var(--muted); color: var(--foreground); }
+.pl-match { display: inline-flex; align-items: center; gap: 6px; margin-left: 4px; font-size: 12px; color: var(--muted-foreground); }
+.pl-match select { height: 30px; padding: 0 28px 0 10px; border: 1px solid var(--border); border-radius: 999px; background-color: var(--card); font-size: 12.5px; font-weight: 600; color: var(--foreground); }
+.pl-linkbtn { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border-radius: 999px; font-size: 12.5px; font-weight: 600; color: var(--accent-foreground); }
+.pl-linkbtn:hover { background: var(--accent); }
+.pl-linkbtn svg { width: 14px; height: 14px; }
+.pl-groups { display: flex; flex-direction: column; gap: 14px; }
+.pl-group-head { display: flex; align-items: center; gap: 10px; width: 100%; margin-bottom: 12px; padding: 10px 14px; border-radius: 14px; background: var(--card); box-shadow: var(--shadow-card); text-align: left; }
+.pl-group.closed .pl-group-head { margin-bottom: 0; }
+.pl-folder { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: var(--tag-bg, var(--muted)); color: var(--tag-fg, var(--muted-foreground)); }
+.pl-folder svg { width: 16px; height: 16px; }
+.pl-group-head b { font-family: var(--font-display); font-size: 15px; font-weight: 600; color: var(--foreground); }
+.pl-group-count { font-size: 12px; color: var(--muted-foreground); }
+.pl-chev { width: 18px; height: 18px; margin-left: auto; color: var(--muted-foreground); transition: transform 0.15s; }
+.pl-group.closed .pl-chev { transform: rotate(-90deg); }
+.pl-card.is-selected { outline: 2px solid var(--primary); outline-offset: 0; }
+.pl-check + .pl-pill { margin-right: auto; }
+.pl-check { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: rgba(255, 255, 255, 0.92); cursor: pointer; }
+.pl-check input { width: 15px; height: 15px; margin: 0; accent-color: #12b981; cursor: pointer; }
+.pl-tags { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.pl-tag-add { display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 9px; border: 1px dashed var(--border); border-radius: 999px; font-size: 11.5px; font-weight: 600; color: var(--muted-foreground); }
+.pl-tag-add:hover { border-color: var(--muted-foreground); color: var(--foreground); }
+.pl-tag-add svg { width: 12px; height: 12px; }
+.pl-tag-pop { position: absolute; top: calc(100% + 6px); left: 0; z-index: 30; display: flex; flex-direction: column; gap: 8px; width: 300px; max-width: calc(100vw - 48px); padding: 12px; border: 1px solid var(--border); border-radius: 14px; background: var(--card); box-shadow: 0 12px 32px rgba(24, 32, 40, 0.16); }
+.pl-tag-pop p { margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted-foreground); }
+.pl-bulk { position: fixed; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); left: 50%; z-index: 40; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; width: max-content; max-width: calc(100vw - 32px); padding: 10px 12px 10px 18px; border-radius: 18px; background: var(--foreground); color: var(--background); box-shadow: 0 12px 32px rgba(24, 32, 40, 0.24); transform: translateX(-50%); font-size: 13px; }
+.pl-bulk b { font-family: var(--font-display); }
+.pl-bulk select { height: 34px; padding: 0 28px 0 12px; border: 0; border-radius: 999px; background-color: var(--background); font-size: 12.5px; font-weight: 600; color: var(--foreground); }
+.pl-bulk button { height: 34px; padding: 0 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; opacity: 0.85; }
 </style>

@@ -559,6 +559,20 @@ export interface LinksSection extends SectionBase {
   title: LocalizedString;
   subtitle?: LocalizedString;
   items: LinkCardItem[];
+  /** "tag": os cards vêm das páginas publicadas com as tags escolhidas (montados pelo servidor). */
+  mode?: "manual" | "tag";
+  tagIds?: number[];
+  tagMatch?: "any" | "all";
+  tagSort?: "departure" | "recent" | "title";
+  /** 0 = todos. A grade mostra até 8. */
+  tagLimit?: number;
+  tagHidePast?: boolean;
+  tagExcludeCurrent?: boolean;
+  tagShowDates?: boolean;
+  tagShowPrice?: boolean;
+  tagButtonLabel?: LocalizedString;
+  /** Cards escolhidos à mão, guardados ao trocar para "Por tag" para voltar a eles. */
+  manualItems?: LinkCardItem[];
   carouselEnabled?: boolean;
   cardBackgroundColor?: string;
   buttonColor?: string;
