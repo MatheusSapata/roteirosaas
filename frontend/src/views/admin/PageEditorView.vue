@@ -553,6 +553,18 @@
                 placeholder="Ex.: Pacote completo com transporte, hospedagem e ingressos."
                 @update:model-value="pageShortDescription = $event"
               />
+              <ImageUploadField
+                :model-value="pageShareImage"
+                @update:model-value="pageShareImage = $event || ''"
+                layout="compact"
+                label="Imagem de compartilhamento"
+                hint="Opcional. Aparece ao compartilhar o link no WhatsApp e nas redes. Sem imagem, usa a do Banner Inicial. Ideal 1200 × 630 px."
+              />
+              <PagePhotoPicker
+                :images="pagePhotoChoices"
+                :model-value="resolveMediaUrl(pageShareImage) || pageShareImage"
+                @update:model-value="pageShareImage = $event"
+              />
             </EdGroup>
           </template>
 
@@ -690,6 +702,20 @@
                     rows="5"
                     placeholder="Ex: Pacote completo para Beto Carrero com transporte, hospedagem e ingressos inclusos."
                     class="mt-1 w-full rounded-[12px] border border-slate-200 bg-white px-4 py-2 text-[16px] text-slate-700 placeholder:text-slate-400 dark:border-white/15 dark:bg-[#05070F] dark:text-white"
+                  />
+                </div>
+                <div>
+                  <ImageUploadField
+                    :model-value="pageShareImage"
+                    @update:model-value="pageShareImage = $event || ''"
+                    layout="compact"
+                    label="IMAGEM DE COMPARTILHAMENTO"
+                    hint="Opcional. Aparece ao compartilhar o link no WhatsApp e nas redes. Sem imagem, usa a do Banner Inicial. Ideal 1200 × 630 px."
+                  />
+                  <PagePhotoPicker
+                    :images="pagePhotoChoices"
+                    :model-value="resolveMediaUrl(pageShareImage) || pageShareImage"
+                    @update:model-value="pageShareImage = $event"
                   />
                 </div>
               </div>
@@ -1813,6 +1839,9 @@ import SectionPickerV2 from "../../components/admin/SectionPickerV2.vue";
 import EdGroup from "../../components/admin/v2edit/EdGroup.vue";
 import EdText from "../../components/admin/v2edit/EdText.vue";
 import EdToggle from "../../components/admin/v2edit/EdToggle.vue";
+import ImageUploadField from "../../components/admin/inputs/ImageUploadField.vue";
+import PagePhotoPicker from "../../components/admin/inputs/PagePhotoPicker.vue";
+import { collectImages } from "../../components/creatives/creativeData";
 import "../../components/admin/v2edit/v2edit.css";
 import { pickSectionComponent } from "../../components/public/v2/registry";
 import { DEFAULT_ACCENT, PAGE_DESIGN_KEY } from "../../components/public/v2/designContext";
@@ -1885,6 +1914,10 @@ const page = ref<Page | null>(null);
 const pageTitle = ref("");
 const pageSlug = ref("");
 const pageShortDescription = ref("");
+// Imagem do link compartilhado; vazia = a do Banner Inicial (regra padrão).
+const pageShareImage = ref("");
+// Fotos que a página já tem, para escolher uma como imagem de compartilhamento.
+const pagePhotoChoices = computed(() => collectImages(sections.value).filter(url => !/^(data|blob):/i.test(url)));
 const slugAutoSyncEnabled = ref(true);
 const PAGE_SLUG_FALLBACK = "pagina";
 
@@ -1924,6 +1957,7 @@ watch(
 watch(pageTitle, () => markUnsavedChanges());
 watch(pageSlug, () => markUnsavedChanges());
 watch(pageShortDescription, () => markUnsavedChanges());
+watch(pageShareImage, () => markUnsavedChanges());
 
 const auth = useAuthStore();
 const leadBlockedDescription = computed(() =>
@@ -5116,7 +5150,8 @@ const buildConfig = (): PageConfig => ({
   version: 1,
   ...(useLegacyDesign.value ? { design: "legacy" as const } : {}),
   general: {
-    shortDescription: pageShortDescription.value || ""
+    shortDescription: pageShortDescription.value || "",
+    ...(pageShareImage.value ? { shareImage: pageShareImage.value } : {})
   },
   theme: { ...theme.value, color1: colorA.value, color2: colorB.value },
   editor: { ...editorPrefs.value, previewEnabled: true, previewDevice: previewDevice.value },
@@ -5711,6 +5746,7 @@ const hydrateFromConfig = (config?: PageConfig | string | null) => {
 
     const general = (parsed as any).general;
     pageShortDescription.value = typeof general?.shortDescription === "string" ? general.shortDescription : "";
+    pageShareImage.value = typeof general?.shareImage === "string" ? general.shareImage : "";
 
     if (parsed.sections && Array.isArray(parsed.sections) && parsed.sections.length) {
       // Textos de exemplo que a seção antiga gravava e nunca mostrava chegam vazios ao editor.

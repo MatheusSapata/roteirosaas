@@ -129,8 +129,15 @@ def _roteiro_online_metadata(raw_url: str, db: Session) -> Optional[dict[str, st
         description = _localized_text(general.get("shortDescription")) if isinstance(general, dict) else ""
     if not description:
         description = (page.seo_description or "").strip()
+    general = config.get("general") if isinstance(config, dict) else {}
+    share_image = general.get("shareImage") if isinstance(general, dict) else None
     image = str(
-        hero.get("backgroundImage") or hero.get("mobileBackgroundImage") or page.cover_image_url or page.agency.logo_url or ""
+        share_image
+        or hero.get("backgroundImage")
+        or hero.get("mobileBackgroundImage")
+        or page.cover_image_url
+        or page.agency.logo_url
+        or ""
     ).strip()
     if image:
         image = urljoin(raw_url, image)
@@ -167,8 +174,15 @@ def _metadata_from_public_page(raw_url: str, payload: dict[str, Any]) -> dict[st
     if not description:
         description = str(payload.get("seo_description") or "").strip()
     branding = payload.get("branding") if isinstance(payload.get("branding"), dict) else {}
+    general = config.get("general") if isinstance(config, dict) else {}
+    share_image = general.get("shareImage") if isinstance(general, dict) else None
     image = str(
-        hero.get("backgroundImage") or hero.get("mobileBackgroundImage") or payload.get("cover_image_url") or branding.get("logo_url") or ""
+        share_image
+        or hero.get("backgroundImage")
+        or hero.get("mobileBackgroundImage")
+        or payload.get("cover_image_url")
+        or branding.get("logo_url")
+        or ""
     ).strip()
     return {
         "url": raw_url,
