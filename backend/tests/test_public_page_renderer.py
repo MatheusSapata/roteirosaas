@@ -46,3 +46,35 @@ def test_build_meta_block_uses_hero_subtitle_and_page_title():
 
     assert '<meta property="og:title" content="Roteiro Teste" />' in meta_block
     assert '<meta property="og:description" content="Uma viagem inesquecível pelo Sul do Brasil" />' in meta_block
+
+
+def _page_with_images(general: dict) -> PublicPageOut:
+    return PublicPageOut(
+        id=1,
+        title="Roteiro Teste",
+        slug="roteiro-teste",
+        agency_slug="agencia-teste",
+        cover_image_url="https://cdn.example.com/banner.jpg",
+        seo_title=None,
+        seo_description=None,
+        config={"general": general},
+        branding={"agency_name": "Agência Teste"},
+    )
+
+
+def test_build_meta_block_prefers_uploaded_share_image(monkeypatch):
+    monkeypatch.setattr("app.services.public_page_renderer._optimize_og_image", lambda url, origin: url)
+    page = _page_with_images({"shareImage": "https://cdn.example.com/compartilhar.jpg"})
+
+    meta_block = _build_meta_block(page, "https://example.com/roteiro-teste", "https://example.com")
+
+    assert '<meta property="og:image" content="https://cdn.example.com/compartilhar.jpg" />' in meta_block
+
+
+def test_build_meta_block_keeps_banner_image_without_share_image(monkeypatch):
+    monkeypatch.setattr("app.services.public_page_renderer._optimize_og_image", lambda url, origin: url)
+    page = _page_with_images({"shareImage": "  "})
+
+    meta_block = _build_meta_block(page, "https://example.com/roteiro-teste", "https://example.com")
+
+    assert '<meta property="og:image" content="https://cdn.example.com/banner.jpg" />' in meta_block

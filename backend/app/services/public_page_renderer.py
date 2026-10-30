@@ -128,6 +128,17 @@ def _resolve_page_share_description(page: PublicPageOut, fallback_title: str, ag
     return f"{agency_name} preparou um roteiro personalizado: {fallback_title}."
 
 
+def _resolve_page_share_image(page: PublicPageOut) -> Optional[str]:
+    config = page.config if isinstance(page.config, dict) else {}
+    general = config.get("general")
+    share_image = general.get("shareImage") if isinstance(general, dict) else None
+    if isinstance(share_image, str):
+        trimmed = share_image.strip()
+        if trimmed and not trimmed.lower().startswith(("data:", "blob:")):
+            return trimmed
+    return None
+
+
 def _optimize_og_image(image_url: Optional[str], origin: str) -> Optional[str]:
     if not image_url:
         return None
@@ -194,7 +205,8 @@ def _build_meta_block(page: PublicPageOut, canonical_url: str, origin: str) -> s
 
     description = _resolve_page_share_description(page, page.title, agency_name)
 
-    image_candidate = page.cover_image_url or branding.get("logo_url")
+    # Imagem de compartilhamento enviada na página; sem ela, a regra padrão (Banner Inicial, depois logo).
+    image_candidate = _resolve_page_share_image(page) or page.cover_image_url or branding.get("logo_url")
     image_url = _absolute_url(image_candidate, origin)
     logo_url = _absolute_url(branding.get("logo_url"), origin)
 

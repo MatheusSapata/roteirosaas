@@ -655,5 +655,10 @@ export interface PageConfig {
   tracking?: any;
   /** "legacy" = a agência pediu o visual antigo das seções para esta página. */
   design?: "legacy" | "v2";
+  general?: {
+    shortDescription?: string;
+    /** Imagem do link compartilhado. Vazia = usa a do Banner Inicial. */
+    shareImage?: string;
+  };
 }
 
