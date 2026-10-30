@@ -27,6 +27,7 @@ from app.api.v1.endpoints import (
     lead_crm,
     lessons,
     media,
+    page_tags,
     pages,
     pixels,
     webhook_notifications,
@@ -55,6 +56,8 @@ api_router.include_router(
 api_router.include_router(agency_team.router, tags=["agency-team"])
 api_router.include_router(templates.router, prefix="/page-templates", tags=["page-templates"])
 api_router.include_router(pages.router, prefix="/pages", tags=["pages"])
+api_router.include_router(page_tags.pages_router, prefix="/pages", tags=["page-tags"])
+api_router.include_router(page_tags.router, prefix="/page-tags", tags=["page-tags"])
 api_router.include_router(media.router, prefix="/media", tags=["media"])
 api_router.include_router(stats.router, prefix="/stats", tags=["stats"])
 api_router.include_router(public_pages.router, prefix="/public/pages", tags=["public-pages"])

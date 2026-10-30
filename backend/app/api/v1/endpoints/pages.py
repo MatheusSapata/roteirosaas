@@ -14,7 +14,7 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, HttpUrl
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.services.page_design import design_v2_enabled_for_agency
 from app.api.deps import get_current_active_user, get_db
@@ -29,6 +29,7 @@ from app.services.flight_sections import (
     ensure_flight_section_ids,
     inject_flight_sections_into_config,
 )
+from app.services.page_tags import inject_tag_links_into_config
 from app.services.page_templates import apply_template_branding, build_whatsapp_link
 from app.services.plans import effective_plan, plan_limits
 from app.services.team import get_user_effective_permissions
@@ -463,7 +464,13 @@ def list_pages(
     ensure_agency_member(db, agency_id, current_user)
     agency = db.query(Agency).filter(Agency.id == agency_id).first()
     default_id = agency.default_page_id if agency else None
-    pages = db.query(Page).filter(Page.agency_id == agency_id).order_by(Page.created_at.desc()).all()
+    pages = (
+        db.query(Page)
+        .options(selectinload(Page.tags))
+        .filter(Page.agency_id == agency_id)
+        .order_by(Page.created_at.desc())
+        .all()
+    )
     for page in pages:
         setattr(page, "is_default", bool(default_id and page.id == default_id))
     return pages
@@ -568,6 +575,7 @@ def get_page(
     plan = resolve_agency_plan(db, page.agency_id)
     page.config_json = apply_free_footer(normalize_config(page.config_json), plan)
     page.config_json = inject_flight_sections_into_config(db, page.id, page.config_json, include_lookup_status=True)
+    page.config_json = inject_tag_links_into_config(db, page, page.config_json)
     default_id = page.agency.default_page_id if page.agency else None
     setattr(page, "is_default", bool(default_id and page.id == default_id))
     setattr(page, "design_v2_enabled", design_v2_enabled_for_agency(page.agency))
@@ -867,6 +875,7 @@ def get_public_page(agency_slug: str, page_slug: str, db: Session = Depends(get_
     }
     config = apply_free_footer(normalize_config(page.config_json), plan) or {}
     config = inject_flight_sections_into_config(db, page.id, config, include_lookup_status=False)
+    config = inject_tag_links_into_config(db, page, config)
     return PublicPageOut(
         id=page.id,
         title=page.title,
