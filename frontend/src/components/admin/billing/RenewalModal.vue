@@ -368,7 +368,7 @@ onBeforeUnmount(stopPolling);
 .rn-lbl { margin-top: 16px; font-size: 12px; font-weight: 600; color: var(--muted-foreground, #64748b); }
 .rn-opts { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 8px; }
 .rn-opt { min-height: 44px; border-radius: 999px; border: 1px solid var(--border, #e2e8f0); background: var(--card, #fff); padding: 8px 16px; font-size: 14px; font-weight: 600; color: var(--muted-foreground, #475569); }
-.rn-opt.on { border-color: #10b981; background: #ecfdf5; color: #047857; }
+.rn-opt.on { border-color: var(--primary, #0a6346); background: var(--accent, #e6f5df); color: var(--accent-foreground, #0a6346); }
 .rn-card { margin-top: 14px; display: flex; flex-direction: column; gap: 10px; }
 .rn-card label { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
 .rn-card label span { font-size: 12px; font-weight: 600; color: var(--muted-foreground, #64748b); }

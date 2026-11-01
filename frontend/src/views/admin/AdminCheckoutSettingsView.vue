@@ -2028,8 +2028,8 @@ watch(reportPeriodPreset, value => {
   background: #fff;
 }
 .op-row.is-fixed {
-  border-color: #12b981;
-  box-shadow: inset 3px 0 0 #12b981;
+  border-color: var(--primary);
+  box-shadow: inset 3px 0 0 var(--primary);
 }
 .op-count {
   grid-row: span 2;

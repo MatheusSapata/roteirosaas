@@ -1973,7 +1973,7 @@ const coverGradients = [
   "linear-gradient(135deg,#1e3a5f,#3b6e8f 55%,#d9a066)",
   "linear-gradient(135deg,#0f4c5c,#1f8a8a 55%,#f2c14e)",
   "linear-gradient(135deg,#2b5876,#4e9fbf 55%,#f6d365)",
-  "linear-gradient(135deg,#0c1f18,#12302a 55%,#1de9a0)"
+  "linear-gradient(135deg,#0a110e,#0f2219 55%,#90ee8f)"
 ];
 const coverStyle = (page: Page, index: number) => {
   const thumb = getPageHeroThumbnail(page);
@@ -2598,7 +2598,7 @@ onMounted(async () => {
 .pl-cover-badges { position: absolute; top: 12px; left: 12px; right: 12px; z-index: 1; display: flex; justify-content: space-between; gap: 8px; }
 .pl-pill { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; background: rgba(255, 255, 255, 0.92); padding: 3px 10px; font-size: 11.5px; font-weight: 600; color: #111814; }
 .pl-pill i { width: 7px; height: 7px; border-radius: 999px; }
-.dot-on { background: #12b981; }
+.dot-on { background: #15915c; }
 .dot-off { background: #f59e0b; }
 .pl-star { width: 13px; height: 13px; fill: #a35d06; }
 .pl-cover-title { position: absolute; right: 16px; bottom: 12px; left: 16px; z-index: 1; color: #fff; }
@@ -3370,7 +3370,7 @@ onMounted(async () => {
 .pl-card.is-selected { outline: 2px solid var(--primary); outline-offset: 0; }
 .pl-check + .pl-pill { margin-right: auto; }
 .pl-check { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: rgba(255, 255, 255, 0.92); cursor: pointer; }
-.pl-check input { width: 15px; height: 15px; margin: 0; accent-color: #12b981; cursor: pointer; }
+.pl-check input { width: 15px; height: 15px; margin: 0; accent-color: var(--primary); cursor: pointer; }
 .pl-tags { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .pl-tag-add { display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 9px; border: 1px dashed var(--border); border-radius: 999px; font-size: 11.5px; font-weight: 600; color: var(--muted-foreground); }
 .pl-tag-add:hover { border-color: var(--muted-foreground); color: var(--foreground); }

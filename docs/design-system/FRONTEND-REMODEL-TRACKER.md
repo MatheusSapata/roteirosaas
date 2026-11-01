@@ -45,8 +45,25 @@ Uma mesma `View` pode representar várias telas quando seu conteúdo muda confor
 
 | ID | Superfície | Arquivo principal | Status | Observações |
 |---|---|---|---|---|
-| F01 | Tokens globais, tipografia, temas, radius e sombras | `frontend/src/styles/main.css` | EM QA | Tokens do Viaje On; painel sem zoom (100%), tokens âmbar do Admin Master. Conferido claro/escuro em 08/10/2026. |
+| F01 | Tokens globais, tipografia, temas, radius e sombras | `frontend/src/styles/main.css` | EM QA | Tokens do Viaje On; painel sem zoom (100%), tokens âmbar do Admin Master. Conferido claro/escuro em 08/10/2026. Paleta nova da marca Viaje On (01/11/2026, ver abaixo). |
 | F02 | Shell administrativo, sidebar desktop/mobile e modais globais | `frontend/src/layouts/AdminLayout.vue` | EM QA | Menu com as medidas e tempos do Viaje On, contêiner único das telas, Admin Master com menu âmbar e menu do celular em cartão. Conferido em 1440, 1280, 1024 e 390 px, claro e escuro, em 08/10/2026. |
+
+### Paleta da marca Viaje On (01/11/2026)
+
+O painel (`body.admin-shell`) segue a paleta nova do Viaje On (repositório `oi-charm-glow`, decisão `docs/cerebro/decisoes/2026-10-31-paleta-viaje-on.md` de lá):
+
+| Nome | Cor | Uso no painel |
+|---|---|---|
+| Verde Viaje | `#0A6346` | `primary`, `brand`, `ring` e `chart-1` no tema claro |
+| Verde On | `#90EE8F` | `primary`, `brand`, `ring` e `chart-1` no tema escuro; destaque sobre fundo escuro (`deep-accent`) |
+| Verde Trilha | `#15915C` | `primary-accent` (claro) e `chart-2`; marcas do editor sobre a prévia |
+| Broto | `#D8F1D0` | família dos fundos suaves (`accent` `#E6F5DF`, `status-success` `#E3F4DC`) |
+| Névoa | `#EFF3ED` | `background` no claro |
+| Noite | `#0A110E` | `background` no escuro, `deep` e texto sobre o Verde On |
+
+- Os nomes dos tokens não mudaram; a troca é só de valor em `frontend/src/styles/main.css`.
+- Ficam com as cores de antes: as páginas publicadas dos clientes e a prévia delas no editor (`.public-tokens`), a página de vendas `/lp`, o checkout e as telas de acesso (login, senha, convite), que usam a marca Roteiro Online.
+- Cor nova entra como valor de token, nunca como hex na tela. Ainda há cores fixas antigas em telas do painel; saem em PRs próprios, trocando hex por token.
 
 ### Componentes canônicos a criar
 
