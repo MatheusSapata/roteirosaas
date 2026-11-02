@@ -1219,6 +1219,7 @@ const routeTitleMap: Record<string, string> = {
   "admin-management-banners": t({ pt: "Banners", es: "Banners" }),
   "admin-management-whatsapp": t({ pt: "Gestão WhatsApp", es: "Gestion WhatsApp" }),
   "admin-management-offers": t({ pt: "Ofertas", es: "Ofertas" }),
+  "admin-management-billing-notices": t({ pt: "Avisos de cobrança", es: "Avisos de cobro" }),
   "admin-management-webhooks": t({ pt: "Webhooks e Push", es: "Webhooks y Push" }),
   "admin-prompt-constructor": t({ pt: "Prompt Construtor", es: "Prompt Constructor" }),
   "page-edit": t({ pt: "Editar página", es: "Editar página" }),

@@ -29,9 +29,21 @@ class EmailClient:
         cfg = self.settings
         return bool(cfg.smtp_host and cfg.smtp_username and cfg.smtp_password)
 
-    def send_email(self, *, to_email: str, subject: str, html_body: str, text_body: str | None = None) -> None:
+    def send_email(
+        self,
+        *,
+        to_email: str,
+        subject: str,
+        html_body: str,
+        text_body: str | None = None,
+        raise_errors: bool = False,
+    ) -> None:
+        """Com raise_errors, a falha (inclusive SMTP não configurado) sobe para quem chamou; sem ele,
+        fica só no log."""
         if not self._is_configured():
             logger.info("SMTP nao configurado. Ignorando envio para %s", to_email)
+            if raise_errors:
+                raise RuntimeError("O envio de e-mail (SMTP) não está configurado no servidor.")
             return
 
         cfg = self.settings
@@ -64,6 +76,8 @@ class EmailClient:
             server.sendmail(from_email, [to_email], message.as_string())
         except Exception as exc:  # pragma: no cover - depende do ambiente SMTP
             logger.exception("Falha ao enviar e-mail para %s: %s", to_email, exc)
+            if raise_errors:
+                raise
         finally:
             if server:
                 try:

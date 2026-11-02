@@ -36,4 +36,5 @@ from .webhook_notification import WebhookNotificationRule
 from .pushover_account import PushoverAccount
 from .agency_integration import AgencyIntegration
 from .viajeon_webhook_event import ViajeonWebhookEvent
+from .billing_notice import BillingNoticeSend, BillingNoticeSettings
 

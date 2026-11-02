@@ -32,6 +32,7 @@ export const adminMasterNav: AdminMasterNavGroup[] = [
     items: [
       { path: "/admin/administracao/receita-previsao", label: "Receita e MRR", icon: "cal" },
       { path: "/admin/administracao/conciliacao", label: "Conciliação", icon: "scale" },
+      { path: "/admin/administracao/avisos-cobranca", label: "Avisos de cobrança", icon: "bell" },
       { path: "/admin/administracao/ltv-clientes", label: "LTV por cliente", icon: "trend" },
       { path: "/admin/administracao/ofertas", label: "Ofertas e checkout", icon: "tag" }
     ]

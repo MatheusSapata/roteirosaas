@@ -375,6 +375,12 @@ const platformRoutes: RouteRecordRaw[] = [
         meta: { requiresSuperuser: true }
       },
       {
+        path: "administracao/avisos-cobranca",
+        name: "admin-management-billing-notices",
+        component: () => import("../views/admin/AdminBillingNoticesView.vue"),
+        meta: { requiresSuperuser: true }
+      },
+      {
         path: "administracao/webhooks",
         name: "admin-management-webhooks",
         component: () => import("../views/admin/WebhookNotificationsView.vue"),
