@@ -1,8 +1,8 @@
 <template>
   <!-- Login no modelo do Viaje On: cartão ao centro sobre o gradiente animado da marca,
-       com o desenho de uma página ao fundo (components/auth/AuthPagesBackdrop.vue). -->
+       com luzes que se movem devagar (components/auth/AuthBackdrop.vue). -->
   <div class="lg">
-    <AuthPagesBackdrop />
+    <AuthBackdrop />
 
     <main class="lg-main">
       <img src="../../assets/Logo Branco - Roteiro Online.png" :alt="viewCopy.brand.alt" class="lg-logo" />
@@ -71,7 +71,7 @@
 
 <script setup lang="ts">
 import { ArrowUpRightIcon, EyeIcon, EyeOffIcon, Loader2Icon } from "lucide-vue-next";
-import AuthPagesBackdrop from "../../components/auth/AuthPagesBackdrop.vue";
+import AuthBackdrop from "../../components/auth/AuthBackdrop.vue";
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 import api from "../../services/api";
@@ -179,11 +179,13 @@ const onSubmit = async () => {
   gap: 26px;
   animation: lg-in 0.6s cubic-bezier(0.22, 0.8, 0.24, 1) both;
 }
+/* O PNG do logo tem margem transparente em cima e embaixo (o desenho ocupa ~53%
+   da altura). O tamanho vem da largura, e a margem negativa tira essa folga. */
 .lg-logo {
-  width: auto;
-  height: 52px;
+  width: 180px;
   max-width: 70%;
-  object-fit: contain;
+  height: auto;
+  margin: -23px 0;
   filter: drop-shadow(0 2px 12px rgba(0, 0, 0, 0.3));
 }
 /* O cartão é sempre claro, também com o painel no tema escuro. */
@@ -379,6 +381,10 @@ const onSubmit = async () => {
   }
 }
 @media (max-width: 480px) {
+  .lg-logo {
+    width: 160px;
+    margin: -20px 0;
+  }
   .lg-card {
     padding: 22px 18px;
   }
