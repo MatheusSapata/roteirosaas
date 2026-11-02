@@ -131,6 +131,15 @@ _FONT = "Arial,Helvetica,sans-serif"
 
 
 def _logo_url() -> str:
+    """Logo da faixa verde: o de Admin master › Marca e SEO, ou o padrão."""
+    try:
+        from app.services.platform_branding import absolute_url, current
+
+        custom = absolute_url(current().get("email_logo_url"))
+        if custom:
+            return escape(custom, quote=True)
+    except Exception:  # pragma: no cover - leitura defensiva
+        logger.debug("Logo dos e-mails: usando o padrão.", exc_info=True)
     return f"{get_settings().resolved_webapp_base_url}/email/logo-roteiro-online.png"
 
 
@@ -193,6 +202,18 @@ def _email_layout(
 </body></html>"""
 
 
+def _plan_highlight(plan_label: str, cycle_label: str) -> str:
+    return f"<b>{escape(plan_label.capitalize())}</b>" + (f" · {escape(cycle_label)}" if cycle_label else "")
+
+
+def _send_system_email(key: str, *, to_email: str, values: dict, button_url: str, highlight: str | None = None) -> None:
+    """Monta com os textos de Admin master › E-mails do sistema (ou o padrão) e envia."""
+    from app.services.platform_branding import build_system_email
+
+    subject, html_body, text_body = build_system_email(key, values, button_url=button_url, highlight=highlight)
+    EmailClient().send_email(to_email=to_email, subject=subject, html_body=html_body, text_body=text_body)
+
+
 def send_cakto_onboarding_email(
     *,
     user: "User",
@@ -203,36 +224,19 @@ def send_cakto_onboarding_email(
     """Dispara o e-mail de boas-vindas apos um checkout concluido na Cakto."""
 
     settings = get_settings()
-    client = EmailClient()
-    if not client._is_configured():
+    if not EmailClient()._is_configured():
         logger.info("SMTP nao configurado. Onboarding para %s nao sera enviado.", user.email)
         return
-
     password_url = f"{settings.resolved_webapp_base_url}/create-password"
     plan_label = _plan_label(plan_key)
     cycle_label = _cycle_label(cycle)
-    greeting_name = user.name or user.email
-    plan_text = f"{plan_label} ({cycle_label})" if cycle_label else plan_label
-
-    subject = "Bem-vindo ao Roteiro Online"
-    text_body = (
-        f"Olá, {greeting_name}.\n\n"
-        f"Seu {plan_text} já está ativo.\n"
-        "Para acessar o painel, finalize seu cadastro criando uma senha segura neste link:\n"
-        f"{password_url}\n\n"
-        "Se precisar de ajuda, basta responder este e-mail.\n"
-        "Equipe Roteiro Online"
-    )
-    html_body = _email_layout(
-        eyebrow="Compra confirmada",
-        title=f"Bem-vindo ao Roteiro Online, {escape(greeting_name)}!",
-        body_html=_paragraph("A sua assinatura já está ativa. Falta só um passo: criar a sua senha para entrar no painel."),
-        highlight=f"<b>{escape(plan_label.capitalize())}</b>" + (f" · {escape(cycle_label)}" if cycle_label else ""),
+    _send_system_email(
+        "boas_vindas_cakto",
+        to_email=user.email,
+        values={"nome": user.name or user.email, "plano": plan_label, "ciclo": cycle_label, "link": password_url},
         button_url=password_url,
-        button_label="Criar minha senha",
-        note_html="Precisa de ajuda? É só responder este e-mail que a nossa equipe te atende.",
+        highlight=_plan_highlight(plan_label, cycle_label),
     )
-    client.send_email(to_email=user.email, subject=subject, html_body=html_body, text_body=text_body)
 
 
 def send_team_invite_email(
@@ -244,36 +248,21 @@ def send_team_invite_email(
     invite_url: str,
     expires_days: int = 7,
 ) -> None:
-    settings = get_settings()
-    client = EmailClient()
-    if not client._is_configured():
+    if not EmailClient()._is_configured():
         logger.info("SMTP nao configurado. Convite de equipe para %s nao sera enviado.", to_email)
         return
-
-    subject = f"Convite para acessar a equipe da {agency_name}"
-    safe_invitee = invitee_name or to_email
-    safe_inviter = inviter_name or "Administrador"
-    app_name = settings.app_name or "Roteiro Online"
-    text_body = (
-        f"Olá, {safe_invitee}.\n\n"
-        f"Você foi convidado por {safe_inviter} para fazer parte da equipe da {agency_name} no {app_name}.\n\n"
-        "Clique no link abaixo para criar sua senha e acessar sua conta:\n"
-        f"{invite_url}\n\n"
-        f"Este convite expira em {expires_days} dias.\n"
-        "Se você não esperava este convite, ignore este e-mail."
-    )
-    html_body = _email_layout(
-        eyebrow="Convite de equipe",
-        title=f"Olá, {escape(safe_invitee)}. Você foi convidado!",
-        body_html=_paragraph(
-            f"<b>{escape(safe_inviter)}</b> convidou você para fazer parte da equipe da "
-            f"<b>{escape(agency_name)}</b> no {escape(app_name)}. Aceite o convite para criar a sua senha e acessar a conta."
-        ),
+    _send_system_email(
+        "convite_equipe",
+        to_email=to_email,
+        values={
+            "nome": invitee_name or to_email,
+            "quem_convidou": inviter_name or "Administrador",
+            "agencia": agency_name,
+            "dias": str(expires_days),
+            "link": invite_url,
+        },
         button_url=invite_url,
-        button_label="Aceitar convite",
-        note_html=f"<b>O convite vale por {expires_days} dias.</b> Se você não esperava este convite, pode ignorar este e-mail.",
     )
-    client.send_email(to_email=to_email, subject=subject, html_body=html_body, text_body=text_body)
 
 
 def send_checkout_welcome_email(
@@ -286,60 +275,34 @@ def send_checkout_welcome_email(
 ) -> None:
     """Cliente novo que acabou de pagar pelo checkout (Asaas): confirma a compra e leva a definir a senha."""
 
-    client = EmailClient()
-    if not client._is_configured():
+    if not EmailClient()._is_configured():
         logger.info("SMTP nao configurado. Boas-vindas para %s nao serao enviadas.", to_email)
         return
     plan_label = _plan_label(plan_key)
     cycle_label = _cycle_label(cycle)
-    greeting = name or to_email
-    plan_text = f"{plan_label} ({cycle_label})" if cycle_label else plan_label
-    subject = "Pagamento confirmado: bem-vindo ao Roteiro Online"
-    text_body = (
-        f"Olá, {greeting}.\n\n"
-        f"Recebemos o seu pagamento e o {plan_text} já está ativo.\n"
-        "Para acessar o painel, crie a sua senha neste link:\n"
-        f"{password_url}\n\n"
-        "Se precisar de ajuda, basta responder este e-mail.\n"
-        "Equipe Roteiro Online"
-    )
-    html_body = _email_layout(
-        eyebrow="Pagamento confirmado",
-        title=f"Bem-vindo ao Roteiro Online, {escape(greeting)}!",
-        body_html=_paragraph(
-            "Recebemos o seu pagamento e a sua assinatura já está ativa. "
-            "Falta só um passo: criar a sua senha para entrar no painel e montar o seu primeiro roteiro."
-        ),
-        highlight=f"<b>{escape(plan_label.capitalize())}</b>" + (f" · {escape(cycle_label)}" if cycle_label else ""),
+    _send_system_email(
+        "boas_vindas_checkout",
+        to_email=to_email,
+        values={"nome": name or to_email, "plano": plan_label, "ciclo": cycle_label, "link": password_url},
         button_url=password_url,
-        button_label="Criar minha senha",
-        note_html="Precisa de ajuda? É só responder este e-mail que a nossa equipe te atende.",
+        highlight=_plan_highlight(plan_label, cycle_label),
     )
-    client.send_email(to_email=to_email, subject=subject, html_body=html_body, text_body=text_body)
+
+
+def _validity_label(expires_minutes: int) -> str:
+    hours = expires_minutes // 60
+    if expires_minutes % 60 == 0 and hours:
+        return f"{hours} hora{'s' if hours != 1 else ''}"
+    return f"{expires_minutes} minutos"
 
 
 def send_password_reset_email(*, to_email: str, name: str | None, reset_url: str, expires_minutes: int) -> None:
-    client = EmailClient()
-    if not client._is_configured():
+    if not EmailClient()._is_configured():
         logger.info("SMTP nao configurado. Redefinicao de senha para %s nao sera enviada.", to_email)
         return
-    greeting = name or to_email
-    hours = expires_minutes // 60
-    validity = f"{hours} hora{'s' if hours != 1 else ''}" if expires_minutes % 60 == 0 and hours else f"{expires_minutes} minutos"
-    subject = "Redefinir a sua senha do Roteiro Online"
-    text_body = (
-        f"Olá, {greeting}.\n\n"
-        "Recebemos um pedido para redefinir a sua senha. Use o link abaixo:\n"
-        f"{reset_url}\n\n"
-        f"O link vale por {validity}. Se você não pediu, ignore este e-mail: a sua senha continua a mesma.\n"
-        "Equipe Roteiro Online"
-    )
-    html_body = _email_layout(
-        eyebrow="Recuperar acesso",
-        title=f"Olá, {escape(greeting)}. Vamos criar uma nova senha?",
-        body_html=_paragraph("Recebemos um pedido para redefinir a senha da sua conta. Clique no botão abaixo para escolher uma nova."),
+    _send_system_email(
+        "redefinir_senha",
+        to_email=to_email,
+        values={"nome": name or to_email, "validade": _validity_label(expires_minutes), "link": reset_url},
         button_url=reset_url,
-        button_label="Redefinir minha senha",
-        note_html=f"<b>O link vale por {validity}.</b> Se você não pediu a redefinição, pode ignorar este e-mail: a sua senha continua a mesma.",
     )
-    client.send_email(to_email=to_email, subject=subject, html_body=html_body, text_body=text_body)

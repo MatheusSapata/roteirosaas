@@ -129,7 +129,11 @@ def _frontend_response(html_content: str) -> HTMLResponse:
 
 def _safe_load_frontend() -> str:
     try:
-        return load_frontend_index()
+        # Telas da plataforma (login, painel, checkout): título, descrição, favicon e imagem de
+        # compartilhamento de Admin master › Marca e SEO.
+        from app.services.platform_branding import apply_head_meta
+
+        return apply_head_meta(load_frontend_index())
     except FrontendTemplateNotReady as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 

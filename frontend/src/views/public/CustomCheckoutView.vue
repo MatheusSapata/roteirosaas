@@ -477,8 +477,7 @@ import { installmentPreview } from "../../utils/cardInstallments";
 import { cycleLabel, cyclePeriod, normalizeCycle } from "../../utils/billingCycle";
 import { useAuthStore } from "../../store/useAuthStore";
 import { resolveMediaUrl } from "../../utils/media";
-import ColoredLogo from "../../assets/Logo Cor - Roteiro Online.png";
-import WhiteLogo from "../../assets/Logo Branco - Roteiro Online.png";
+import { usePlatformBranding } from "../../composables/usePlatformBranding";
 
 type Step = "details" | "method" | "card" | "pix" | "success" | "password";
 
@@ -633,7 +632,8 @@ const themeClass = computed(() => (config.value?.theme_mode === "light" ? "check
 const isBannerModel = computed(() => config.value?.layout === "banner");
 const bannerDesktopUrl = computed(() => resolveMediaUrl(config.value?.desktop_image_url) || "");
 const bannerMobileUrl = computed(() => resolveMediaUrl(config.value?.mobile_banner_url) || "");
-const brandLogoSrc = computed(() => (config.value?.theme_mode === "light" ? ColoredLogo : WhiteLogo));
+const platformBrand = usePlatformBranding();
+const brandLogoSrc = computed(() => (config.value?.theme_mode === "light" ? platformBrand.logoColor.value : platformBrand.logoWhite.value));
 const progressStep = computed(() => (step.value === "details" ? 1 : step.value === "success" || step.value === "password" ? 3 : 2));
 const progressLabels = computed(() => ["Seus dados", "Pagamento", isUpgradeFlow.value ? "Pronto" : "Acesso"]);
 const effectiveAmount = computed(() => Number(session.value?.amount ?? couponPreview.value?.amount ?? config.value?.offer.amount ?? 0));

@@ -843,11 +843,9 @@ import {
   UsersIcon,
   XIcon
 } from "lucide-vue-next";
-import BrandMark from "../assets/Favicon.png";
 import AdminMasterNav from "../components/admin/master/AdminMasterNav.vue";
 import StockUploadIndicator from "../components/admin/StockUploadIndicator.vue";
-import SidebarLogo from "../assets/Logo Branco - Roteiro Online.png";
-import ColoredLogo from "../assets/Logo Cor - Roteiro Online.png";
+import { usePlatformBranding } from "../composables/usePlatformBranding";
 import BrandSwitcher from "../components/shared/BrandSwitcher.vue";
 import ImageUploadField from "../components/admin/inputs/ImageUploadField.vue";
 import RenewalModal from "../components/admin/billing/RenewalModal.vue";
@@ -1220,6 +1218,8 @@ const routeTitleMap: Record<string, string> = {
   "admin-management-whatsapp": t({ pt: "Gestão WhatsApp", es: "Gestion WhatsApp" }),
   "admin-management-offers": t({ pt: "Ofertas", es: "Ofertas" }),
   "admin-management-billing-notices": t({ pt: "Avisos de cobrança", es: "Avisos de cobro" }),
+  "admin-management-brand": t({ pt: "Marca e SEO", es: "Marca y SEO" }),
+  "admin-management-system-emails": t({ pt: "E-mails do sistema", es: "Correos del sistema" }),
   "admin-management-webhooks": t({ pt: "Webhooks e Push", es: "Webhooks y Push" }),
   "admin-prompt-constructor": t({ pt: "Prompt Construtor", es: "Prompt Constructor" }),
   "page-edit": t({ pt: "Editar página", es: "Editar página" }),
@@ -1825,8 +1825,9 @@ const currentPageTitle = computed(() => {
 
 
 const agencyName = computed(() => agencyStore.currentAgency?.name || agencyStore.agencies[0]?.name || "");
-const sidebarLogoSrc = SidebarLogo;
-const mobileHeaderLogoSrc = computed(() => (isDarkTheme.value ? sidebarLogoSrc : ColoredLogo));
+const platformBrand = usePlatformBranding();
+const sidebarLogoSrc = platformBrand.logoWhite;
+const mobileHeaderLogoSrc = computed(() => (isDarkTheme.value ? platformBrand.logoWhite.value : platformBrand.logoColor.value));
 
 const checkCookieConsent = () => {
   if (typeof window === "undefined") return;
@@ -1881,7 +1882,7 @@ const readSidebarCollapsed = () => {
 };
 const sidebarCollapsed = ref(readSidebarCollapsed());
 const flyoutGroupId = ref<string | null>(null);
-const brandMarkSrc = BrandMark;
+const brandMarkSrc = platformBrand.favicon;
 const canCreatePageShortcut = computed(() => hasPermission("pages"));
 // Solto (não fixado), o menu fica só com ícones e abre ao passar o mouse, empurrando a página.
 // No Admin Master o menu principal fica sempre recolhido, para caber o menu do Admin (como no Viaje On).

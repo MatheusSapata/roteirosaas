@@ -47,6 +47,13 @@ export const adminMasterNav: AdminMasterNavGroup[] = [
     ]
   },
   {
+    label: "Plataforma",
+    items: [
+      { path: "/admin/administracao/marca", label: "Marca e SEO", icon: "image" },
+      { path: "/admin/administracao/emails-sistema", label: "E-mails do sistema", icon: "pages" }
+    ]
+  },
+  {
     label: "Integrações",
     items: [
       { path: "/admin/administracao/apis-voo", label: "APIs de voo", icon: "plane" },

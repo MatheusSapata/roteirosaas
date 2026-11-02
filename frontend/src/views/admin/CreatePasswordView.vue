@@ -3,7 +3,7 @@
     <div class="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center">
       <div class="mb-8 flex flex-col items-center text-center text-white">
         <img
-          src="../../assets/Logo Branco - Roteiro Online.png"
+          :src="brandLogoWhite"
           :alt="viewCopy.brand.alt"
           class="mb-6 w-32 drop-shadow-lg"
         />
@@ -144,6 +144,8 @@ import {
 } from "../../services/cakto";
 import { useAuthStore } from "../../store/useAuthStore";
 import { createAdminLocalizer } from "../../utils/adminI18n";
+import { usePlatformBranding } from "../../composables/usePlatformBranding";
+const { logoWhite: brandLogoWhite, logoColor: brandLogoColor } = usePlatformBranding();
 
 interface OnboardingSession {
   email: string;

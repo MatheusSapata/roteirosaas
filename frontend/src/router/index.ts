@@ -375,6 +375,18 @@ const platformRoutes: RouteRecordRaw[] = [
         meta: { requiresSuperuser: true }
       },
       {
+        path: "administracao/marca",
+        name: "admin-management-brand",
+        component: () => import("../views/admin/AdminPlatformBrandView.vue"),
+        meta: { requiresSuperuser: true }
+      },
+      {
+        path: "administracao/emails-sistema",
+        name: "admin-management-system-emails",
+        component: () => import("../views/admin/AdminPlatformBrandView.vue"),
+        meta: { requiresSuperuser: true }
+      },
+      {
         path: "administracao/avisos-cobranca",
         name: "admin-management-billing-notices",
         component: () => import("../views/admin/AdminBillingNoticesView.vue"),

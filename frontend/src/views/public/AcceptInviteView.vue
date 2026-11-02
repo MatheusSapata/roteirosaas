@@ -2,7 +2,7 @@
   <div class="auth-view min-h-screen bg-[#41ce5f] px-4 py-10">
     <div class="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center">
       <div class="mb-8 flex flex-col items-center text-center text-white">
-        <img src="../../assets/Logo Branco - Roteiro Online.png" alt="Roteiro Online" class="mb-6 w-32 drop-shadow-lg" />
+        <img :src="brandLogoWhite" alt="Roteiro Online" class="mb-6 w-32 drop-shadow-lg" />
         <h1 class="text-4xl font-bold">Aceitar convite</h1>
         <p class="mt-2 text-lg text-white/90">Finalize seu acesso à equipe agora.</p>
       </div>
@@ -58,6 +58,8 @@ import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import api from "../../services/api";
 import { useAuthStore } from "../../store/useAuthStore";
+import { usePlatformBranding } from "../../composables/usePlatformBranding";
+const { logoWhite: brandLogoWhite, logoColor: brandLogoColor } = usePlatformBranding();
 
 const route = useRoute();
 const router = useRouter();
