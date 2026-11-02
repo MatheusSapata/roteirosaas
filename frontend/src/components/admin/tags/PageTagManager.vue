@@ -1,11 +1,23 @@
 <template>
   <Teleport to="body">
-    <div v-if="open" class="ptm-bg" @click="$emit('close')"></div>
-    <aside v-if="open" class="ptm" role="dialog" aria-modal="true" aria-labelledby="ptm-title" @keydown.esc="$emit('close')">
+    <Transition name="ptm-fade">
+      <div v-if="open" class="ptm-bg" @click="$emit('close')"></div>
+    </Transition>
+    <Transition name="ptm-slide">
+    <aside v-if="open" class="ptm" role="dialog" aria-modal="true" aria-labelledby="ptm-title">
       <header class="ptm-head">
+        <span class="ptm-head-icon" aria-hidden="true"><TagIcon /></span>
         <div class="ptm-grow">
-          <h2 id="ptm-title">Tags</h2>
-          <p>Organizam a lista de páginas e alimentam as seções Links/Roteiros por tag. Valem para toda a agência.</p>
+          <h2 id="ptm-title">
+            Tags
+            <Transition name="ptm-pop">
+              <span v-if="savedFlash" class="ptm-saved" role="status"><CheckIcon aria-hidden="true" />Salvo</span>
+            </Transition>
+          </h2>
+          <p>
+            Organizam a lista de páginas e alimentam as seções Links/Roteiros por tag. Valem para toda a agência.
+            <RouterLink to="/admin/ajuda/tags-de-paginas" class="ptm-help" @click="$emit('close')">Como usar as tags</RouterLink>
+          </p>
         </div>
         <button ref="closeRef" type="button" class="ptm-icon" aria-label="Fechar" @click="$emit('close')"><XIcon aria-hidden="true" /></button>
       </header>
@@ -26,7 +38,7 @@
               :aria-current="selected?.id === tag.id"
               @click="select(tag.id)"
             >
-              <i aria-hidden="true"></i>{{ tag.name }}<span>{{ tag.page_count }}</span>
+              <i aria-hidden="true"></i><em>{{ tag.name }}</em><span>{{ tag.page_count }}</span>
             </button>
             <p v-if="!visibleTags.length" class="ptm-muted">{{ tags.length ? "Nenhuma tag com esse nome." : "Nenhuma tag ainda." }}</p>
           </div>
@@ -36,7 +48,8 @@
           </form>
         </div>
 
-        <div v-if="selected" class="ptm-detail">
+        <Transition name="ptm-swap" mode="out-in">
+        <div v-if="selected" :key="selected.id" class="ptm-detail">
           <section class="ptm-sec">
             <h3>Nome</h3>
             <input
@@ -109,7 +122,8 @@
             <p v-else class="ptm-muted">Nenhuma seção Links/Roteiros usa esta tag.</p>
           </section>
 
-          <div v-if="confirm === 'delete'" class="ptm-confirm" role="alert">
+          <Transition name="ptm-pop" mode="out-in">
+          <div v-if="confirm === 'delete'" key="delete" class="ptm-confirm" role="alert">
             <p>
               Apagar a tag <b>{{ selected.name }}</b>? Ela sai de {{ plural(selected.page_count, "página", "páginas") }}; as páginas continuam iguais.
               <template v-if="selected.sections.length">
@@ -122,7 +136,7 @@
               <button type="button" class="ptm-btn is-danger" :disabled="busy" @click="deleteTag">Apagar tag</button>
             </div>
           </div>
-          <div v-else-if="confirm === 'merge'" class="ptm-confirm">
+          <div v-else-if="confirm === 'merge'" key="merge" class="ptm-confirm">
             <p>
               Juntar <b>{{ selected.name }}</b> com outra tag. As páginas passam para a tag escolhida e <b>{{ selected.name }}</b> deixa de existir.
               Seções que usavam <b>{{ selected.name }}</b> passam a usar a nova.
@@ -138,23 +152,27 @@
               </button>
             </div>
           </div>
+          </Transition>
           <p v-if="error" class="ptm-error" role="alert">{{ error }}</p>
           <div v-if="canEdit" class="ptm-danger">
             <button type="button" class="ptm-btn" :disabled="!otherTags.length" @click="openConfirm('merge')"><MergeIcon aria-hidden="true" />Juntar com outra tag</button>
             <button type="button" class="ptm-btn is-danger-text" @click="openConfirm('delete')"><Trash2Icon aria-hidden="true" />Apagar tag</button>
           </div>
         </div>
-        <div v-else class="ptm-detail">
+        <div v-else key="empty" class="ptm-detail ptm-empty">
+          <span class="ptm-empty-icon" aria-hidden="true"><TagIcon /></span>
           <p class="ptm-muted">{{ tags.length ? "Escolha uma tag na lista." : "Crie a primeira tag para começar. Ex.: Europa, Nordeste, Lua de mel." }}</p>
         </div>
+        </Transition>
       </div>
     </aside>
+    </Transition>
   </Teleport>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from "vue";
-import { CheckIcon, MergeIcon, PlusIcon, SearchIcon, Trash2Icon, XIcon } from "lucide-vue-next";
+import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
+import { CheckIcon, MergeIcon, PlusIcon, SearchIcon, TagIcon, Trash2Icon, XIcon } from "lucide-vue-next";
 import { errorDetail, usePageTags } from "../../../composables/usePageTags";
 import { TAG_COLORS, slugifyTag, tagStyle, type PageTagBrief, type TagColor } from "../../../types/pageTag";
 
@@ -181,6 +199,39 @@ const mergeTarget = ref<number | null>(null);
 const busy = ref(false);
 const error = ref("");
 const closeRef = ref<HTMLButtonElement | null>(null);
+const savedFlash = ref(false);
+let savedTimer: ReturnType<typeof setTimeout> | undefined;
+let returnFocus: HTMLElement | null = null;
+
+/** Mostra "Salvo" no topo por um instante depois de uma alteração. */
+const flashSaved = () => {
+  savedFlash.value = true;
+  clearTimeout(savedTimer);
+  savedTimer = setTimeout(() => (savedFlash.value = false), 1600);
+};
+
+const onKeydown = (event: KeyboardEvent) => {
+  if (event.key === "Escape" && !event.defaultPrevented) emit("close");
+};
+
+/** Enquanto o painel está aberto, a página atrás não rola e o Esc fecha de qualquer lugar. */
+const setOpenEffects = (isOpen: boolean) => {
+  if (typeof document === "undefined") return;
+  document.documentElement.style.overflow = isOpen ? "hidden" : "";
+  if (isOpen) {
+    returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    window.addEventListener("keydown", onKeydown);
+  } else {
+    window.removeEventListener("keydown", onKeydown);
+    savedFlash.value = false;
+    returnFocus?.focus?.();
+    returnFocus = null;
+  }
+};
+onBeforeUnmount(() => {
+  clearTimeout(savedTimer);
+  if (props.open) setOpenEffects(false);
+});
 
 const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
 const visibleTags = computed(() => {
@@ -201,7 +252,8 @@ const select = (id: number | null) => {
 watch(selected, tag => (nameDraft.value = tag?.name || ""), { immediate: true });
 watch(
   () => props.open,
-  async isOpen => {
+  async (isOpen, wasOpen) => {
+    if (isOpen !== !!wasOpen) setOpenEffects(isOpen);
     if (!isOpen) return;
     search.value = "";
     confirm.value = null;
@@ -223,6 +275,7 @@ const run = async (action: () => Promise<unknown>, fallback: string) => {
   error.value = "";
   try {
     await action();
+    flashSaved();
     return true;
   } catch (err) {
     error.value = errorDetail(err, fallback);
@@ -303,21 +356,25 @@ const mergeTag = async () => {
   inset: 0;
   z-index: 70;
   background: var(--modal-overlay, rgba(0, 0, 0, 0.5));
+  backdrop-filter: blur(3px);
 }
+/* Painel flutuante à direita, como os detalhes do resto do painel. */
 .ptm {
+  --ptm-ease: cubic-bezier(0.22, 0.8, 0.24, 1);
   position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
+  top: 12px;
+  right: 12px;
+  bottom: 12px;
   z-index: 71;
   display: flex;
   flex-direction: column;
-  width: min(780px, 100%);
-  padding-top: env(safe-area-inset-top, 0px);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  width: min(780px, calc(100% - 24px));
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 22px;
   background: var(--background);
   color: var(--foreground);
-  box-shadow: -12px 0 32px rgba(0, 0, 0, 0.18);
+  box-shadow: var(--shadow-elegant, -12px 0 32px rgba(0, 0, 0, 0.18));
 }
 .ptm-head {
   display: flex;
@@ -327,7 +384,24 @@ const mergeTag = async () => {
   border-bottom: 1px solid var(--border);
   background: var(--card);
 }
+.ptm-head-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+.ptm-head-icon svg {
+  width: 18px;
+  height: 18px;
+}
 .ptm-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   margin: 0;
   font-family: var(--font-display);
   font-size: 19px;
@@ -337,6 +411,30 @@ const mergeTag = async () => {
   margin: 2px 0 0;
   font-size: 12.5px;
   color: var(--muted-foreground);
+}
+.ptm-help {
+  font-weight: 600;
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+}
+.ptm-saved {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: var(--status-success);
+  color: var(--status-success-foreground);
+  font-family: var(--font-sans);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.ptm-saved svg {
+  width: 12px;
+  height: 12px;
 }
 .ptm-grow {
   flex: 1;
@@ -395,6 +493,15 @@ const mergeTag = async () => {
   font-size: 13.5px;
   font-weight: 500;
   text-align: left;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.ptm-row em {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-style: normal;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 .ptm-row:hover {
   background: var(--muted);
@@ -410,6 +517,10 @@ const mergeTag = async () => {
   flex-shrink: 0;
   border-radius: 999px;
   background: var(--tag-fg);
+  transition: transform 0.2s var(--ptm-ease);
+}
+.ptm-row.on i {
+  transform: scale(1.25);
 }
 .ptm-row span {
   margin-left: auto;
@@ -501,6 +612,10 @@ const mergeTag = async () => {
   border-radius: 999px;
   background: var(--tag-bg);
   color: var(--tag-fg);
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+.ptm-swatch:not(:disabled):hover {
+  transform: scale(1.08);
 }
 .ptm-swatch.on {
   box-shadow: 0 0 0 3px var(--background), 0 0 0 5px var(--tag-fg);
@@ -629,19 +744,139 @@ const mergeTag = async () => {
   color: var(--primary-foreground);
 }
 .ptm-btn.is-danger {
-  border-color: #dc2626;
-  background: #dc2626;
-  color: #fff;
+  border-color: var(--destructive);
+  background: var(--destructive);
+  color: var(--destructive-foreground);
 }
 .ptm-btn.is-danger-text {
-  color: #dc2626;
+  color: var(--status-danger-foreground);
 }
 .ptm-error {
   margin: 0;
   font-size: 12.5px;
-  color: #dc2626;
+  color: var(--status-danger-foreground);
+}
+.ptm-empty {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.ptm-empty-icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+.ptm-empty-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+/* Entrada e saída: o fundo escurece e o painel desliza da direita; o conteúdo sobe logo depois. */
+.ptm-fade-enter-active {
+  transition: opacity 0.28s ease;
+}
+.ptm-fade-leave-active {
+  transition: opacity 0.22s ease 0.04s;
+}
+.ptm-fade-enter-from,
+.ptm-fade-leave-to {
+  opacity: 0;
+}
+.ptm-slide-enter-active {
+  transition: transform 0.42s var(--ptm-ease), opacity 0.3s ease;
+}
+.ptm-slide-leave-active {
+  transition: transform 0.26s cubic-bezier(0.4, 0, 1, 1), opacity 0.22s ease;
+}
+.ptm-slide-enter-from,
+.ptm-slide-leave-to {
+  opacity: 0;
+  transform: translateX(calc(100% + 24px));
+}
+.ptm-slide-enter-active .ptm-head,
+.ptm-slide-enter-active .ptm-list,
+.ptm-slide-enter-active .ptm-detail {
+  animation: ptm-rise 0.42s var(--ptm-ease) both;
+}
+.ptm-slide-enter-active .ptm-list {
+  animation-delay: 0.08s;
+}
+.ptm-slide-enter-active .ptm-detail {
+  animation-delay: 0.14s;
+}
+@keyframes ptm-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+/* Troca de tag na lista: o detalhe sai e entra com um leve deslize. */
+.ptm-swap-enter-active {
+  transition: opacity 0.22s ease, transform 0.26s var(--ptm-ease);
+}
+.ptm-swap-leave-active {
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+.ptm-swap-enter-from {
+  opacity: 0;
+  transform: translateX(10px);
+}
+.ptm-swap-leave-to {
+  opacity: 0;
+  transform: translateX(-6px);
+}
+/* Confirmações e o selo "Salvo" aparecem crescendo de leve. */
+.ptm-pop-enter-active {
+  transition: opacity 0.2s ease, transform 0.24s var(--ptm-ease);
+}
+.ptm-pop-leave-active {
+  transition: opacity 0.14s ease, transform 0.14s ease;
+}
+.ptm-pop-enter-from,
+.ptm-pop-leave-to {
+  opacity: 0;
+  transform: translateY(4px) scale(0.97);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ptm-slide-enter-active,
+  .ptm-slide-leave-active,
+  .ptm-swap-enter-active,
+  .ptm-swap-leave-active,
+  .ptm-pop-enter-active,
+  .ptm-pop-leave-active {
+    transition: opacity 0.15s ease;
+  }
+  .ptm-slide-enter-from,
+  .ptm-slide-leave-to,
+  .ptm-swap-enter-from,
+  .ptm-swap-leave-to,
+  .ptm-pop-enter-from,
+  .ptm-pop-leave-to {
+    transform: none;
+  }
+  .ptm-slide-enter-active .ptm-head,
+  .ptm-slide-enter-active .ptm-list,
+  .ptm-slide-enter-active .ptm-detail {
+    animation: none;
+  }
 }
 @media (max-width: 640px) {
+  /* No celular o painel ocupa a tela e sobe de baixo. */
+  .ptm {
+    inset: 0;
+    width: 100%;
+    border: 0;
+    border-radius: 0;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .ptm-head-icon {
+    display: none;
+  }
   .ptm-body {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto 1fr;
@@ -664,6 +899,12 @@ const mergeTag = async () => {
   }
   .ptm-detail {
     overflow: visible;
+  }
+}
+@media (max-width: 640px) and (prefers-reduced-motion: no-preference) {
+  .ptm-slide-enter-from,
+  .ptm-slide-leave-to {
+    transform: translateY(32px);
   }
 }
 </style>

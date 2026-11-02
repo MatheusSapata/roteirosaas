@@ -113,7 +113,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     atualizado: "2026-10-09",
     rota: "/admin/pages",
     rotaRotulo: "Ir para Páginas",
-    busca: "lista paginas buscar filtrar copiar link metricas despublicar excluir pagina principal padrao menu acoes",
+    busca: "lista paginas buscar filtrar copiar link metricas despublicar excluir pagina principal padrao menu acoes tags",
     passos: [
       { titulo: "Filtre por situação", texto: "**Todas**, **Publicadas** ou **Rascunhos**. Ao lado, ordene por mais recentes ou mais visitadas.", tela: 1 },
       { titulo: "Busque pelo nome", tela: 2 },
@@ -123,9 +123,10 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     blocos: [
       { tipo: "texto", texto: "A **página principal** abre no link da agência, sem o nome da página no final. Ela aparece com o selo **Padrão**." },
-      { tipo: "atencao", texto: "**Excluir** apaga a página e não dá para desfazer. Se for só tirar do ar, use **Despublicar**." }
+      { tipo: "atencao", texto: "**Excluir** apaga a página e não dá para desfazer. Se for só tirar do ar, use **Despublicar**." },
+      { tipo: "dica", texto: "Muitas páginas? Use as tags para filtrar por destino ou tipo de viagem e ver a lista em pastas. Veja **Organizar páginas com tags**." }
     ],
-    relacionados: ["duplicar-pagina", "publicar-pagina", "titulo-e-link"]
+    relacionados: ["duplicar-pagina", "publicar-pagina", "tags-de-paginas"]
   },
   {
     id: "duplicar-pagina",
@@ -169,6 +170,58 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     relacionados: ["titulo-e-link", "pixel-meta-google", "gerenciar-paginas"],
     substituiAulas: ["publicando e acompanhando"]
+  },
+  {
+    id: "tags-de-paginas",
+    modulo: "paginas",
+    titulo: "Organizar páginas com tags",
+    resumo: "Agrupe as páginas por destino ou tipo de viagem e monte vitrines que se atualizam sozinhas.",
+    atualizado: "2026-11-02",
+    rota: "/admin/pages",
+    rotaRotulo: "Ir para Páginas",
+    busca: "tag tags etiqueta etiquetas categoria categorias pasta pastas agrupar organizar filtrar destino vitrine automatica roteiros por tag juntar renomear cor lote novidade",
+    passos: [
+      { titulo: "Crie as tags", texto: "Em **Páginas**, clique em **Criar tags** (ou **Gerenciar tags**, depois da primeira). Digite o nome em **Nova tag** e clique em **Criar**. Ex.: Europa, Nordeste, Lua de mel." },
+      { titulo: "Marque as páginas", texto: "No card da página, clique em **Adicionar tag** e escolha uma ou mais. Para várias páginas de uma vez, marque a caixa no canto da capa e use **Aplicar tag…** na barra que aparece embaixo." },
+      { titulo: "Filtre a lista", texto: "Clique numa tag na barra **Tags** para ver só as páginas dela. Com duas ou mais tags escolhidas, decida se a página precisa ter **qualquer uma** ou **todas**. **Sem tag** mostra o que ainda falta organizar." },
+      { titulo: "Veja em pastas", texto: "**Por tag** agrupa as páginas em pastas, uma por tag. **Grade** volta à lista normal. A escolha fica salva neste navegador." },
+      { titulo: "Monte uma vitrine automática", texto: "No editor, abra a seção **Links/Roteiros** e, em **Origem dos cards**, escolha **Por tag**. Marque as tags: os cards vêm das páginas publicadas com elas, com foto, datas e preço." }
+    ],
+    blocos: [
+      { tipo: "texto", texto: "As tags valem para toda a agência: a mesma lista aparece para toda a equipe, na lista de páginas e no editor. Cada página pode ter quantas tags precisar." },
+      {
+        tipo: "tabela",
+        titulo: "Ideias de uso",
+        colunas: ["Para quê", "Exemplo de tags"],
+        linhas: [
+          ["Separar por destino", "Europa, Nordeste, Sul, Internacional"],
+          ["Separar por tipo de viagem", "Lua de mel, Excursão, Cruzeiro, Grupo de terceira idade"],
+          ["Separar por época", "Réveillon, Carnaval, Férias de julho"],
+          ["Separar por quem atende", "Ana, Bruno, Equipe corporativo"],
+          ["Montar vitrines", "Uma página principal com uma seção Links/Roteiros por tag: Nacionais e Internacionais"]
+        ]
+      },
+      {
+        tipo: "lista",
+        titulo: "Como a seção Links/Roteiros por tag funciona",
+        itens: [
+          "Roteiro novo com a tag entra sozinho na seção assim que for publicado. Não precisa editar a página da vitrine.",
+          "Rascunhos não aparecem. Com **Esconder viagens que já saíram** ligado, a viagem sai da vitrine depois da data de saída da Capa.",
+          "**Não mostrar esta página** evita que a página da vitrine apareça nela mesma.",
+          "Escolha a **Ordem** (próxima saída, publicados mais recentemente ou nome) e a **Quantidade máxima** de cards.",
+          "**Mostrar datas** e **Mostrar preço \"a partir de\"** usam as datas da Capa e o menor valor da seção Preços (ou dos pacotes do Checkout) de cada roteiro."
+        ]
+      },
+      { tipo: "dica", texto: "No editor, o ícone **Tags** do menu lateral mostra as tags da página e em quais seções Links/Roteiros ela aparece. As tags também ficam embaixo do título da página. Mudanças ali são salvas na hora." },
+      { tipo: "texto", texto: "Em **Gerenciar tags**, escolha uma tag para trocar o nome ou a cor, ver as páginas que têm a tag, incluir ou tirar páginas e ver quais seções Links/Roteiros usam a tag." },
+      { tipo: "atencao", texto: "**Apagar tag** tira a tag de todas as páginas (as páginas continuam iguais), e as seções Links/Roteiros que usavam essa tag deixam de mostrar esses roteiros. Para unir duas tags parecidas, como \"Nordeste\" e \"nordeste 2026\", use **Juntar com outra tag**: as páginas e as seções passam para a tag que fica." }
+    ],
+    duvidas: [
+      ["Coloquei a tag e a página não apareceu na vitrine", "Confira se a página está publicada e se a viagem ainda não saiu. Com **Esconder viagens que já saíram** ligado, viagens com data de saída passada ficam de fora. Veja também se a **Quantidade máxima** da seção já foi atingida."],
+      ["Duplicar a página leva as tags?", "Sim. A cópia nasce com as mesmas tags da página original."],
+      ["Quem pode criar e mudar tags?", "Quem pode editar páginas na agência. Quem só visualiza vê as tags e usa os filtros, mas não muda nada."]
+    ],
+    relacionados: ["gerenciar-paginas", "links-roteiros", "duplicar-pagina"]
   },
 
   // ───────────── Editor ─────────────
@@ -416,17 +469,19 @@ export const HELP_ARTICLES: HelpArticle[] = [
     id: "links-roteiros",
     modulo: "secoes",
     titulo: "Links/Roteiros",
-    resumo: "Cards que levam para suas outras páginas ou para qualquer link.",
-    atualizado: "2026-10-09",
+    resumo: "Cards que levam para suas outras páginas ou para qualquer link, escolhidos à mão ou por tag.",
+    atualizado: "2026-11-02",
     rota: "/admin/pages",
     rotaRotulo: "Abrir uma página",
-    busca: "links roteiros outros roteiros cards carrossel outras paginas vitrine",
+    busca: "links roteiros outros roteiros cards carrossel outras paginas vitrine por tag automatica tags",
     passos: [
       { titulo: "Clique em Links/Roteiros", tela: 1 },
-      { titulo: "Adicione os cards", texto: "Escolha uma página sua ou cole um link. **Buscar foto e texto do link** preenche título, foto e datas.", tela: 2 },
+      { titulo: "Escolha a origem dos cards", texto: "Em **Origem dos cards**, **Escolher roteiros** monta cada card à mão. **Por tag** traz sozinho as páginas publicadas com as tags escolhidas." },
+      { titulo: "Adicione os cards", texto: "Na escolha manual, escolha uma página sua ou cole um link. Ao escolher uma página, as datas e o menor preço já vêm preenchidos. **Buscar foto e texto do link** preenche título, foto e datas.", tela: 2 },
       { titulo: "Confira na prévia", texto: "As setas nas laterais passam os cards, até 4 por vez no computador.", tela: 3 }
     ],
-    relacionados: ["secoes-disponiveis", "gerenciar-paginas"]
+    blocos: [{ tipo: "dica", texto: "Com **Por tag**, roteiro novo com a tag entra na seção sozinho. Veja como criar e usar as tags em **Organizar páginas com tags**." }],
+    relacionados: ["tags-de-paginas", "secoes-disponiveis", "gerenciar-paginas"]
   },
   {
     id: "compra-online",
