@@ -25,6 +25,9 @@ class BillingNoticeSettings(Base):
     available_lead_days = Column(Integer, nullable=False, default=10, server_default="10")
     # Avisos do próprio Asaas (e-mail e SMS das faturas). Ligados até alguém desligar na tela.
     asaas_notifications_enabled = Column(Boolean, nullable=False, default=True, server_default="true")
+    # Dia em que os avisos foram ligados (ou o prazo mudou). Nada que deveria ter saído antes dele sai
+    # depois: ligar ou mexer na configuração nunca dispara mensagem retroativa.
+    schedule_since = Column(Date, nullable=True)
     # {"etapa": {"email": bool, "whatsapp": bool}}
     steps_json = Column(JSON, nullable=True)
     # {"etapa": {"whatsapp": str, "email_subject": str, "email_body": str}}; vazio = texto padrão.

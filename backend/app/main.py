@@ -78,6 +78,7 @@ if engine.dialect.name == "postgresql":
                 "UPDATE webhook_notification_rules SET pushover_sound = NULL WHERE pushover_sound = 'cashregister' "
                 "AND event_key IN ('purchase_approved', 'subscription_created', 'subscription_renewed', 'upgrade_realizado')"
             ))
+        connection.execute(text("ALTER TABLE billing_notice_settings ADD COLUMN IF NOT EXISTS schedule_since DATE"))
         connection.execute(text("ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS deactivated_at TIMESTAMP WITH TIME ZONE"))
         connection.execute(text(
             "ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS deactivation_estimated BOOLEAN NOT NULL DEFAULT FALSE"

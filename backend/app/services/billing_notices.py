@@ -308,6 +308,11 @@ def lead_days(settings_row: BillingNoticeSettings) -> int:
     return max(MIN_LEAD_DAYS, min(MAX_LEAD_DAYS, value))
 
 
+def schedule_since(settings_row: BillingNoticeSettings, today: date) -> date:
+    """Dia a partir do qual os avisos valem. Sem data gravada, vale hoje (nada retroativo)."""
+    return settings_row.schedule_since or today
+
+
 def step_channels(settings_row: BillingNoticeSettings) -> dict[str, dict[str, bool]]:
     """Etapa → canal → ligado. Sem nada gravado, todas as etapas ligadas nos dois canais."""
     saved = settings_row.steps_json if isinstance(settings_row.steps_json, dict) else {}
@@ -650,9 +655,17 @@ def available_date(payment: dict[str, Any], lead: int) -> date | None:
     return planned if planned <= due else None
 
 
-def steps_on(payment: dict[str, Any], day: date, lead: int, today: date, available_done: bool = False) -> list[str]:
+def steps_on(
+    payment: dict[str, Any],
+    day: date,
+    lead: int,
+    today: date,
+    available_done: bool = False,
+    since: date | None = None,
+) -> list[str]:
     """Etapas que a fatura recebe no dia `day`. `available_done`: "Fatura disponível" já saiu (ou foi
-    cancelada) antes."""
+    cancelada) antes. `since`: dia em que os avisos foram ligados (ou o prazo mudou); nada que deveria
+    ter saído antes dele sai agora (sem envio retroativo)."""
     due = parse_date(payment.get("dueDate"))
     if due is None:
         return []
@@ -664,6 +677,9 @@ def steps_on(payment: dict[str, Any], day: date, lead: int, today: date, availab
     available = available_date(payment, lead)
     # "Fatura disponível" que ficou para trás (rotina parada, fatura vista depois) sai no próximo dia
     # da rotina, até o vencimento.
+    if available is not None and since is not None and available < since:
+        # Deveria ter saído antes de os avisos serem ligados: não sai atrasada.
+        available = None
     if available is not None and (
         available == day or (not available_done and day == today and available < day <= due)
     ):
@@ -772,6 +788,7 @@ def plan_notices(
     today: date,
 ) -> list[PlannedNotice]:
     lead = lead_days(settings_row)
+    since = schedule_since(settings_row, today)
     channels_on = step_channels(settings_row)
     replaced = replaced_payment_ids(db, [str(item.get("id") or "") for item in payments])
     connection = sender_connection(db, settings_row)
@@ -804,7 +821,7 @@ def plan_notices(
         if due is None:
             continue
         done = str(payment.get("id")) in available_done
-        steps_by_day = [(day, steps_on(payment, day, lead, today, done)) for day in day_list]
+        steps_by_day = [(day, steps_on(payment, day, lead, today, done, since)) for day in day_list]
         if not any(steps for _day, steps in steps_by_day):
             continue
         user = scan.owner(payment)
@@ -993,6 +1010,10 @@ def payment_confirmed(db: Session, payment: dict[str, Any], *, now: datetime | N
         return {}
     today = (now or sao_paulo_now()).astimezone(BRAZIL_TZ).date()
     if not _confirmed_recently(payment, today):
+        return {}
+    paid_on = parse_date(payment.get("paymentDate") or payment.get("confirmedDate") or payment.get("clientPaymentDate"))
+    if paid_on is not None and paid_on < schedule_since(settings_row, today):
+        # Pago antes de os avisos serem ligados: não manda confirmação retroativa.
         return {}
     user = owner_of_payment(db, payment)
     if user is None or user.is_superuser or user.subscription is None:

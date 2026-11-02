@@ -91,6 +91,8 @@ def enable(db, **changes):
     db.flush()
     row.enabled = True
     row.whatsapp_connection_id = connection.id
+    # Ligado há um mês: os testes de rotina não esbarram na trava de envio retroativo.
+    row.schedule_since = TODAY - timedelta(days=30)
     for key, value in changes.items():
         setattr(row, key, value)
     db.commit()
@@ -367,3 +369,53 @@ def test_new_asaas_customers_follow_the_switch(db_session):
     db_session.commit()
     payload = _build_asaas_customer_payload(name="A", email="a@example.com", document="123", phone="47999990000", session_token="t")
     assert payload["notificationDisabled"] is True
+
+
+# ---------------------------------------------------------------- sem envio retroativo
+
+
+def test_turning_on_does_not_send_what_should_have_gone_out_before(db_session, outbox):
+    """Ligar hoje: a "Fatura disponível" que deveria ter saído há dias não sai atrasada."""
+    user = make_user(db_session)
+    enable(db_session, schedule_since=TODAY)
+    fake = FakeAsaas([
+        payment(user, "pay_late", due=TODAY + timedelta(days=8)),          # deveria ter saído há 2 dias
+        payment(user, "pay_today", due=TODAY + timedelta(days=10)),        # sai hoje: é o dia dela
+        payment(user, "pay_overdue", due=TODAY - timedelta(days=5), status="OVERDUE"),  # atraso antigo
+    ])
+    notices.run_daily(db_session, today=TODAY, client=fake)
+    sent = {(r.payment_id, r.step) for r in db_session.query(BillingNoticeSend).all()}
+    assert sent == {("pay_today", "fatura_disponivel")}
+
+
+def test_saving_settings_never_sends_and_resets_the_start_day(client, db_session, outbox, monkeypatch):
+    app.dependency_overrides[get_current_superuser] = lambda: object()
+    try:
+        body = {"enabled": True, "available_lead_days": 10, "steps": {}, "templates": {}}
+        client.put("/api/v1/admin/billing-notices/settings", json=body)
+        row = notices.get_settings_row(db_session)
+        db_session.refresh(row)
+        assert row.schedule_since == notices.sao_paulo_today()
+
+        # Mudar só o texto não mexe na data; mudar o prazo, sim.
+        row.schedule_since = TODAY - timedelta(days=40)
+        db_session.commit()
+        client.put("/api/v1/admin/billing-notices/settings", json=body | {
+            "templates": {"vence_hoje": {"whatsapp": "Oi", "email_subject": "", "email_body": ""}}
+        })
+        db_session.refresh(row)
+        assert row.schedule_since == TODAY - timedelta(days=40)
+        client.put("/api/v1/admin/billing-notices/settings", json=body | {"available_lead_days": 30})
+        db_session.refresh(row)
+        assert row.schedule_since == notices.sao_paulo_today()
+        assert outbox == [] and db_session.query(BillingNoticeSend).count() == 0
+    finally:
+        app.dependency_overrides.pop(get_current_superuser, None)
+
+
+def test_no_payment_confirmation_for_payments_before_turning_on(db_session, outbox):
+    user = make_user(db_session)
+    enable(db_session, schedule_since=TODAY)
+    paid = payment(user, due=TODAY, status="RECEIVED") | {"paymentDate": (TODAY - timedelta(days=1)).isoformat()}
+    assert notices.payment_confirmed(db_session, paid, now=datetime(2026, 11, 2, 15, 0, tzinfo=timezone.utc)) == {}
+    assert outbox == []

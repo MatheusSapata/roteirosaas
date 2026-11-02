@@ -119,6 +119,7 @@
         <details class="rules">
           <summary>Regras de envio</summary>
           <ul>
+            <li>Nada retroativo: ao ligar os avisos ou mudar o prazo, só vale daqui para a frente. Avisos que deveriam ter saído antes não saem atrasados, e editar textos nunca dispara mensagem.</li>
             <li>Cada etapa sai uma vez por fatura e canal. Se falhar, o sistema tenta de novo até 3 vezes.</li>
             <li>Antes de avisar, a fatura é lida no Asaas: paga, apagada, estornada ou trocada por outra não recebe aviso.</li>
             <li>Nada sai no dia em que a cobrança é criada (o cliente pode estar pagando no checkout).</li>

@@ -133,6 +133,7 @@ def _settings_out(db: Session) -> dict[str, Any]:
         "email_configured": EmailClient()._is_configured(),
         "asaas_configured": bool(get_settings().asaas_api_key),
         "daily_run_at": "08:07",
+        "schedule_since": row.schedule_since.isoformat() if row.schedule_since else None,
         "ran_today": notices.daily_ran(db, notices.sao_paulo_today()),
         "stats": _stats(db),
     }
@@ -150,6 +151,11 @@ def update_billing_notice_settings(
     row = notices.get_settings_row(db)
     if payload.whatsapp_connection_id is not None and db.get(WhatsAppConnection, payload.whatsapp_connection_id) is None:
         raise HTTPException(422, "Conexão de WhatsApp não encontrada.")
+    turned_on = payload.enabled and not row.enabled
+    lead_changed = payload.available_lead_days != notices.lead_days(row)
+    if turned_on or lead_changed or row.schedule_since is None:
+        # Sem envio retroativo: o que deveria ter saído antes de hoje não sai mais.
+        row.schedule_since = notices.sao_paulo_today()
     row.enabled = payload.enabled
     row.whatsapp_connection_id = payload.whatsapp_connection_id
     row.available_lead_days = payload.available_lead_days
