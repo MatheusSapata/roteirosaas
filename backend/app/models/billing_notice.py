@@ -5,7 +5,7 @@
 - billing_notice_sends: um registro por fatura, etapa e canal. A chave única é a trava contra envio em
   dobro: o envio reserva a linha antes de sair.
 """
-from sqlalchemy import JSON, Boolean, Column, Date, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import JSON, Boolean, Column, Date, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint  # noqa: F401
 from sqlalchemy.sql import func
 
 from app.db.base import Base
@@ -17,10 +17,14 @@ class BillingNoticeSettings(Base):
     id = Column(Integer, primary_key=True)
     # Chave geral: desligada, nada sai para os clientes (a prévia continua funcionando).
     enabled = Column(Boolean, nullable=False, default=False, server_default="false")
-    # Conexão de WhatsApp (Admin master › WhatsApp) que envia as mensagens.
-    whatsapp_connection_id = Column(
-        Integer, ForeignKey("whatsapp_connections.id", ondelete="SET NULL"), nullable=True
-    )
+    # WhatsApp só da cobrança: instância própria na Evolution, fora das conexões das agências (não
+    # aparece em caixa de entrada nenhuma e nenhuma agência consegue desconectar).
+    sender_instance_name = Column(String(120), nullable=True)
+    # connected, connecting, qr_needed ou disconnected (última leitura na Evolution).
+    sender_status = Column(String(20), nullable=False, default="disconnected", server_default="disconnected")
+    sender_phone = Column(String(30), nullable=True)
+    sender_connected_at = Column(DateTime(timezone=True), nullable=True)
+    sender_checked_at = Column(DateTime(timezone=True), nullable=True)
     # "Fatura disponível" sai quando faltam até estes dias para o vencimento.
     available_lead_days = Column(Integer, nullable=False, default=10, server_default="10")
     # Avisos do próprio Asaas (e-mail e SMS das faturas). Ligados até alguém desligar na tela.

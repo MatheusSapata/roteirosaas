@@ -11,7 +11,6 @@ from app.main import app
 from app.models.billing_notice import BillingNoticeSend
 from app.models.subscription import Subscription
 from app.models.user import User
-from app.models.whatsapp import WhatsAppConnection
 from app.services import billing_notices as notices
 from app.services.billing_account import mark_payment_replaced
 
@@ -86,11 +85,9 @@ def payment(user, pid="pay_1", *, due: date, created: date | None = None, status
 
 def enable(db, **changes):
     row = notices.get_settings_row(db)
-    connection = WhatsAppConnection(agency_id=1, name="Cobrança", instance_name="cobranca", status="connected")
-    db.add(connection)
-    db.flush()
     row.enabled = True
-    row.whatsapp_connection_id = connection.id
+    row.sender_instance_name = "roteiroonline-cobranca"
+    row.sender_status = "connected"
     # Ligado há um mês: os testes de rotina não esbarram na trava de envio retroativo.
     row.schedule_since = TODAY - timedelta(days=30)
     for key, value in changes.items():
@@ -419,3 +416,90 @@ def test_no_payment_confirmation_for_payments_before_turning_on(db_session, outb
     paid = payment(user, due=TODAY, status="RECEIVED") | {"paymentDate": (TODAY - timedelta(days=1)).isoformat()}
     assert notices.payment_confirmed(db_session, paid, now=datetime(2026, 11, 2, 15, 0, tzinfo=timezone.utc)) == {}
     assert outbox == []
+
+
+# ---------------------------------------------------------------- WhatsApp próprio da cobrança
+
+
+class FakeEvolution:
+    def __init__(self, status="connected"):
+        self.status = status
+        self.created = []
+        self.sent = []
+
+    def create_instance(self, instance_name=None, *, with_webhook=True):
+        self.created.append((instance_name, with_webhook))
+        return {}
+
+    def get_connection_status(self, instance_name=None):
+        return {"status": self.status, "phone": "5547988887777"}
+
+    def get_qr_code(self, instance_name=None):
+        return {"qr_code_base64": "data:image/png;base64,AAA", "pairing_code": None}
+
+    def send_text_target(self, target, text, instance_name=None):
+        if self.status != "connected":
+            raise RuntimeError("Connection Closed")
+        self.sent.append((instance_name, target))
+
+    def disconnect_instance(self, instance_name=None):
+        self.status = "disconnected"
+        return {}
+
+
+def test_connect_creates_a_dedicated_instance_without_inbox_webhook(db_session, monkeypatch):
+    fake = FakeEvolution(status="qr_needed")
+    monkeypatch.setattr(notices, "_evolution", lambda: fake)
+    result = notices.connect_sender(db_session)
+    assert result["status"] == "qr_needed" and result["qr_code_base64"]
+    assert fake.created == [("roteiroonline-cobranca", False)]
+    # Ler de novo não cria outra instância.
+    fake.status = "connected"
+    assert notices.connect_sender(db_session)["status"] == "connected"
+    assert len(fake.created) == 1
+    row = notices.get_settings_row(db_session)
+    assert row.sender_status == "connected" and row.sender_phone == "5547988887777"
+
+
+def test_whatsapp_goes_out_through_the_billing_instance(db_session, monkeypatch):
+    fake = FakeEvolution()
+    monkeypatch.setattr(notices, "_evolution", lambda: fake)
+    monkeypatch.setattr(notices, "send_email", lambda *a: None)
+    user = make_user(db_session)
+    enable(db_session)
+    notices.run_daily(db_session, today=TODAY, client=FakeAsaas([payment(user, due=TODAY + timedelta(days=8))]))
+    assert fake.sent == [("roteiroonline-cobranca", "5547999990000")]
+
+
+def test_disconnected_sender_fails_alerts_once_and_does_not_send(db_session, monkeypatch):
+    from app.services import webhook_notifications
+
+    alerts = []
+    monkeypatch.setattr(webhook_notifications, "notify_safely", lambda **kw: alerts.append(kw))
+    fake = FakeEvolution(status="disconnected")
+    monkeypatch.setattr(notices, "_evolution", lambda: fake)
+    monkeypatch.setattr(notices, "send_email", lambda *a: None)
+    user = make_user(db_session)
+    enable(db_session)  # gravado como conectado; a Evolution diz que caiu
+    notices.run_daily(db_session, today=TODAY, client=FakeAsaas([payment(user, due=TODAY + timedelta(days=8))]))
+    row = db_session.query(BillingNoticeSend).filter_by(channel="whatsapp").one()
+    assert row.status == "failed" and row.error == "Connection Closed"
+    assert fake.sent == []
+    settings_row = notices.get_settings_row(db_session)
+    assert settings_row.sender_status == "disconnected"
+    # Próximo envio nem tenta: falha na hora com o motivo claro.
+    with pytest.raises(RuntimeError, match="desconectado"):
+        notices.send_whatsapp(db_session, settings_row, "5547999990000", "oi")
+    assert [a["event_key"] for a in alerts] == ["billing_whatsapp_disconnected"]
+    # Continua caído: não avisa de novo.
+    notices.refresh_sender(db_session, notices.get_settings_row(db_session))
+    assert len(alerts) == 1
+
+
+def test_preview_shows_when_billing_whatsapp_is_not_connected(db_session, outbox):
+    user = make_user(db_session)
+    enable(db_session, sender_status="disconnected")
+    preview = notices.upcoming(db_session, days=7, client=FakeAsaas([payment(user, due=TODAY + timedelta(days=12))]), today=TODAY)
+    states = {c["channel"]: (c["state"], c["reason"]) for c in preview["items"][0]["channels"]}
+    assert states["whatsapp"] == ("skipped", "WhatsApp da cobrança desconectado")
+    assert states["email"][0] == "scheduled"
