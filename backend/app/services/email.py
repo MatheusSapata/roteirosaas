@@ -126,7 +126,9 @@ def send_in_background(func, /, **kwargs) -> None:
 # ---------------------------------------------------------------------------
 # Visual dos e-mails: tabelas e estilos inline (é o que os leitores de e-mail aceitam).
 # ---------------------------------------------------------------------------
-_BRAND_GREEN = "#41ce5f"
+# Paleta Viaje On de 2026-11 (a mesma do painel em frontend/src/styles/main.css).
+_BRAND_GREEN = "#0a6346"  # Verde Viaje: faixa do topo, botão e links
+_BRAND_GREEN_ON = "#ffffff"  # texto sobre o Verde Viaje
 _FONT = "Arial,Helvetica,sans-serif"
 
 
@@ -163,39 +165,39 @@ def _email_layout(
     settings = get_settings()
     support = settings.smtp_reply_to or settings.smtp_from_email or "suporte@roteiroonline.com"
     highlight_html = (
-        f'<div style="background:#f1f8f3;border-radius:12px;padding:14px 16px;margin:6px 0 18px;'
-        f'font-size:15px;color:#1f3a2a;">{highlight}</div>'
+        f'<div style="background:#e6f5df;border-radius:12px;padding:14px 16px;margin:6px 0 18px;'
+        f'font-size:15px;color:#0e1f17;">{highlight}</div>'
         if highlight
         else ""
     )
     link_html = (
-        '<p style="margin:18px 0 0;font-size:13px;line-height:1.5;color:#6b7a72;">'
+        '<p style="margin:18px 0 0;font-size:13px;line-height:1.5;color:#5a6d62;">'
         "Se o botão não funcionar, copie e cole este link no navegador:<br>"
-        f'<a href="{button_url}" style="color:#0e7a55;word-break:break-all;">{button_url}</a></p>'
+        f'<a href="{button_url}" style="color:{_BRAND_GREEN};word-break:break-all;">{button_url}</a></p>'
         if show_link
         else ""
     )
     return f"""<!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#eef2ee;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef2ee;"><tr><td align="center" style="padding:28px 12px;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:18px;overflow:hidden;font-family:{_FONT};color:#17201b;">
+<body style="margin:0;padding:0;background:#eff3ed;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eff3ed;"><tr><td align="center" style="padding:28px 12px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:18px;overflow:hidden;font-family:{_FONT};color:#0e1f17;">
     <tr><td align="center" style="background:{_BRAND_GREEN};padding:26px 32px;">
       <img src="{_logo_url()}" alt="Roteiro Online" width="170" style="display:block;width:170px;max-width:100%;height:auto;border:0;">
     </td></tr>
     <tr><td style="padding:34px 32px 8px;">
-      <p style="margin:0 0 10px;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#6b7a72;font-weight:700;">{eyebrow}</p>
-      <h1 style="margin:0 0 14px;font-size:25px;line-height:1.25;color:#0f1f14;">{title}</h1>
+      <p style="margin:0 0 10px;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:{_BRAND_GREEN};font-weight:700;">{eyebrow}</p>
+      <h1 style="margin:0 0 14px;font-size:25px;line-height:1.25;color:#0e1f17;">{title}</h1>
       {body_html}
       {highlight_html}
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:10px 0 4px;">
-        <a href="{button_url}" style="display:inline-block;background:{_BRAND_GREEN};color:#0f1f14;text-decoration:none;font-weight:700;font-size:16px;padding:15px 34px;border-radius:999px;">{button_label}</a>
+        <a href="{button_url}" style="display:inline-block;background:{_BRAND_GREEN};color:{_BRAND_GREEN_ON};text-decoration:none;font-weight:700;font-size:16px;padding:15px 34px;border-radius:999px;">{button_label}</a>
       </td></tr></table>
       {link_html}
     </td></tr>
-    <tr><td style="background:#fafbfa;border-top:1px solid #e6ece8;padding:18px 32px;font-size:13px;line-height:1.5;color:#6b7a72;">{note_html}</td></tr>
+    <tr><td style="background:#f5f8f3;border-top:1px solid #e1e8dc;padding:18px 32px;font-size:13px;line-height:1.5;color:#5a6d62;">{note_html}</td></tr>
   </table>
-  <p style="max-width:560px;margin:16px auto 0;font-family:{_FONT};font-size:12px;line-height:1.6;color:#7a8780;text-align:center;">
+  <p style="max-width:560px;margin:16px auto 0;font-family:{_FONT};font-size:12px;line-height:1.6;color:#5a6d62;text-align:center;">
     Roteiro Online · Suporte: {escape(support)}<br>Você recebeu este e-mail porque há uma conta com este endereço no Roteiro Online.
   </p>
 </td></tr></table>
