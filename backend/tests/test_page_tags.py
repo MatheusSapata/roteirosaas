@@ -81,6 +81,18 @@ def test_criar_tag_repetida_devolve_a_existente_e_conta_paginas(client, db_sessi
     assert listed[0]["tags"] == [{"id": europa["id"], "name": "Europa", "color": "blue"}]
 
 
+def test_cor_pronta_ou_personalizada_e_cor_invalida_recusada(client, db_session, agency):
+    europa = _tag(client, agency, "Europa")
+    res = client.put(f"/api/v1/page-tags/{europa['id']}", json={"color": "violet"})
+    assert res.status_code == 200 and res.json()["color"] == "violet"
+    res = client.put(f"/api/v1/page-tags/{europa['id']}", json={"color": "#E11D48"})
+    assert res.status_code == 200 and res.json()["color"] == "#e11d48"
+    for invalida in ("roxo", "#fff", "e11d48", "#e11d4z"):
+        assert client.put(f"/api/v1/page-tags/{europa['id']}", json={"color": invalida}).status_code == 422
+    res = client.post("/api/v1/page-tags", json={"agency_id": agency.id, "name": "Praia", "color": "#0a6346"})
+    assert res.status_code == 200 and res.json()["color"] == "#0a6346"
+
+
 def test_renomear_para_nome_existente_e_tag_de_outra_agencia_sao_recusados(client, db_session, agency):
     europa = _tag(client, agency, "Europa")
     nordeste = _tag(client, agency, "Nordeste")

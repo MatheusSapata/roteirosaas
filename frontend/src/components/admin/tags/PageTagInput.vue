@@ -239,7 +239,7 @@ defineExpose({ focus: focusInput });
   width: 9px;
   height: 9px;
   border-radius: 999px;
-  background: var(--tag-fg);
+  background: var(--tag);
 }
 .tag-input-empty {
   margin: 0;

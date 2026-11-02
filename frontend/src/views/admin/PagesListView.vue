@@ -3348,9 +3348,10 @@ onMounted(async () => {
 .pl-tagbar-label svg { width: 14px; height: 14px; }
 .pl-tagbar-hint { margin: 0; font-size: 12.5px; color: var(--muted-foreground); }
 .pl-tchip { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border: 1px solid transparent; border-radius: 999px; background: var(--muted); font-size: 12.5px; font-weight: 600; color: var(--muted-foreground); }
-.pl-tchip i { width: 8px; height: 8px; border-radius: 999px; background: var(--tag-fg, var(--muted-foreground)); }
+.pl-tchip i { width: 8px; height: 8px; border-radius: 999px; background: var(--tag, var(--muted-foreground)); }
 .pl-tchip span { font-size: 11px; opacity: 0.75; font-variant-numeric: tabular-nums; }
-.pl-tchip.on { border-color: color-mix(in srgb, var(--tag-fg, var(--foreground)) 35%, transparent); background: var(--tag-bg, var(--card)); color: var(--tag-fg, var(--foreground)); }
+.pl-tchip.on { border-color: var(--tag, var(--foreground)); background: var(--tag-bg, var(--card)); color: var(--tag-fg, var(--foreground)); }
+.pl-tchip.on i { background: var(--tag-fg, var(--foreground)); }
 .pl-tchip.is-dashed { border: 1px dashed var(--border); background: transparent; }
 .pl-tchip.is-dashed.on { border-style: solid; background: var(--muted); color: var(--foreground); }
 .pl-match { display: inline-flex; align-items: center; gap: 6px; margin-left: 4px; font-size: 12px; color: var(--muted-foreground); }

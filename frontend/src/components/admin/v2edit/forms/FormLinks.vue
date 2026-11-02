@@ -369,14 +369,17 @@ const setLayout = (layout: string) => {
   width: 8px;
   height: 8px;
   border-radius: 999px;
-  background: var(--tag-fg);
+  background: var(--tag);
 }
 .fl-chip span {
   font-size: 11px;
   opacity: 0.75;
 }
+.fl-chip.on i {
+  background: var(--tag-fg);
+}
 .fl-chip.on {
-  border-color: color-mix(in srgb, var(--tag-fg) 35%, transparent);
+  border-color: var(--tag);
   background: var(--tag-bg);
   color: var(--tag-fg);
 }
