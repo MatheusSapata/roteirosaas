@@ -29,7 +29,7 @@ const svg = (f) => fs.readFileSync(path.join(dir, f), 'utf8').replace(/<\?xml[^>
         fill="none" stroke="${v.route}" stroke-opacity="${v.ro}" stroke-width="4" stroke-linecap="round" stroke-dasharray="2 16"/></svg>
       <div class="pinA">${pin}</div><div class="pinB">${pin}</div>
       <div class="logo">${logo}</div>
-      <div class="t">Descreva a viagem. A IA monta a página.</div>
+      <div class="t">Roteiros de viagem que vendem, prontos em minutos.</div>
     </div></body></html>`;
     for (const sc of [1, 2]) {
       const pg = await b.newPage({ viewport: { width: 1200, height: 630 }, deviceScaleFactor: sc });
