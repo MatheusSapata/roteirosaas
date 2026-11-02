@@ -5,8 +5,9 @@ s = open(src).read()
 ds = re.findall(r'<path[^>]*?d="([^"]+)"', s)
 ONLINE = ds[0:6]; ROTEIRO = ds[6:13]
 XH = 346.23
-ONLINE[2] = f"M866.0977 423.2109 L857.9453 423.2109 L857.9453 {XH} L866.0977 {XH} Z"
-_dr = 6.5488; _dcy = XH + _dr; _st = _dcy + _dr + 5.2
+ASC = XH - 16.0   # l e i um pouco mais altos que o/n/e
+ONLINE[2] = f"M866.0977 423.2109 L857.9453 423.2109 L857.9453 {ASC} L866.0977 {ASC} Z"
+_dr = 6.5488; _dcy = ASC + _dr; _st = _dcy + _dr + 5.2
 ONLINE[3] = (f"M886.4102 {_st:.3f} L894.5625 {_st:.3f} L894.5625 423.2109 L886.4102 423.2109 Z "
              f"M{890.5547-_dr:.4f} {_dcy:.4f} a{_dr} {_dr} 0 1 0 {2*_dr:.4f} 0 a{_dr} {_dr} 0 1 0 {-2*_dr:.4f} 0Z")
 # wordmark box in source coords
@@ -100,14 +101,13 @@ BL = 423.5      # linha de base
 XH_ = BL - XT
 
 def horizontal(name, p, bg=None):
-    """Regra: topo do pin = topo das letras altas; centro do circulo = meio da altura x."""
+    """Regra: pin centralizado na altura do texto."""
     pin, pl, c1, c2, _ = p
-    cy_txt = (XT + BL) / 2
-    sc = (cy_txt - AT) / R                  # raio externo do pin = distancia ate o topo
+    sc = (BL - AT) * 1.45 / SYM_H           # altura do pin = 1,45x a altura do texto
     sw = SYM_W * sc
-    sy = cy_txt - CY * sc                   # y de origem do simbolo (CY do pin cai em cy_txt)
-    top = AT
-    bot = sy + SYM_BOT * sc
+    sy = (AT + BL) / 2 - (SYM_TOP + SYM_BOT) / 2 * sc   # centro do pin = centro do texto
+    top = min(AT, sy + SYM_TOP * sc)
+    bot = max(BL, sy + SYM_BOT * sc)
     gap = XH_ * 0.55
     m = XH_ * 0.45
     W = sw + gap + (WX1 - WX0) + 2 * m
@@ -125,7 +125,7 @@ def vertical(name, p, bg=None):
     sc = (lw * 0.50) / SYM_W
     sh = SYM_H * sc
     gap = XH_ * 0.50                       # ponta do pin -> topo das letras altas
-    line_gap = XH_ * 0.22                  # base do "roteiro" -> topo do "online"
+    line_gap = XH_ * 0.36                  # base do "roteiro" -> topo do "online"
     lead = BL + line_gap - XT
     m = XH_ * 0.55
     W = lw + 2 * m

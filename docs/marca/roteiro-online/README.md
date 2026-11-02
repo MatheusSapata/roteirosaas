@@ -1,11 +1,11 @@
 # Marca Roteiro Online
 
 - **Símbolo:** o pin atual do Roteiro Online (`frontend/src/assets/Favicon.png`), redesenhado em vetor. A seta foi trocada pelo avião do favicon do Viaje On.
-- **Texto:** vem dos vetores de `ROTEIROONLINE_BASE.ai`. "roteiro" é bold e "online" é traço fino. O "l" e o "i" de "online" foram baixados para a altura do "o", "n" e "e", então todas as letras ficam com a mesma altura.
+- **Texto:** vem dos vetores de `ROTEIROONLINE_BASE.ai`. "roteiro" é bold e "online" é traço fino. O "l" e o "i" de "online" foram baixados e ficam só um pouco acima do "o", "n" e "e", para a palavra encaixar na versão vertical.
 
 ## Regras de montagem
 - **Avião:** fica centralizado no círculo do pin, com as três pontas (bico, asa e cauda) na mesma distância do pin. Essa distância é 74% do raio do círculo.
-- **Horizontal:** o topo do pin alinha com o topo das letras altas de "roteiro", e o centro do círculo fica no meio da altura das letras baixas.
+- **Horizontal:** o pin tem 1,45 vez a altura do texto, e o centro dele fica alinhado ao centro do texto.
 - **Vertical:** o pin fica centralizado e tem metade da largura do texto. "roteiro" e "online" ficam empilhados e próximos.
 
 ## Modelos
