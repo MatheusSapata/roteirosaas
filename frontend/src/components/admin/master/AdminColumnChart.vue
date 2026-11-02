@@ -204,12 +204,12 @@ const tipStyle = computed(() => {
 
 <style scoped>
 .acc {
-  --acc-accent: #059669;
+  --acc-accent: var(--chart-1);
   --acc-muted: #8a94a6;
   position: relative;
 }
 :global(html.dark) .acc {
-  --acc-accent: #0fa877;
+  --acc-accent: var(--chart-1);
   --acc-muted: #64748b;
 }
 .acc-legend {

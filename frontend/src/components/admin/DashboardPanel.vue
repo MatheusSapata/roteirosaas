@@ -387,10 +387,10 @@ const exportPdf = () => {
   display: block;
   height: 100%;
   border-radius: 999px;
-  background: #059669;
+  background: var(--chart-1);
 }
 :global(html.dark) .dp-track > i {
-  background: #0fa877;
+  background: var(--chart-1);
 }
 .dp-attention {
   display: grid;

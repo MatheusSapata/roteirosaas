@@ -264,34 +264,40 @@ html.dark .public-tokens {
   --sidebar-border: #2a302d;
 }
 
-/* Painel: mesmo design system do Viaje On (cores, cantos e sombras). */
+/* Painel: mesmo design system do Viaje On (cores, cantos e sombras).
+   Paleta da marca Viaje On de 2026-11 (repositório oi-charm-glow, src/styles.css):
+   Verde Viaje #0A6346 (principal no claro), Verde On #90EE8F (principal no escuro
+   e destaque), Broto #D8F1D0, Noite #0A110E (fundo escuro), Névoa #EFF3ED (fundo
+   claro) e Verde Trilha #15915C (segunda cor de gráfico).
+   Só o painel muda: as páginas publicadas dos clientes e a prévia delas no editor
+   (.public-tokens) e as telas de acesso (marca Roteiro Online) mantêm as cores. */
 body.admin-shell {
-  --brand: #0b8059;
-  --brand-dark: #07684a;
-  --primary: #0b8059;
+  --brand: #0a6346;
+  --brand-dark: #084d37;
+  --primary: #0a6346;
   --primary-foreground: #ffffff;
-  --primary-accent: #12b981;
-  --background: #edf1ee;
-  --foreground: #111814;
+  --primary-accent: #15915c;
+  --background: #eff3ed;
+  --foreground: #0e1f17;
   --surface: #ffffff;
-  --surface-muted: #f4f7f5;
+  --surface-muted: #f5f8f3;
   --card: #ffffff;
-  --card-foreground: #111814;
+  --card-foreground: #0e1f17;
   --popover: #ffffff;
-  --popover-foreground: #111814;
-  --secondary: #f4f7f5;
-  --secondary-foreground: #111814;
-  --muted: #f4f7f5;
-  --muted-foreground: #66706b;
-  --accent: #e3f5ec;
-  --accent-foreground: #0a7a55;
-  --border: #e4e9e5;
-  --input: #e4e9e5;
-  --ring: #12b981;
+  --popover-foreground: #0e1f17;
+  --secondary: #f5f8f3;
+  --secondary-foreground: #0e1f17;
+  --muted: #f5f8f3;
+  --muted-foreground: #5a6d62;
+  --accent: #e6f5df;
+  --accent-foreground: #0a6346;
+  --border: #e1e8dc;
+  --input: #d8e0d2;
+  --ring: #0a6346;
   --destructive: #c13a3a;
   --destructive-foreground: #ffffff;
-  --status-success: #e3f5ec;
-  --status-success-foreground: #0a7a55;
+  --status-success: #e3f4dc;
+  --status-success-foreground: #1d6a34;
   --status-warning: #fcf1de;
   --status-warning-foreground: #a35d06;
   --status-info: #e8eefc;
@@ -302,8 +308,8 @@ body.admin-shell {
   --status-neutral-foreground: #3c4540;
   --status-violet: #efebfc;
   --status-violet-foreground: #6d4fd6;
-  --chart-1: #12b981;
-  --chart-2: #1de9a0;
+  --chart-1: #0a6346;
+  --chart-2: #15915c;
   --chart-3: #2563eb;
   --chart-4: #f59e0b;
   --chart-5: #dc2626;
@@ -311,11 +317,11 @@ body.admin-shell {
   --chart-7: #ec4899;
   --chart-8: #f97316;
   --sidebar: #ffffff;
-  --sidebar-foreground: #66706b;
-  --sidebar-primary: #0b8059;
+  --sidebar-foreground: #5a6d62;
+  --sidebar-primary: #0a6346;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f4f7f5;
-  --sidebar-border: #e4e9e5;
+  --sidebar-accent: #f5f8f3;
+  --sidebar-border: #e1e8dc;
   --radius: 0.875rem;
   --radius-sm: 0.625rem;
   --radius-md: 0.75rem;
@@ -324,13 +330,13 @@ body.admin-shell {
   --radius-2xl: 1.25rem;
   --shadow-soft: 0 1px 2px 0 rgba(17, 24, 20, 0.04);
   --shadow-card: 0 1px 2px 0 rgba(17, 24, 20, 0.04);
-  --shadow-elegant: 0 12px 32px -10px rgba(12, 31, 24, 0.28);
-  --deep: #0c1f18;
-  --deep-2: #12302a;
-  --on-deep: #eaf5ef;
-  --on-deep-muted: #9fc2b3;
-  --deep-accent: #1de9a0;
-  --deep-accent-foreground: #06140e;
+  --shadow-elegant: 0 12px 32px -10px rgba(10, 17, 14, 0.28);
+  --deep: #0a110e;
+  --deep-2: #0f2219;
+  --on-deep: #e6f2ea;
+  --on-deep-muted: #9bb3a6;
+  --deep-accent: #90ee8f;
+  --deep-accent-foreground: #0a110e;
   /* Admin Master: identidade âmbar, a mesma do Viaje On. */
   --admin-surface: #fcebc8;
   --admin-border: #f3d499;
@@ -339,36 +345,36 @@ body.admin-shell {
   --admin-accent: #b45309;
   --admin-soft: #fde7c2;
   --admin-glow: #fbe6bf;
-  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235a6d62' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 }
 
 html.dark body.admin-shell {
-  --brand: #1fd497;
-  --brand-dark: #13b57f;
-  --primary: #1fd497;
-  --primary-foreground: #06140e;
-  --primary-accent: #13b57f;
-  --background: #0b100e;
-  --foreground: #eef3f0;
-  --surface: #141b18;
-  --surface-muted: #1a2320;
-  --card: #141b18;
-  --card-foreground: #eef3f0;
-  --popover: #141b18;
-  --popover-foreground: #eef3f0;
-  --secondary: #1a2320;
-  --secondary-foreground: #eef3f0;
-  --muted: #1a2320;
-  --muted-foreground: #9aa6a0;
-  --accent: #16302a;
-  --accent-foreground: #5cf0bb;
-  --border: #26312c;
-  --input: #26312c;
-  --ring: #1de9a0;
+  --brand: #90ee8f;
+  --brand-dark: #5fcf7e;
+  --primary: #90ee8f;
+  --primary-foreground: #0a110e;
+  --primary-accent: #5fcf7e;
+  --background: #0a110e;
+  --foreground: #e6f2ea;
+  --surface: #101b16;
+  --surface-muted: #12201a;
+  --card: #101b16;
+  --card-foreground: #e6f2ea;
+  --popover: #13211a;
+  --popover-foreground: #e6f2ea;
+  --secondary: #12201a;
+  --secondary-foreground: #e6f2ea;
+  --muted: #12201a;
+  --muted-foreground: #9bb3a6;
+  --accent: #163323;
+  --accent-foreground: #b9f0b8;
+  --border: #1d3329;
+  --input: #25402f;
+  --ring: #90ee8f;
   --destructive: #ef5b5b;
-  --destructive-foreground: #06140e;
-  --status-success: rgba(31, 184, 122, 0.2);
-  --status-success-foreground: #4fe0b0;
+  --destructive-foreground: #0a110e;
+  --status-success: rgba(144, 238, 143, 0.13);
+  --status-success-foreground: #a9f0a8;
   --status-warning: rgba(246, 183, 60, 0.2);
   --status-warning-foreground: #f8c766;
   --status-info: rgba(37, 99, 235, 0.2);
@@ -379,25 +385,25 @@ html.dark body.admin-shell {
   --status-neutral-foreground: #cbd5e1;
   --status-violet: #251f3d;
   --status-violet-foreground: #b7a4ff;
-  --chart-1: #1de9a0;
-  --chart-2: #12b981;
+  --chart-1: #90ee8f;
+  --chart-2: #15915c;
   --chart-3: #3b82f6;
   --chart-4: #f6b73c;
   --chart-5: #ef5b5b;
   --chart-6: #a78bfa;
   --chart-7: #f472b6;
   --chart-8: #fb923c;
-  --sidebar: #141b18;
-  --sidebar-foreground: #9aa6a0;
-  --sidebar-primary: #1fd497;
-  --sidebar-primary-foreground: #06140e;
-  --sidebar-accent: #1a2320;
-  --sidebar-border: #26312c;
+  --sidebar: #101b16;
+  --sidebar-foreground: #9bb3a6;
+  --sidebar-primary: #90ee8f;
+  --sidebar-primary-foreground: #0a110e;
+  --sidebar-accent: #12201a;
+  --sidebar-border: #1d3329;
   --shadow-soft: 0 0 0 1px rgba(255, 255, 255, 0.03);
   --shadow-card: 0 0 0 1px rgba(255, 255, 255, 0.03);
   --shadow-elegant: 0 16px 40px -10px rgba(0, 0, 0, 0.7);
-  --deep: #0c1f18;
-  --deep-2: #12302a;
+  --deep: #0f2219;
+  --deep-2: #163323;
   --admin-surface: #2a2012;
   --admin-border: #4a3718;
   --admin-ink: #ecd9b8;
@@ -405,7 +411,7 @@ html.dark body.admin-shell {
   --admin-accent: #f5b04a;
   --admin-soft: #3d2c12;
   --admin-glow: #2b1f0c;
-  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239aa39e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239bb3a6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 }
 
 html {

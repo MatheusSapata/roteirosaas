@@ -501,7 +501,7 @@
 .iv-card-foot .iv-btn-primary { height: 36px; font-size: 13px; }
 .iv-logo { display: grid; place-items: center; width: 44px; height: 44px; flex-shrink: 0; border-radius: 14px; font-size: 16px; font-weight: 700; }
 .iv-logo svg { width: 20px; height: 20px; }
-.iv-logo-vo { background: #0b1f17; color: #34d399; }
+.iv-logo-vo { background: #0a110e; color: #90ee8f; }
 .iv-pill { display: inline-block; margin-top: 2px; border-radius: 999px; padding: 1px 8px; font-size: 11.5px; font-weight: 600; }
 .iv-pill.is-on { background: var(--status-success); color: var(--status-success-foreground); }
 .iv-pill.is-off { background: var(--muted); color: var(--muted-foreground); }

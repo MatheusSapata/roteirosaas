@@ -495,14 +495,14 @@ onMounted(async () => {
 
 /* Cartão de situação da assinatura (mesmo desenho de "Seu plano" no Perfil) */
 .pf-card { border-radius: 20px; background: var(--card); padding: 20px 22px; box-shadow: var(--shadow-card); }
-.pf-plan { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; border-radius: 16px; background: linear-gradient(120deg, #0d1f19, #0b1512 60%, #10291f); padding: 18px 20px; color: #fff; }
-.pf-plan-icon { display: grid; place-items: center; width: 40px; height: 40px; flex-shrink: 0; border-radius: 999px; background: rgba(31, 227, 160, 0.14); color: #34d399; }
+.pf-plan { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; border-radius: 16px; background: linear-gradient(120deg, #0f2219, #0a110e 60%, #163323); padding: 18px 20px; color: #fff; }
+.pf-plan-icon { display: grid; place-items: center; width: 40px; height: 40px; flex-shrink: 0; border-radius: 999px; background: rgba(144, 238, 143, 0.14); color: #90ee8f; }
 .pf-plan-icon svg { width: 18px; height: 18px; }
 .pf-plan-main { flex: 1 1 220px; min-width: 0; }
 .pf-plan-k { font-size: 12.5px; color: rgba(255, 255, 255, 0.72); }
 .pf-plan-v { font-family: var(--font-display); font-size: 24px; line-height: 30px; font-weight: 600; }
 .pf-status { border-radius: 999px; padding: 2px 10px; font-size: 11.5px; font-weight: 600; }
-.pf-status.ok { background: rgba(52, 211, 153, 0.16); color: #34d399; }
+.pf-status.ok { background: rgba(144, 238, 143, 0.16); color: #90ee8f; }
 .pf-status.warn { background: rgba(251, 191, 36, 0.16); color: #fbbf24; }
 .pf-status.off { background: rgba(255, 255, 255, 0.12); color: rgba(255, 255, 255, 0.8); }
 .pf-plan-btn { min-height: 44px; padding: 0 18px; border-radius: 999px; background: #1fe3a0; font-size: 13.5px; font-weight: 600; color: #062016; }
