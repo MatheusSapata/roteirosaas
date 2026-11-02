@@ -4,43 +4,72 @@ os.makedirs(out, exist_ok=True)
 s = open(src).read()
 ds = re.findall(r'<path[^>]*?d="([^"]+)"', s)
 ONLINE = ds[0:6]; ROTEIRO = ds[6:13]
+XH = 346.23
+ONLINE[2] = f"M866.0977 423.2109 L857.9453 423.2109 L857.9453 {XH} L866.0977 {XH} Z"
+_dr = 6.5488; _dcy = XH + _dr; _st = _dcy + _dr + 5.2
+ONLINE[3] = (f"M886.4102 {_st:.3f} L894.5625 {_st:.3f} L894.5625 423.2109 L886.4102 423.2109 Z "
+             f"M{890.5547-_dr:.4f} {_dcy:.4f} a{_dr} {_dr} 0 1 0 {2*_dr:.4f} 0 a{_dr} {_dr} 0 1 0 {-2*_dr:.4f} 0Z")
 # wordmark box in source coords
 WX0, WX1, WY0, WY1 = 233, 1071, 312, 426
 BASE = 423.5  # baseline
 
-# ---- AVIAO (troque aqui pelo aviao oficial do Viaje On) ----
-# desenhado numa caixa 100x100, bico para cima
-PLANE = ("M50 4 C55.5 4 58 9.5 58 15 L58 37 L93 57.5 C95 58.7 96 60.6 96 62.8 L96 68.5 "
-         "L58 58.5 L58 79 L68 86.5 L68 93 L50 88.5 L32 93 L32 86.5 L42 79 L42 58.5 "
-         "L4 68.5 L4 62.8 C4 60.6 5 58.7 7 57.5 L42 37 L42 15 C42 9.5 44.5 4 50 4 Z")
+# ---- SIMBOLO: pin atual do Roteiro Online (Favicon.png) + aviao do favicon do Viaje On ----
+# Pin redesenhado em vetor a partir do Favicon.png (1080 px): topo = circulo R=436
+# concentrico ao furo; laterais = curvas ate a ponta (erro medio < 1 px do original).
+CX, CY, R = 540.5, 464.0, 436.0
+HR = 308.0                                     # furo
+TIP = (540.5, 1051.5)
+_P = [(976.43, 471.61), (971.89, 731.57), (774.18, 937.53), (540.5, 1051.5)]  # lado direito
+def pin_d():
+    (x0,y0),(x1,y1),(x2,y2),(x3,y3) = _P
+    m = lambda x: 2*CX - x
+    return (f"M{x0:.2f} {y0:.2f} C{x1:.2f} {y1:.2f} {x2:.2f} {y2:.2f} {x3:.2f} {y3:.2f} "
+            f"C{m(x2):.2f} {y2:.2f} {m(x1):.2f} {y1:.2f} {m(x0):.2f} {y0:.2f} "
+            f"A{R} {R} 0 1 1 {x0:.2f} {y0:.2f}Z "
+            f"M{CX-HR} {CY} a{HR} {HR} 0 1 0 {2*HR} 0 a{HR} {HR} 0 1 0 {-2*HR} 0Z")
 
-def pin_path(R=50.0, H=112.0):
-    # circulo de raio R centrado em (0,0), ponta em (0,H) levemente arredondada
-    a = math.asin(R / H)
-    tx, ty = R * math.cos(a), R * math.sin(a)
-    # pontos de tangencia
-    r = 7.0  # arredondamento da ponta
-    # ponto ao longo da tangente a r da ponta
-    L = math.hypot(tx, H - ty)
-    ux, uy = tx / L, (ty - H) / L
-    px, py = ux * r * 2.2, H + uy * r * 2.2
-    return (f"M{-tx:.2f} {ty:.2f} A{R} {R} 0 1 1 {tx:.2f} {ty:.2f} "
-            f"L{px:.2f} {py:.2f} Q0 {H:.2f} {-px:.2f} {py:.2f} Z")
+# Aviao do favicon do Viaje On (512 px), redesenhado como poligono de 6 lados.
+def _line(p, q): return (p, (q[0]-p[0], q[1]-p[1]))
+def _inter(l1, l2):
+    (p, d), (q, e) = l1, l2
+    den = d[0]*e[1] - d[1]*e[0]
+    t = ((q[0]-p[0])*e[1] - (q[1]-p[1])*e[0]) / den
+    return (p[0] + t*d[0], p[1] + t*d[1])
+_E = [_line((96,207),(411,93)), _line((69,233),(179,285)), _line((195,288),(327,182)),
+      _line((327,182),(223,318)), _line((223,318),(280,440)), _line((301,438),(416,104))]
+PLANE_RR = 7.0                                  # raio dos cantos (unid. do favicon)
+def _offset(l, r):
+    (p, d) = l; n = math.hypot(*d); nx, ny = d[1]/n, -d[0]/n   # normal para dentro (sentido anti-horario na tela)
+    return ((p[0]+nx*r, p[1]+ny*r), d)
+def _poly(r):
+    E = [_offset(l, r) for l in _E]
+    return [_inter(E[i-1], E[i]) for i in range(len(E))]
+PLANE_PTS = _poly(PLANE_RR)
+if abs(sum((PLANE_PTS[i-1][0]*PLANE_PTS[i][1]-PLANE_PTS[i][0]*PLANE_PTS[i-1][1]) for i in range(6))) < abs(sum((a[0]*b[1]-b[0]*a[1]) for a,b in zip(_poly(0),_poly(0)[1:]+_poly(0)[:1]))):
+    pass
+else:
+    PLANE_RR = -PLANE_RR; PLANE_PTS = _poly(PLANE_RR)
+# pontas: [0]=bico (dir. alto), [1]=asa esquerda, [5]=ponta de baixo
+def _circ(a, b, c):
+    ax, ay = a; bx, by = b; cx, cy = c
+    d = 2*(ax*(by-cy) + bx*(cy-ay) + cx*(ay-by))
+    ux = ((ax*ax+ay*ay)*(by-cy) + (bx*bx+by*by)*(cy-ay) + (cx*cx+cy*cy)*(ay-by)) / d
+    uy = ((ax*ax+ay*ay)*(cx-bx) + (bx*bx+by*by)*(ax-cx) + (cx*cx+cy*cy)*(bx-ax)) / d
+    return ux, uy, math.hypot(ax-ux, ay-uy)
+PLANE_FRAC = 0.74   # distancia centro->pontas = 74% do raio do furo (as 3 pontas a mesma distancia do pin)
 
 def symbol(uid, pin_color, plane_color=None):
-    """Pin com aviao. plane_color None = aviao vazado (transparente)."""
-    R, H = 50.0, 112.0
-    k = 0.80  # aviao ocupa ~66% do diametro
-    sz = 2 * R * k
-    plane = (f'<g transform="translate(0 0) rotate(45) translate({-sz/2:.2f} {-sz/2:.2f}) scale({sz/100:.4f})">'
-             f'<path d="{PLANE}"/></g>')
-    if plane_color is None:
-        return (f'<defs><mask id="m{uid}" maskUnits="userSpaceOnUse" x="-60" y="-60" width="120" height="200">'
-                f'<rect x="-60" y="-60" width="120" height="200" fill="#fff"/>'
-                f'<g fill="#000">{plane}</g></mask></defs>'
-                f'<path d="{pin_path(R,H)}" fill="{pin_color}" mask="url(#m{uid})"/>')
-    return (f'<path d="{pin_path(R,H)}" fill="{pin_color}"/><g fill="{plane_color}">{plane}</g>')
-SYM_W, SYM_TOP, SYM_BOT = 100.0, -50.0, 112.0
+    plane_color = plane_color or pin_color
+    pts = PLANE_PTS; rr = abs(PLANE_RR)
+    ux, uy, cr = _circ(pts[0], pts[1], pts[5])
+    k = HR * PLANE_FRAC / (cr + rr)
+    poly = " ".join(f"{(x-ux)*k + CX:.2f},{(y-uy)*k + CY:.2f}" for x, y in pts)
+    return (f'<g transform="translate({-CX})">'
+            f'<path fill-rule="evenodd" fill="{pin_color}" d="{pin_d()}"/>'
+            f'<polygon points="{poly}" fill="{plane_color}" stroke="{plane_color}" '
+            f'stroke-width="{2*rr*k:.2f}" stroke-linejoin="round"/></g>')
+SYM_W = 2 * R
+SYM_TOP, SYM_BOT = CY - R, TIP[1]
 SYM_H = SYM_BOT - SYM_TOP
 
 def wordmark(c1, c2):
@@ -64,48 +93,55 @@ def svg(w, h, body, bg=None):
     return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w:.1f} {h:.1f}" '
             f'width="{w:.0f}" height="{h:.0f}"><title>Roteiro Online</title>{bgr}{body}</svg>\n')
 
+# Medidas do texto (coordenadas do .ai)
+AT = 319.2      # topo das letras altas (pingo do i de "roteiro")
+XT = 345.0      # topo das letras baixas (altura x)
+BL = 423.5      # linha de base
+XH_ = BL - XT
+
 def horizontal(name, p, bg=None):
+    """Regra: topo do pin = topo das letras altas; centro do circulo = meio da altura x."""
     pin, pl, c1, c2, _ = p
-    wh = WY1 - WY0
-    sh = wh * 1.5                # altura do simbolo
-    sc = sh / SYM_H
-    gap = wh * 0.42
+    cy_txt = (XT + BL) / 2
+    sc = (cy_txt - AT) / R                  # raio externo do pin = distancia ate o topo
     sw = SYM_W * sc
-    # simbolo: base da ponta alinhada um pouco abaixo da linha de base
-    sy = (WY1 + wh * 0.18) - SYM_BOT * sc
-    top = min(sy + SYM_TOP * sc, WY0)
-    bot = max(WY1, sy + SYM_BOT * sc)
-    m = wh * 0.25
+    sy = cy_txt - CY * sc                   # y de origem do simbolo (CY do pin cai em cy_txt)
+    top = AT
+    bot = sy + SYM_BOT * sc
+    gap = XH_ * 0.55
+    m = XH_ * 0.45
     W = sw + gap + (WX1 - WX0) + 2 * m
     Hh = bot - top + 2 * m
-    body = (f'<g transform="translate({m + sw/2:.2f} {m + (sy - top):.2f}) scale({sc:.4f})">{symbol(name+"h", pin, pl)}</g>'
+    body = (f'<g transform="translate({m + sw/2:.2f} {m + sy - top:.2f}) scale({sc:.5f})">{symbol(name+"h", pin, pl)}</g>'
             f'<g transform="translate({m + sw + gap - WX0:.2f} {m - top:.2f})">{wordmark(c1, c2)}</g>')
     return svg(W, Hh, body, bg)
 
 def vertical(name, p, bg=None):
+    """Pin centrado; largura do pin = 50% da linha mais larga; linhas proximas."""
     pin, pl, c1, c2, _ = p
-    RX0, RX1 = 233, 594   # roteiro
-    OX0, OX1 = 594, 1071  # online
-    wh = WY1 - WY0
-    lw = max(RX1-RX0, OX1-OX0)
-    sh = wh * 2.7
-    sc = sh / SYM_H
-    gap = wh * 0.40
-    lead = wh * 1.12      # distancia entre as linhas
-    m = wh * 0.35
-    W = lw + 2*m
-    Hh = sh + gap + wh + lead + 2*m
-    ty = m + sh + gap - WY0
+    RX0, RX1 = 233.0, 675.3    # roteiro
+    OX0, OX1 = 680.4, 1071.0   # online
+    lw = max(RX1 - RX0, OX1 - OX0)
+    sc = (lw * 0.50) / SYM_W
+    sh = SYM_H * sc
+    gap = XH_ * 0.50                       # ponta do pin -> topo das letras altas
+    line_gap = XH_ * 0.22                  # base do "roteiro" -> topo do "online"
+    lead = BL + line_gap - XT
+    m = XH_ * 0.55
+    W = lw + 2 * m
+    y_pin = m
+    y_txt = y_pin + sh + gap - AT          # deslocamento aplicado ao "roteiro"
+    Hh = y_txt + lead + 426.0 + m
     a = "".join(f'<path d="{d}"/>' for d in ROTEIRO)
     b = "".join(f'<path d="{d}"/>' for d in ONLINE)
-    body = (f'<g transform="translate({W/2:.2f} {m - SYM_TOP*sc:.2f}) scale({sc:.4f})">{symbol(name+"v", pin, pl)}</g>'
-            f'<g fill="{c1}" transform="translate({W/2 - (RX0+RX1)/2:.2f} {ty:.2f})">{a}</g>'
-            f'<g fill="{c2}" transform="translate({W/2 - (OX0+OX1)/2:.2f} {ty + lead:.2f})">{b}</g>')
+    body = (f'<g transform="translate({W/2:.2f} {y_pin - SYM_TOP*sc:.2f}) scale({sc:.5f})">{symbol(name+"v", pin, pl)}</g>'
+            f'<g fill="{c1}" transform="translate({W/2 - (RX0+RX1)/2:.2f} {y_txt:.2f})">{a}</g>'
+            f'<g fill="{c2}" transform="translate({W/2 - (OX0+OX1)/2:.2f} {y_txt + lead:.2f})">{b}</g>')
     return svg(W, Hh, body, bg)
 
 def icone(name, p, bg=None):
     pin, pl, *_ = p
-    m = 14
+    m = SYM_H * 0.08
     W = SYM_W + 2*m; Hh = SYM_H + 2*m
     side = max(W, Hh)
     body = f'<g transform="translate({side/2:.2f} {(side-SYM_H)/2 - SYM_TOP:.2f})">{symbol(name+"i", pin, pl)}</g>'

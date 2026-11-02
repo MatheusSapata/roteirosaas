@@ -1,7 +1,12 @@
 # Marca Roteiro Online
 
-Logo no estilo do Viaje On: "roteiro" em bold, "online" em traço fino e um pin de localização com um avião vazado.
-O texto saiu dos vetores do arquivo `ROTEIROONLINE_BASE.ai`.
+- **Símbolo:** o pin atual do Roteiro Online (`frontend/src/assets/Favicon.png`), redesenhado em vetor. A seta foi trocada pelo avião do favicon do Viaje On.
+- **Texto:** vem dos vetores de `ROTEIROONLINE_BASE.ai`. "roteiro" é bold e "online" é traço fino. O "l" e o "i" de "online" foram baixados para a altura do "o", "n" e "e", então todas as letras ficam com a mesma altura.
+
+## Regras de montagem
+- **Avião:** fica centralizado no círculo do pin, com as três pontas (bico, asa e cauda) na mesma distância do pin. Essa distância é 74% do raio do círculo.
+- **Horizontal:** o topo do pin alinha com o topo das letras altas de "roteiro", e o centro do círculo fica no meio da altura das letras baixas.
+- **Vertical:** o pin fica centralizado e tem metade da largura do texto. "roteiro" e "online" ficam empilhados e próximos.
 
 ## Modelos
 - `horizontal`: pin à esquerda e o texto numa linha
@@ -18,11 +23,9 @@ O texto saiu dos vetores do arquivo `ROTEIROONLINE_BASE.ai`.
 | `preto` | uma cor, fundo claro | #111111 | #111111 | #111111 |
 | `branco` | uma cor, fundo escuro | branco | branco | branco |
 
-O avião é vazado (transparente), então aparece a cor do fundo.
+O círculo do pin é vazado (transparente), então aparece a cor do fundo.
 SVG para uso geral e impressão; PNG transparente (3000 px no lado maior; ícone em 1024 px).
 
-## Trocar o avião
-O avião fica na constante `PLANE` de `gerar_logos.py` (caixa 100x100, bico para cima).
-Para usar o avião oficial do Viaje On, cole o path dele ali e rode:
+## Gerar de novo
 
     python3 gerar_logos.py <ROTEIROONLINE_BASE convertido em svg> svg
