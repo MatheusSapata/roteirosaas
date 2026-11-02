@@ -143,6 +143,37 @@ def vertical(name, p, bg=None):
             f'<g fill="{c2}" transform="translate({ox:.2f} {oy:.2f}) scale({OK})">{b}</g>')
     return svg(W, Hh, body, bg)
 
+def empilhado(name, p, bg=None):
+    """Simbolo a esquerda; "roteiro" em cima e "online" embaixo, alinhados pela esquerda."""
+    pin, pl, c1, c2, _ = p
+    RX0, RX1 = 233.0, 675.3
+    OX0 = 680.4
+    OK = 0.80
+    clear = XH_ * 0.17
+    # bloco de texto em coordenadas locais: topo = AT (0), "online" logo abaixo do "roteiro"
+    oy = BL + clear - OK * ASC            # deslocamento vertical do "online" (escalado)
+    t_top, t_bot = AT, oy + OK * BL
+    th = t_bot - t_top
+    sc = th * 1.08 / SYM_H                # pin um pouco maior que o bloco de texto
+    sw = SYM_W * sc
+    sy = (t_top + t_bot) / 2 - (SYM_TOP + SYM_BOT) / 2 * sc   # pin centralizado no bloco
+    top = min(t_top, sy + SYM_TOP * sc)
+    bot = max(t_bot, sy + SYM_BOT * sc)
+    gap = XH_ * 0.55
+    m = XH_ * 0.45
+    tx = m + sw + gap                     # borda esquerda do texto
+    ow = OK * (1071.0 - OX0)
+    W = tx + max(RX1 - RX0, ow) + m
+    Hh = bot - top + 2 * m
+    dy = m - top
+    a = "".join(f'<path d="{d}"/>' for d in ROTEIRO)
+    b = "".join(f'<path d="{d}"/>' for d in ONLINE)
+    o_shift = OK * 3.0                    # compensacao optica do "o" redondo
+    body = (f'<g transform="translate({m + sw/2:.2f} {dy + sy:.2f}) scale({sc:.5f})">{symbol(name+"e", pin, pl)}</g>'
+            f'<g fill="{c1}" transform="translate({tx - RX0:.2f} {dy:.2f})">{a}</g>'
+            f'<g fill="{c2}" transform="translate({tx - OK*OX0 - o_shift:.2f} {dy + oy:.2f}) scale({OK})">{b}</g>')
+    return svg(W, Hh, body, bg)
+
 def icone(name, p, bg=None):
     pin, pl, *_ = p
     m = SYM_H * 0.08
@@ -152,7 +183,7 @@ def icone(name, p, bg=None):
     return svg(side, side, body, bg)
 
 for name, p in PAL.items():
-    for kind, fn in (("horizontal", horizontal), ("vertical", vertical), ("icone", icone)):
+    for kind, fn in (("horizontal", horizontal), ("horizontal-empilhado", empilhado), ("vertical", vertical), ("icone", icone)):
         open(f"{out}/roteiro-online-{kind}-{name}.svg", "w").write(fn(name, p))
         open(f"{out}/_preview-{kind}-{name}.svg", "w").write(fn(name+"pv", p, p[4]))
 print("ok")

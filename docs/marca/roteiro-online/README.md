@@ -6,10 +6,12 @@
 ## Regras de montagem
 - **Avião:** fica centralizado no círculo do pin, com as três pontas (bico, asa e cauda) na mesma distância do pin. Essa distância é 74% do raio do círculo.
 - **Horizontal:** o pin tem 1,45 vez a altura do texto, e o centro dele fica alinhado ao centro do texto.
+- **Horizontal empilhado:** "online" em 80% do tamanho, alinhado pela esquerda com "roteiro". O pin fica um pouco maior que o bloco de texto e centralizado na altura dele.
 - **Vertical:** o pin fica centralizado e tem metade da largura de "roteiro". "online" fica embaixo, em 80% do tamanho e centralizado.
 
 ## Modelos
 - `horizontal`: pin à esquerda e o texto numa linha
+- `horizontal-empilhado`: pin à esquerda, com "roteiro" em cima e "online" embaixo, alinhados pela esquerda (formato do logo antigo)
 - `vertical`: pin em cima, "roteiro" e "online" empilhados
 - `icone`: só o pin (avatar, favicon, app)
 
