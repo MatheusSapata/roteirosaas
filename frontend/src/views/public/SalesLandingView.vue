@@ -13,7 +13,7 @@
         <div class="lp-hero-copy">
           <!-- No celular vira o cabeçalho: logo à esquerda, com uma linha fina embaixo. -->
           <div class="lp-hero-top">
-            <img :src="logoWhite" alt="Roteiro Online" class="lp-logo" width="240" height="72" />
+            <img :src="logoWhite" alt="Roteiro Online" class="lp-logo" width="240" height="76" />
           </div>
           <span class="lp-pill">Aumente a sua conversão!</span>
           <h1 class="lp-h1">Seu cliente não compra o que <span class="is-brand">não consegue imaginar!</span></h1>
@@ -459,7 +459,7 @@
     <!-- 14 Chamada final (escura) -->
     <section class="lp-sec is-night lp-final">
       <div class="lp-wrap lp-final-inner">
-        <img :src="logoWhite" alt="" class="lp-final-logo" width="240" height="72" aria-hidden="true" />
+        <img :src="logoWhite" alt="" class="lp-final-logo" width="240" height="76" aria-hidden="true" />
         <h2 class="lp-h2 lp-final-title">Publique hoje mesmo o seu <span class="is-brand">primeiro roteiro.</span></h2>
         <p class="lp-final-sub">
           Assine, entre na plataforma e publique em menos de 30 minutos. Se não gostar, devolvemos 100% do valor em 7 dias.
