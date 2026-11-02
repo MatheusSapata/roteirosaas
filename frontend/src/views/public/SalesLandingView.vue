@@ -11,7 +11,7 @@
     <section class="lp-sec is-night lp-hero">
       <div class="lp-wrap lp-hero-grid">
         <div class="lp-hero-copy">
-          <!-- No celular vira o cabeçalho: logo à esquerda, com uma linha fina embaixo. -->
+          <!-- No celular vira o cabeçalho: logo centralizado, com uma linha fina embaixo. -->
           <div class="lp-hero-top">
             <img :src="logoWhite" alt="Roteiro Online" class="lp-logo" width="240" height="76" />
             <!-- No celular o cabeçalho usa o logo lado a lado. -->
@@ -3036,9 +3036,10 @@ onBeforeUnmount(() => {
     gap: 10px;
     text-align: center;
   }
-  /* Cabeçalho: logo à esquerda, com uma linha fina embaixo. */
+  /* Cabeçalho: logo centralizado, com uma linha fina embaixo. */
   .lp-hero-top {
     align-self: stretch;
+    justify-content: center;
     margin-bottom: 6px;
     padding-bottom: 10px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
