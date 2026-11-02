@@ -72,18 +72,52 @@
                 type="button"
                 role="radio"
                 class="ptm-swatch"
-                :class="{ on: selected.color === color.value }"
+                :class="{ on: shownColor === color.value }"
                 :style="tagStyle(color.value)"
-                :aria-checked="selected.color === color.value"
+                :aria-checked="shownColor === color.value"
                 :aria-label="color.label"
                 :title="color.label"
                 :disabled="!canEdit"
                 @click="setColor(color.value)"
               >
-                <CheckIcon v-if="selected.color === color.value" aria-hidden="true" />
+                <CheckIcon v-if="shownColor === color.value" aria-hidden="true" />
               </button>
+              <label
+                class="ptm-swatch is-custom"
+                :class="{ on: customActive, 'is-disabled': !canEdit }"
+                :style="customActive ? tagStyle(shownColor) : undefined"
+                title="Cor personalizada"
+              >
+                <CheckIcon v-if="customActive" aria-hidden="true" />
+                <PipetteIcon v-else aria-hidden="true" />
+                <input
+                  type="color"
+                  class="ptm-color-input"
+                  :value="tagHex(shownColor)"
+                  :disabled="!canEdit"
+                  aria-label="Cor personalizada"
+                  @input="onCustomInput"
+                  @change="onCustomChange"
+                />
+              </label>
             </div>
-            <p class="ptm-muted">Fica assim: <span class="page-tag" :style="tagStyle(selected.color)">{{ selected.name }}</span></p>
+            <div class="ptm-custom">
+              <span class="ptm-custom-dot" :style="tagStyle(shownColor)" aria-hidden="true"></span>
+              <input
+                v-model="hexDraft"
+                class="ptm-hex"
+                type="text"
+                maxlength="7"
+                spellcheck="false"
+                autocomplete="off"
+                aria-label="Código da cor (#RRGGBB)"
+                placeholder="#2563EB"
+                :disabled="!canEdit"
+                @keydown.enter.prevent="saveHex"
+                @blur="saveHex"
+              />
+              <span class="ptm-muted">Fica assim: <span class="page-tag" :style="tagStyle(shownColor)">{{ selected.name }}</span></span>
+            </div>
           </section>
           <section class="ptm-sec">
             <h3>Páginas com esta tag <span>{{ pagesWithTag.length }}</span></h3>
@@ -172,9 +206,9 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
-import { CheckIcon, MergeIcon, PlusIcon, SearchIcon, TagIcon, Trash2Icon, XIcon } from "lucide-vue-next";
+import { CheckIcon, MergeIcon, PipetteIcon, PlusIcon, SearchIcon, TagIcon, Trash2Icon, XIcon } from "lucide-vue-next";
 import { errorDetail, usePageTags } from "../../../composables/usePageTags";
-import { TAG_COLORS, slugifyTag, tagStyle, type PageTagBrief, type TagColor } from "../../../types/pageTag";
+import { TAG_COLORS, isCustomTagColor, slugifyTag, tagHex, tagStyle, type PageTagBrief, type TagColor } from "../../../types/pageTag";
 
 interface TaggedPage {
   id: number;
@@ -249,7 +283,20 @@ const select = (id: number | null) => {
   confirm.value = null;
   error.value = "";
 };
-watch(selected, tag => (nameDraft.value = tag?.name || ""), { immediate: true });
+// Cor mostrada: a da tag ou a que está sendo escolhida no seletor (antes de salvar).
+const colorPreview = ref<TagColor | null>(null);
+const shownColor = computed<TagColor>(() => colorPreview.value || selected.value?.color || "slate");
+const customActive = computed(() => isCustomTagColor(shownColor.value));
+const hexDraft = ref("");
+watch(
+  selected,
+  tag => {
+    nameDraft.value = tag?.name || "";
+    colorPreview.value = null;
+  },
+  { immediate: true }
+);
+watch(shownColor, color => (hexDraft.value = tagHex(color).toUpperCase()), { immediate: true });
 watch(
   () => props.open,
   async (isOpen, wasOpen) => {
@@ -309,6 +356,26 @@ const setColor = async (color: TagColor) => {
   const tag = selected.value;
   if (!tag || tag.color === color) return;
   if (await run(() => update(tag.id, { color }), "Não deu para trocar a cor.")) emit("pages-changed");
+};
+const onCustomInput = (event: Event) => {
+  colorPreview.value = (event.target as HTMLInputElement).value.toLowerCase() as TagColor;
+};
+const onCustomChange = async (event: Event) => {
+  const color = (event.target as HTMLInputElement).value.toLowerCase() as TagColor;
+  colorPreview.value = color;
+  await setColor(color);
+  colorPreview.value = null;
+};
+const saveHex = async () => {
+  let value = hexDraft.value.trim();
+  if (value && !value.startsWith("#")) value = `#${value}`;
+  if (!isCustomTagColor(value)) {
+    hexDraft.value = tagHex(shownColor.value).toUpperCase();
+    return;
+  }
+  const color = value.toLowerCase() as TagColor;
+  if (tagHex(selected.value?.color) === color) return;
+  await setColor(color);
 };
 const togglePage = async (pageId: number, add: boolean) => {
   const tag = selected.value;
@@ -511,12 +578,15 @@ const mergeTag = async () => {
   color: var(--tag-fg);
   font-weight: 600;
 }
+.ptm-row.on i {
+  background: var(--tag-fg);
+}
 .ptm-row i {
   width: 10px;
   height: 10px;
   flex-shrink: 0;
   border-radius: 999px;
-  background: var(--tag-fg);
+  background: var(--tag);
   transition: transform 0.2s var(--ptm-ease);
 }
 .ptm-row.on i {
@@ -608,17 +678,77 @@ const mergeTag = async () => {
   place-items: center;
   width: 34px;
   height: 34px;
-  border: 2px solid var(--tag-fg);
+  border: 0;
   border-radius: 999px;
   background: var(--tag-bg);
   color: var(--tag-fg);
   transition: transform 0.15s ease, box-shadow 0.2s ease;
 }
+/* Cor personalizada: arco-íris até ser escolhida; depois mostra a própria cor. */
+.ptm-swatch.is-custom {
+  position: relative;
+  cursor: pointer;
+  background: conic-gradient(#ef4444, #f59e0b, #eab308, #22c55e, #06b6d4, #3b82f6, #8b5cf6, #ec4899, #ef4444);
+  color: #fff;
+}
+.ptm-swatch.is-custom svg {
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.45));
+}
+.ptm-swatch.is-custom.on {
+  background: var(--tag-bg);
+  color: var(--tag-fg);
+}
+.ptm-swatch.is-custom.on svg {
+  filter: none;
+}
+.ptm-swatch.is-custom.is-disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+.ptm-swatch.is-custom:focus-within {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.ptm-color-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  padding: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.ptm-custom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.ptm-custom-dot {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  border-radius: 7px;
+  background: var(--tag);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+.ptm-hex {
+  width: 104px;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--card);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  text-transform: uppercase;
+}
 .ptm-swatch:not(:disabled):hover {
   transform: scale(1.08);
 }
 .ptm-swatch.on {
-  box-shadow: 0 0 0 3px var(--background), 0 0 0 5px var(--tag-fg);
+  box-shadow: 0 0 0 3px var(--background), 0 0 0 5px var(--tag);
 }
 .ptm-swatch svg {
   width: 15px;

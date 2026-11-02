@@ -179,7 +179,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     atualizado: "2026-11-02",
     rota: "/admin/pages",
     rotaRotulo: "Ir para Páginas",
-    busca: "tag tags etiqueta etiquetas categoria categorias pasta pastas agrupar organizar filtrar destino vitrine automatica roteiros por tag juntar renomear cor lote novidade",
+    busca: "tag tags cor personalizada etiqueta etiquetas categoria categorias pasta pastas agrupar organizar filtrar destino vitrine automatica roteiros por tag juntar renomear cor lote novidade",
     passos: [
       { titulo: "Crie as tags", texto: "Em **Páginas**, clique em **Criar tags** (ou **Gerenciar tags**, depois da primeira). Digite o nome em **Nova tag** e clique em **Criar**. Ex.: Europa, Nordeste, Lua de mel." },
       { titulo: "Marque as páginas", texto: "No card da página, clique em **Adicionar tag** e escolha uma ou mais. Para várias páginas de uma vez, marque a caixa no canto da capa e use **Aplicar tag…** na barra que aparece embaixo." },
@@ -214,6 +214,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       },
       { tipo: "dica", texto: "No editor, o ícone **Tags** do menu lateral mostra as tags da página e em quais seções Links/Roteiros ela aparece. As tags também ficam embaixo do título da página. Mudanças ali são salvas na hora." },
       { tipo: "texto", texto: "Em **Gerenciar tags**, escolha uma tag para trocar o nome ou a cor, ver as páginas que têm a tag, incluir ou tirar páginas e ver quais seções Links/Roteiros usam a tag." },
+      { tipo: "dica", texto: "Além das 8 cores prontas, o último círculo de **Cor** abre a cor personalizada: escolha no seletor ou digite o código (ex.: #0A6346). O texto da tag fica branco ou escuro sozinho, para ser sempre legível." },
       { tipo: "atencao", texto: "**Apagar tag** tira a tag de todas as páginas (as páginas continuam iguais), e as seções Links/Roteiros que usavam essa tag deixam de mostrar esses roteiros. Para unir duas tags parecidas, como \"Nordeste\" e \"nordeste 2026\", use **Juntar com outra tag**: as páginas e as seções passam para a tag que fica." }
     ],
     duvidas: [

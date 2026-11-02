@@ -1,8 +1,23 @@
-from typing import Any, Literal, Optional
+import re
+from typing import Annotated, Any, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 
-TagColor = Literal["blue", "amber", "rose", "violet", "teal", "orange", "slate", "green"]
+TAG_PRESET_COLORS = ("blue", "amber", "rose", "violet", "teal", "orange", "slate", "green")
+_HEX_COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
+
+
+def _check_tag_color(value: str) -> str:
+    """Cor da tag: uma das cores prontas ou uma cor personalizada em #RRGGBB (guardada em minúsculas)."""
+    value = (value or "").strip()
+    if value in TAG_PRESET_COLORS:
+        return value
+    if _HEX_COLOR.match(value):
+        return value.lower()
+    raise ValueError("Cor inválida. Use uma das cores prontas ou uma cor no formato #RRGGBB.")
+
+
+TagColor = Annotated[str, AfterValidator(_check_tag_color)]
 
 
 class PageTagBrief(BaseModel):
