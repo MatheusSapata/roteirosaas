@@ -117,26 +117,28 @@ def horizontal(name, p, bg=None):
     return svg(W, Hh, body, bg)
 
 def vertical(name, p, bg=None):
-    """Pin centrado; largura do pin = 50% da linha mais larga; linhas proximas."""
+    """Pin centrado (50% da largura do texto); "online" menor, centralizado sob o "roteiro"."""
     pin, pl, c1, c2, _ = p
     RX0, RX1 = 233.0, 675.3    # roteiro
     OX0, OX1 = 680.4, 1071.0   # online
-    lw = max(RX1 - RX0, OX1 - OX0)
+    OK = 0.80                  # escala do "online" em relacao ao "roteiro"
+    lw = RX1 - RX0
     sc = (lw * 0.50) / SYM_W
     sh = SYM_H * sc
     gap = XH_ * 0.50                       # ponta do pin -> topo das letras altas
-    line_gap = XH_ * 0.36                  # base do "roteiro" -> topo do "online"
-    lead = BL + line_gap - XT
+    clear = XH_ * 0.17                     # base do "roteiro" -> topo do l/i do "online"
     m = XH_ * 0.55
     W = lw + 2 * m
     y_pin = m
     y_txt = y_pin + sh + gap - AT          # deslocamento aplicado ao "roteiro"
-    Hh = y_txt + lead + 426.0 + m
+    oy = y_txt + BL + clear - OK * ASC     # deslocamento do "online" (ja escalado)
+    ox = W/2 - OK * (OX0 + OX1) / 2
+    Hh = oy + OK * 426.0 + m
     a = "".join(f'<path d="{d}"/>' for d in ROTEIRO)
     b = "".join(f'<path d="{d}"/>' for d in ONLINE)
     body = (f'<g transform="translate({W/2:.2f} {y_pin - SYM_TOP*sc:.2f}) scale({sc:.5f})">{symbol(name+"v", pin, pl)}</g>'
             f'<g fill="{c1}" transform="translate({W/2 - (RX0+RX1)/2:.2f} {y_txt:.2f})">{a}</g>'
-            f'<g fill="{c2}" transform="translate({W/2 - (OX0+OX1)/2:.2f} {y_txt + lead:.2f})">{b}</g>')
+            f'<g fill="{c2}" transform="translate({ox:.2f} {oy:.2f}) scale({OK})">{b}</g>')
     return svg(W, Hh, body, bg)
 
 def icone(name, p, bg=None):

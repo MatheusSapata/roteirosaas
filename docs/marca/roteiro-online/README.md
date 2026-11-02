@@ -6,7 +6,7 @@
 ## Regras de montagem
 - **Avião:** fica centralizado no círculo do pin, com as três pontas (bico, asa e cauda) na mesma distância do pin. Essa distância é 74% do raio do círculo.
 - **Horizontal:** o pin tem 1,45 vez a altura do texto, e o centro dele fica alinhado ao centro do texto.
-- **Vertical:** o pin fica centralizado e tem metade da largura do texto. "roteiro" e "online" ficam empilhados e próximos.
+- **Vertical:** o pin fica centralizado e tem metade da largura de "roteiro". "online" fica embaixo, em 80% do tamanho e centralizado.
 
 ## Modelos
 - `horizontal`: pin à esquerda e o texto numa linha
