@@ -14,6 +14,8 @@
           <!-- No celular vira o cabeçalho: logo à esquerda, com uma linha fina embaixo. -->
           <div class="lp-hero-top">
             <img :src="logoWhite" alt="Roteiro Online" class="lp-logo" width="240" height="76" />
+            <!-- No celular o cabeçalho usa o logo lado a lado. -->
+            <img :src="logoWhiteRow" alt="Roteiro Online" class="lp-logo-row" width="264" height="40" />
           </div>
           <span class="lp-pill">Aumente a sua conversão!</span>
           <h1 class="lp-h1">Seu cliente não compra o que <span class="is-brand">não consegue imaginar!</span></h1>
@@ -459,7 +461,7 @@
     <!-- 14 Chamada final (escura) -->
     <section class="lp-sec is-night lp-final">
       <div class="lp-wrap lp-final-inner">
-        <img :src="logoWhite" alt="" class="lp-final-logo" width="240" height="76" aria-hidden="true" />
+        <img :src="logoWhiteRow" alt="" class="lp-final-logo" width="264" height="40" aria-hidden="true" />
         <h2 class="lp-h2 lp-final-title">Publique hoje mesmo o seu <span class="is-brand">primeiro roteiro.</span></h2>
         <p class="lp-final-sub">
           Assine, entre na plataforma e publique em menos de 30 minutos. Se não gostar, devolvemos 100% do valor em 7 dias.
@@ -529,6 +531,7 @@ import { BILLING_CYCLES, cycleDays, cycleLabel, cycleMonths, cyclePeriod, cycleS
 import { captureAttribution, utmQuery } from "../../utils/attribution";
 import { SALES_META_PIXEL_ID, startMetaPixels } from "../../utils/metaPixel";
 import logoWhite from "../../assets/lp/logo-branco.webp";
+import logoWhiteRow from "../../assets/lp/logo-branco-horizontal.webp";
 import editorMp4 from "../../assets/lp/editor.mp4";
 import editorWebm from "../../assets/lp/editor.webm";
 import editorPoster from "../../assets/lp/editor-poster.webp";
@@ -1245,6 +1248,10 @@ onBeforeUnmount(() => {
 }
 .lp-logo {
   width: 168px;
+  height: auto;
+}
+.lp-logo-row {
+  display: none;
   height: auto;
 }
 .lp-hero-top {
@@ -2906,7 +2913,7 @@ onBeforeUnmount(() => {
   text-align: center;
 }
 .lp-final-logo {
-  width: 150px;
+  width: 240px;
   height: auto;
   margin-bottom: 20px;
   opacity: 0.9;
@@ -3037,7 +3044,11 @@ onBeforeUnmount(() => {
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   }
   .lp-logo {
-    width: min(112px, 30vw);
+    display: none;
+  }
+  .lp-logo-row {
+    display: block;
+    width: min(184px, 48vw);
   }
   .lp-pill {
     padding: 5px 10px;
@@ -3233,7 +3244,7 @@ onBeforeUnmount(() => {
     cursor: pointer;
   }
   .lp-final-logo {
-    width: 120px;
+    width: 200px;
     margin-bottom: 14px;
   }
 }
