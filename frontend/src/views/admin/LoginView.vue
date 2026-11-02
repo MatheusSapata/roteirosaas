@@ -1,6 +1,6 @@
 <template>
-  <!-- Login no modelo "cartão ao centro" (como o do Viaje On), sobre o verde da marca
-       com desenhos de páginas ao fundo (components/auth/AuthPagesBackdrop.vue). -->
+  <!-- Login no modelo do Viaje On: cartão ao centro sobre o gradiente animado da marca,
+       com o desenho de uma página ao fundo (components/auth/AuthPagesBackdrop.vue). -->
   <div class="lg">
     <AuthPagesBackdrop />
 
@@ -10,21 +10,17 @@
 
       <div class="lg-card">
         <header class="lg-head">
-          <p class="lg-eyebrow">{{ viewCopy.card.eyebrow }}</p>
           <h2>{{ viewCopy.card.title }}</h2>
-          <p class="lg-desc">{{ viewCopy.card.description }}</p>
+          <p>{{ viewCopy.card.description }}</p>
         </header>
 
-        <form class="lg-form" @submit.prevent="onSubmit">
+        <form class="lg-form" novalidate @submit.prevent="onSubmit">
           <div class="lg-field">
             <label for="login-email">{{ viewCopy.form.emailLabel }}</label>
             <input id="login-email" v-model="email" type="email" autocomplete="email" required />
           </div>
           <div class="lg-field">
-            <div class="lg-label-row">
-              <label for="login-password">{{ viewCopy.form.passwordLabel }}</label>
-              <router-link to="/forgot-password" class="lg-link">{{ viewCopy.links.forgotPassword }}</router-link>
-            </div>
+            <label for="login-password">{{ viewCopy.form.passwordLabel }}</label>
             <div class="lg-pass">
               <input
                 id="login-password"
@@ -33,26 +29,38 @@
                 autocomplete="current-password"
                 required
               />
-              <button type="button" class="lg-eye" :aria-label="viewCopy.form.passwordToggleAria" @click="showPassword = !showPassword">
-                <EyeIcon v-if="!showPassword" aria-hidden="true" />
-                <EyeOffIcon v-else aria-hidden="true" />
+              <button
+                type="button"
+                class="lg-eye"
+                :aria-label="showPassword ? viewCopy.form.hidePassword : viewCopy.form.showPassword"
+                @click="showPassword = !showPassword"
+              >
+                <EyeOffIcon v-if="showPassword" aria-hidden="true" />
+                <EyeIcon v-else aria-hidden="true" />
               </button>
             </div>
-            <p class="lg-hint">{{ viewCopy.form.passwordHint }}</p>
           </div>
 
           <p v-if="error" class="lg-error" role="alert">{{ error }}</p>
 
           <button type="submit" class="lg-submit" :disabled="loading">
-            <span v-if="loading" class="lg-spin" aria-hidden="true"></span>
-            {{ loading ? viewCopy.form.submitting : viewCopy.form.submit }}
+            <Loader2Icon v-if="loading" class="lg-spin" aria-hidden="true" />
+            {{ viewCopy.form.submit }}
           </button>
         </form>
+
+        <div class="lg-forgot">
+          <router-link to="/forgot-password" class="lg-link">{{ viewCopy.links.forgotPassword }}</router-link>
+        </div>
+        <p class="lg-first">
+          {{ viewCopy.links.firstAccessPrompt }}
+          <router-link to="/create-password" class="lg-link">{{ viewCopy.links.firstAccessCta }}</router-link>
+        </p>
       </div>
 
-      <router-link to="/register" class="lg-register">
-        {{ viewCopy.links.registerPrompt }}
-        <b>{{ viewCopy.links.registerCta }}</b>
+      <router-link to="/lp" class="lg-register">
+        {{ viewCopy.links.notClient }}
+        <b>{{ viewCopy.links.knowMore }}</b>
         <ArrowUpRightIcon aria-hidden="true" />
       </router-link>
     </main>
@@ -62,7 +70,7 @@
 </template>
 
 <script setup lang="ts">
-import { ArrowUpRightIcon, EyeIcon, EyeOffIcon } from "lucide-vue-next";
+import { ArrowUpRightIcon, EyeIcon, EyeOffIcon, Loader2Icon } from "lucide-vue-next";
 import AuthPagesBackdrop from "../../components/auth/AuthPagesBackdrop.vue";
 import { ref } from "vue";
 import { useRouter } from "vue-router";
@@ -78,38 +86,31 @@ const viewCopy = {
   brand: {
     alt: t({ pt: "Roteiro Online", es: "Roteiro Online" }),
     tagline: t({
-      pt: "Roteiro Online: páginas de viagem que vendem",
-      es: "Roteiro Online: páginas de viaje que venden"
+      pt: "Páginas de viagem, captação de leads e vendas em um só lugar.",
+      es: "Páginas de viaje, captación de leads y ventas en un solo lugar."
     })
   },
   card: {
-    eyebrow: t({ pt: "Bem-vindo ao Roteiro Online", es: "Bienvenido a Roteiro Online" }),
-    title: t({ pt: "Login", es: "Iniciar sesión" }),
-    description: t({
-      pt: "Entre para continuar acompanhando suas campanhas e páginas.",
-      es: "Ingresa para seguir tus campañas y páginas."
-    })
+    title: t({ pt: "Bem-vindo(a) de volta", es: "Bienvenido(a) de nuevo" }),
+    description: t({ pt: "Entre para acessar suas páginas.", es: "Ingresa para acceder a tus páginas." })
   },
   form: {
     emailLabel: t({ pt: "E-mail", es: "Correo" }),
     passwordLabel: t({ pt: "Senha", es: "Contraseña" }),
-    passwordHint: t({
-      pt: "Use sua senha com no mínimo 8 caracteres, incluindo maiúscula, minúscula e número.",
-      es: "Usa tu contraseña con al menos 8 caracteres, incluyendo mayúsculas, minúsculas y números."
-    }),
-    passwordToggleAria: t({
-      pt: "Alternar visualização da senha",
-      es: "Alternar visualización de la contraseña"
-    }),
-    submit: t({ pt: "Entrar", es: "Ingresar" }),
-    submitting: t({ pt: "Entrando…", es: "Ingresando…" })
+    showPassword: t({ pt: "Mostrar senha", es: "Mostrar contraseña" }),
+    hidePassword: t({ pt: "Ocultar senha", es: "Ocultar contraseña" }),
+    submit: t({ pt: "Entrar", es: "Ingresar" })
   },
   links: {
-    forgotPassword: t({ pt: "Esqueci minha senha", es: "Olvidé mi contraseña" }),
-    registerPrompt: t({ pt: "Novo aqui?", es: "¿Nuevo por aquí?" }),
-    registerCta: t({ pt: "Criar conta", es: "Crear cuenta" })
+    forgotPassword: t({ pt: "Esqueci a senha", es: "Olvidé la contraseña" }),
+    firstAccessPrompt: t({ pt: "Comprou e nunca acessou?", es: "¿Compraste y nunca accediste?" }),
+    firstAccessCta: t({ pt: "Primeiro acesso", es: "Primer acceso" }),
+    notClient: t({ pt: "Ainda não sou cliente.", es: "Todavía no soy cliente." }),
+    knowMore: t({ pt: "Quero conhecer", es: "Quiero conocer" })
   },
   feedback: {
+    invalidEmail: t({ pt: "Digite um e-mail válido.", es: "Escribe un correo válido." }),
+    missingPassword: t({ pt: "Digite sua senha.", es: "Escribe tu contraseña." }),
     failure: t({
       pt: "Não foi possível entrar. Verifique suas credenciais.",
       es: "No fue posible ingresar. Verifica tus credenciales."
@@ -126,8 +127,16 @@ const year = new Date().getFullYear();
 
 const onSubmit = async () => {
   if (loading.value) return;
-  loading.value = true;
   error.value = "";
+  if (!/^\S+@\S+\.\S+$/.test(email.value.trim())) {
+    error.value = viewCopy.feedback.invalidEmail;
+    return;
+  }
+  if (!password.value) {
+    error.value = viewCopy.feedback.missingPassword;
+    return;
+  }
+  loading.value = true;
   try {
     const form = new FormData();
     form.append("username", email.value.trim().toLowerCase());
@@ -156,7 +165,7 @@ const onSubmit = async () => {
   justify-content: center;
   overflow: hidden;
   padding: 40px 16px 28px;
-  background: #2fb552;
+  background: #0a6346;
   font-family: var(--font-sans);
 }
 .lg-main {
@@ -175,7 +184,7 @@ const onSubmit = async () => {
   height: 52px;
   max-width: 70%;
   object-fit: contain;
-  filter: drop-shadow(0 2px 10px rgba(6, 60, 28, 0.25));
+  filter: drop-shadow(0 2px 12px rgba(0, 0, 0, 0.3));
 }
 /* O cartão é sempre claro, também com o painel no tema escuro. */
 .lg-card {
@@ -183,33 +192,25 @@ const onSubmit = async () => {
   padding: 28px;
   border-radius: 22px;
   background: #ffffff;
-  color: #10231a;
-  box-shadow: 0 30px 60px -20px rgba(6, 60, 28, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.4);
+  color: #0e1f17;
+  box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.6);
 }
 .lg-head {
-  margin-bottom: 22px;
-}
-.lg-eyebrow {
-  margin: 0;
-  font-size: 11.5px;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: #15803d;
+  margin-bottom: 24px;
+  text-align: center;
 }
 .lg-head h2 {
-  margin: 6px 0 0;
+  margin: 0;
   font-family: var(--font-display);
-  font-size: 26px;
-  font-weight: 700;
+  font-size: 24px;
+  font-weight: 600;
   letter-spacing: -0.02em;
-  color: #10231a;
+  color: #0e1f17;
 }
-.lg-desc {
-  margin: 6px 0 0;
+.lg-head p {
+  margin: 4px 0 0;
   font-size: 14px;
-  line-height: 1.5;
-  color: #5b6b62;
+  color: #5a6d62;
 }
 .lg-form {
   display: flex;
@@ -226,28 +227,22 @@ const onSubmit = async () => {
   font-weight: 600;
   color: #33443b;
 }
-.lg-label-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-}
 .lg-field input {
   width: 100%;
   height: 44px;
   padding: 0 14px;
-  border: 1px solid #d5e0d8;
+  border: 1px solid #d8e0d2;
   border-radius: 12px;
-  background: #f6f9f7;
+  background: #eef2ec;
   font-size: 15px;
-  color: #10231a;
+  color: #0e1f17;
   transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
 }
 .lg-field input:focus {
   outline: none;
-  border-color: #15803d;
+  border-color: #0a6346;
   background: #ffffff;
-  box-shadow: 0 0 0 3px rgba(65, 206, 95, 0.28);
+  box-shadow: 0 0 0 3px rgba(10, 99, 70, 0.18);
 }
 .lg-pass {
   position: relative;
@@ -272,16 +267,9 @@ const onSubmit = async () => {
   width: 19px;
   height: 19px;
 }
-.lg-hint {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.45;
-  color: #7b8a82;
-}
 .lg-link {
-  font-size: 12.5px;
   font-weight: 600;
-  color: #15803d;
+  color: #0a6346;
 }
 .lg-link:hover {
   text-decoration: underline;
@@ -303,15 +291,15 @@ const onSubmit = async () => {
   height: 46px;
   margin-top: 4px;
   border-radius: 999px;
-  background: #15803d;
+  background: #0a6346;
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
   color: #ffffff;
-  box-shadow: 0 10px 22px -10px rgba(21, 128, 61, 0.8);
+  box-shadow: 0 10px 22px -10px rgba(10, 99, 70, 0.8);
   transition: background-color 0.15s ease, transform 0.15s ease;
 }
 .lg-submit:hover:not(:disabled) {
-  background: #116a32;
+  background: #084d37;
   transform: translateY(-1px);
 }
 .lg-submit:disabled {
@@ -321,10 +309,18 @@ const onSubmit = async () => {
 .lg-spin {
   width: 16px;
   height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.4);
-  border-top-color: #ffffff;
-  border-radius: 999px;
   animation: lg-spin 0.8s linear infinite;
+}
+.lg-forgot {
+  margin-top: 14px;
+  text-align: center;
+  font-size: 13px;
+}
+.lg-first {
+  margin: 14px 0 0;
+  text-align: center;
+  font-size: 13px;
+  color: #5a6d62;
 }
 .lg-register {
   display: inline-flex;
@@ -332,17 +328,18 @@ const onSubmit = async () => {
   gap: 6px;
   padding: 8px 14px;
   border-radius: 999px;
-  background: rgba(6, 60, 28, 0.22);
+  background: rgba(10, 17, 14, 0.28);
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(230, 242, 234, 0.88);
   backdrop-filter: blur(6px);
   transition: background-color 0.15s ease;
 }
 .lg-register:hover {
-  background: rgba(6, 60, 28, 0.34);
+  background: rgba(10, 17, 14, 0.42);
 }
-.lg-register b {
-  color: #ffffff;
+.lg-register b,
+.lg-register svg {
+  color: #90ee8f;
 }
 .lg-register svg {
   width: 16px;
@@ -353,14 +350,14 @@ const onSubmit = async () => {
   z-index: 1;
   margin: 36px 0 0;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(230, 242, 234, 0.7);
 }
 :where(.lg a, .lg button, .lg input):focus-visible {
   outline: 2px solid #ffffff;
   outline-offset: 2px;
 }
 .lg-card :where(a, button):focus-visible {
-  outline-color: #15803d;
+  outline-color: #0a6346;
 }
 .sr-only {
   position: absolute;

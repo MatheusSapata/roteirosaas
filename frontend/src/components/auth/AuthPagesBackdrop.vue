@@ -1,134 +1,77 @@
 <template>
   <!--
-    Fundo da tela de acesso: verde da marca Roteiro Online com desenhos simples de
-    páginas (página de viagem, roteiro, preços, formulário e celular) em traço
-    branco, flutuando devagar e ligados por linhas pontilhadas, como as páginas
-    ligadas pela seção Links/Roteiros. Só decoração (aria-hidden). Com "reduzir
-    movimento" ligado no aparelho, fica parado.
+    Fundo da tela de acesso, nas cores da marca Viaje On: gradiente animado do
+    Verde Viaje (#0A6346) e do Verde Trilha (#15915C) até o Noite (#0A110E),
+    puxando para o verde, com luz do Verde On (#90EE8F). Por cima, um único
+    desenho grande de página de viagem (como um banner), em traço claro, atrás
+    do cartão de login. Só decoração (aria-hidden). Com "reduzir movimento"
+    ligado no aparelho, fica parado.
   -->
   <div class="apb" aria-hidden="true">
     <span class="apb-glow apb-glow-a"></span>
     <span class="apb-glow apb-glow-b"></span>
+    <span class="apb-glow apb-glow-c"></span>
 
-    <svg class="apb-defs" width="0" height="0" focusable="false">
-      <defs>
-        <!-- Página de viagem: capa com foto, título, texto, botão e cards -->
-        <g id="apb-landing">
-          <rect class="apb-sheet" width="240" height="320" rx="14" />
-          <path class="apb-line" d="M 0 30 H 240" />
-          <circle class="apb-dot" cx="16" cy="15" r="3.5" />
-          <circle class="apb-dot" cx="28" cy="15" r="3.5" />
-          <circle class="apb-dot" cx="40" cy="15" r="3.5" />
-          <rect class="apb-block" x="16" y="44" width="208" height="92" rx="8" />
-          <path class="apb-line" d="M 44 118 L 86 82 L 112 104 L 138 76 L 196 118" />
-          <circle class="apb-line" cx="180" cy="66" r="9" />
-          <rect class="apb-bar" x="16" y="150" width="150" height="10" rx="5" />
-          <rect class="apb-bar is-soft" x="16" y="168" width="200" height="6" rx="3" />
-          <rect class="apb-bar is-soft" x="16" y="180" width="176" height="6" rx="3" />
-          <rect class="apb-pill" x="16" y="196" width="86" height="22" rx="11" />
-          <rect class="apb-block" x="16" y="232" width="64" height="72" rx="7" />
-          <rect class="apb-block" x="88" y="232" width="64" height="72" rx="7" />
-          <rect class="apb-block" x="160" y="232" width="64" height="72" rx="7" />
-        </g>
-        <!-- Roteiro dia a dia -->
-        <g id="apb-roteiro">
-          <rect class="apb-sheet" width="220" height="260" rx="14" />
-          <rect class="apb-bar" x="18" y="20" width="110" height="10" rx="5" />
-          <path class="apb-line" d="M 34 56 V 236" />
-          <circle class="apb-node" cx="34" cy="60" r="8" />
-          <rect class="apb-bar" x="54" y="54" width="90" height="8" rx="4" />
-          <rect class="apb-bar is-soft" x="54" y="68" width="140" height="6" rx="3" />
-          <circle class="apb-node" cx="34" cy="118" r="8" />
-          <rect class="apb-bar" x="54" y="112" width="70" height="8" rx="4" />
-          <rect class="apb-bar is-soft" x="54" y="126" width="130" height="6" rx="3" />
-          <circle class="apb-node" cx="34" cy="176" r="8" />
-          <rect class="apb-bar" x="54" y="170" width="100" height="8" rx="4" />
-          <rect class="apb-bar is-soft" x="54" y="184" width="120" height="6" rx="3" />
-          <circle class="apb-node" cx="34" cy="232" r="8" />
-          <rect class="apb-bar" x="54" y="226" width="80" height="8" rx="4" />
-        </g>
-        <!-- Preços e pacotes -->
-        <g id="apb-precos">
-          <rect class="apb-sheet" width="280" height="240" rx="14" />
-          <rect class="apb-bar" x="80" y="20" width="120" height="10" rx="5" />
-          <rect class="apb-block" x="16" y="48" width="76" height="172" rx="9" />
-          <rect class="apb-block is-strong" x="102" y="40" width="76" height="186" rx="9" />
-          <rect class="apb-block" x="188" y="48" width="76" height="172" rx="9" />
-          <rect class="apb-bar" x="30" y="66" width="48" height="12" rx="6" />
-          <rect class="apb-bar" x="116" y="60" width="48" height="14" rx="7" />
-          <rect class="apb-bar" x="202" y="66" width="48" height="12" rx="6" />
-          <path class="apb-check" d="M 28 100 l 5 5 l 9 -10 M 28 124 l 5 5 l 9 -10 M 28 148 l 5 5 l 9 -10" />
-          <path class="apb-check" d="M 114 96 l 5 5 l 9 -10 M 114 120 l 5 5 l 9 -10 M 114 144 l 5 5 l 9 -10 M 114 168 l 5 5 l 9 -10" />
-          <path class="apb-check" d="M 200 100 l 5 5 l 9 -10 M 200 124 l 5 5 l 9 -10" />
-          <rect class="apb-pill" x="24" y="190" width="60" height="18" rx="9" />
-          <rect class="apb-pill is-solid" x="110" y="196" width="60" height="18" rx="9" />
-          <rect class="apb-pill" x="196" y="190" width="60" height="18" rx="9" />
-        </g>
-        <!-- Formulário de interesse -->
-        <g id="apb-form">
-          <rect class="apb-sheet" width="240" height="220" rx="14" />
-          <rect class="apb-bar" x="20" y="22" width="130" height="10" rx="5" />
-          <rect class="apb-bar is-soft" x="20" y="40" width="180" height="6" rx="3" />
-          <rect class="apb-field" x="20" y="62" width="200" height="28" rx="7" />
-          <rect class="apb-field" x="20" y="100" width="200" height="28" rx="7" />
-          <rect class="apb-field" x="20" y="138" width="96" height="28" rx="7" />
-          <rect class="apb-field" x="124" y="138" width="96" height="28" rx="7" />
-          <rect class="apb-pill is-solid" x="20" y="180" width="200" height="24" rx="12" />
-        </g>
-        <!-- Celular com a página aberta -->
-        <g id="apb-phone">
-          <rect class="apb-sheet" width="140" height="260" rx="22" />
-          <rect class="apb-bar is-soft" x="52" y="12" width="36" height="6" rx="3" />
-          <rect class="apb-block" x="12" y="30" width="116" height="80" rx="10" />
-          <path class="apb-line" d="M 26 98 L 52 74 L 70 88 L 88 68 L 116 98" />
-          <rect class="apb-bar" x="12" y="122" width="90" height="9" rx="4.5" />
-          <rect class="apb-bar is-soft" x="12" y="138" width="116" height="6" rx="3" />
-          <rect class="apb-bar is-soft" x="12" y="150" width="100" height="6" rx="3" />
-          <rect class="apb-pill is-solid" x="12" y="168" width="116" height="22" rx="11" />
-          <rect class="apb-block" x="12" y="200" width="54" height="44" rx="7" />
-          <rect class="apb-block" x="74" y="200" width="54" height="44" rx="7" />
-        </g>
-        <!-- Depoimento -->
-        <g id="apb-depo">
-          <rect class="apb-sheet" width="180" height="110" rx="14" />
-          <circle class="apb-node" cx="34" cy="34" r="14" />
-          <rect class="apb-bar" x="56" y="26" width="80" height="8" rx="4" />
-          <path class="apb-check" d="M 56 46 h 54" />
-          <rect class="apb-bar is-soft" x="20" y="62" width="140" height="6" rx="3" />
-          <rect class="apb-bar is-soft" x="20" y="74" width="120" height="6" rx="3" />
-          <rect class="apb-bar is-soft" x="20" y="86" width="96" height="6" rx="3" />
-        </g>
-      </defs>
+    <!-- Telas largas: página inteira na horizontal -->
+    <svg class="apb-banner is-wide" viewBox="0 0 1200 760" preserveAspectRatio="xMidYMid meet">
+      <rect class="apb-sheet" x="1" y="1" width="1198" height="758" rx="26" />
+      <!-- Barra do navegador -->
+      <path class="apb-line" d="M 1 54 H 1199" />
+      <circle class="apb-dot" cx="30" cy="28" r="6" />
+      <circle class="apb-dot" cx="52" cy="28" r="6" />
+      <circle class="apb-dot" cx="74" cy="28" r="6" />
+      <rect class="apb-field" x="380" y="16" width="440" height="24" rx="12" />
+      <!-- Menu do topo -->
+      <circle class="apb-node" cx="58" cy="94" r="14" />
+      <rect class="apb-bar" x="80" y="88" width="96" height="12" rx="6" />
+      <rect class="apb-bar is-soft" x="660" y="90" width="70" height="8" rx="4" />
+      <rect class="apb-bar is-soft" x="752" y="90" width="70" height="8" rx="4" />
+      <rect class="apb-bar is-soft" x="844" y="90" width="70" height="8" rx="4" />
+      <rect class="apb-pill is-solid" x="1020" y="80" width="140" height="30" rx="15" />
+      <!-- Capa: foto da viagem com montanhas, sol e a rota do passeio -->
+      <rect class="apb-hero" x="40" y="132" width="1120" height="360" rx="20" />
+      <path class="apb-mountain" d="M 40 470 L 250 300 L 380 400 L 560 230 L 760 420 L 900 330 L 1160 470" />
+      <circle class="apb-sun" cx="980" cy="210" r="34" />
+      <path class="apb-route" d="M 120 440 C 260 380, 330 460, 470 380 S 700 300, 820 360 S 1000 300, 1080 250" />
+      <circle class="apb-pin" cx="120" cy="440" r="7" />
+      <circle class="apb-pin" cx="1080" cy="250" r="7" />
+      <rect class="apb-bar is-strong" x="88" y="176" width="420" height="26" rx="13" />
+      <rect class="apb-bar" x="88" y="214" width="320" height="14" rx="7" />
+      <rect class="apb-bar is-soft" x="88" y="240" width="280" height="10" rx="5" />
+      <rect class="apb-pill is-solid" x="88" y="270" width="170" height="40" rx="20" />
+      <!-- Cards dos roteiros -->
+      <g v-for="(x, i) in [40, 420, 800]" :key="i">
+        <rect class="apb-block" :x="x" y="520" width="360" height="210" rx="16" />
+        <rect class="apb-photo" :x="x + 14" y="534" width="332" height="104" rx="10" />
+        <rect class="apb-bar" :x="x + 18" y="654" width="190" height="12" rx="6" />
+        <rect class="apb-bar is-soft" :x="x + 18" y="676" width="250" height="8" rx="4" />
+        <rect class="apb-pill" :x="x + 236" y="694" width="110" height="24" rx="12" />
+      </g>
     </svg>
 
-    <!-- Telas largas: páginas pelos lados -->
-    <svg class="apb-art is-wide" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice">
-      <!-- Ligações entre as páginas -->
-      <g class="apb-links">
-        <path d="M 250 380 C 330 520, 230 600, 300 700" />
-        <path d="M 1150 300 C 1060 420, 1220 520, 1130 640" />
-        <path d="M 360 160 C 600 60, 840 70, 1060 150" />
-        <path d="M 420 800 C 640 880, 860 870, 1040 790" />
-      </g>
-
-      <use href="#apb-landing" class="apb-page apb-float-a" transform="translate(90 70) rotate(-6 120 160)" />
-      <use href="#apb-roteiro" class="apb-page apb-float-b" transform="translate(150 610) rotate(5 110 130)" />
-      <use href="#apb-precos" class="apb-page apb-float-c" transform="translate(1080 40) rotate(7 140 120)" />
-      <use href="#apb-form" class="apb-page apb-float-a" transform="translate(1090 620) rotate(-5 120 110)" />
-      <use href="#apb-phone" class="apb-page apb-float-b" transform="translate(1270 330) rotate(4 70 130)" />
-      <use href="#apb-depo" class="apb-page apb-float-c" transform="translate(40 420) rotate(-3 90 55)" />
-    </svg>
-
-    <!-- Celular: páginas nos cantos de cima e de baixo -->
-    <svg class="apb-art is-tall" viewBox="0 0 390 844" preserveAspectRatio="xMidYMid slice">
-      <g class="apb-links">
-        <path d="M 60 190 C 120 120, 260 120, 330 60" />
-        <path d="M 40 760 C 140 700, 260 820, 360 720" />
-      </g>
-      <use href="#apb-landing" class="apb-page apb-float-a" transform="translate(-70 -70) rotate(-8 120 160) scale(0.82)" />
-      <use href="#apb-phone" class="apb-page apb-float-b" transform="translate(300 -40) rotate(9 70 130) scale(0.8)" />
-      <use href="#apb-roteiro" class="apb-page apb-float-c" transform="translate(-60 700) rotate(6 110 130) scale(0.8)" />
-      <use href="#apb-form" class="apb-page apb-float-a" transform="translate(250 690) rotate(-7 120 110) scale(0.8)" />
+    <!-- Celular: a mesma página na vertical -->
+    <svg class="apb-banner is-tall" viewBox="0 0 360 760" preserveAspectRatio="xMidYMid meet">
+      <rect class="apb-sheet" x="1" y="1" width="358" height="758" rx="36" />
+      <rect class="apb-bar is-soft" x="150" y="16" width="60" height="8" rx="4" />
+      <circle class="apb-node" cx="34" cy="56" r="12" />
+      <rect class="apb-bar" x="52" y="51" width="80" height="10" rx="5" />
+      <rect class="apb-bar is-soft" x="296" y="46" width="34" height="5" rx="2.5" />
+      <rect class="apb-bar is-soft" x="296" y="56" width="34" height="5" rx="2.5" />
+      <rect class="apb-bar is-soft" x="296" y="66" width="34" height="5" rx="2.5" />
+      <rect class="apb-hero" x="18" y="88" width="324" height="300" rx="20" />
+      <path class="apb-mountain" d="M 18 370 L 100 270 L 160 320 L 240 220 L 342 360" />
+      <circle class="apb-sun" cx="286" cy="150" r="22" />
+      <path class="apb-route" d="M 50 350 C 110 300, 160 350, 220 300 S 300 250, 310 200" />
+      <rect class="apb-bar is-strong" x="40" y="120" width="190" height="18" rx="9" />
+      <rect class="apb-bar is-soft" x="40" y="148" width="150" height="9" rx="4.5" />
+      <rect class="apb-block" x="18" y="408" width="324" height="160" rx="16" />
+      <rect class="apb-photo" x="30" y="420" width="300" height="80" rx="10" />
+      <rect class="apb-bar" x="32" y="514" width="150" height="10" rx="5" />
+      <rect class="apb-bar is-soft" x="32" y="534" width="210" height="7" rx="3.5" />
+      <rect class="apb-block" x="18" y="584" width="324" height="160" rx="16" />
+      <rect class="apb-photo" x="30" y="596" width="300" height="80" rx="10" />
+      <rect class="apb-bar" x="32" y="690" width="130" height="10" rx="5" />
+      <rect class="apb-bar is-soft" x="32" y="710" width="190" height="7" rx="3.5" />
     </svg>
   </div>
 </template>
@@ -139,170 +82,192 @@
   inset: 0;
   overflow: hidden;
   pointer-events: none;
-  /* Verde da marca na maior parte da tela; só as bordas escurecem um pouco. */
-  background:
-    radial-gradient(120% 90% at 50% 40%, #41ce5f 0%, #2fb552 45%, #1e9444 78%, #157236 100%);
+  /* Gradiente que se move devagar: verde na maior parte, com o Noite nas pontas. */
+  background: linear-gradient(
+    125deg,
+    #0a110e 0%,
+    #0f2219 14%,
+    #0a6346 34%,
+    #15915c 52%,
+    #0a6346 70%,
+    #0b3d2a 86%,
+    #0a110e 100%
+  );
+  background-size: 260% 260%;
+  animation: apb-gradient 22s ease-in-out infinite alternate;
 }
 .apb-glow {
   position: absolute;
   border-radius: 9999px;
-  filter: blur(80px);
+  filter: blur(90px);
   will-change: transform;
 }
 .apb-glow-a {
-  width: 56vmax;
-  height: 56vmax;
-  left: -16vmax;
-  top: -20vmax;
-  background: radial-gradient(closest-side, rgba(196, 255, 206, 0.55), transparent);
-  animation: apb-glow-a 26s ease-in-out infinite alternate;
+  width: 52vmax;
+  height: 52vmax;
+  left: -14vmax;
+  top: -18vmax;
+  background: radial-gradient(closest-side, rgba(144, 238, 143, 0.38), transparent);
+  animation: apb-glow-a 24s ease-in-out infinite alternate;
 }
 .apb-glow-b {
-  width: 60vmax;
-  height: 60vmax;
-  right: -22vmax;
-  bottom: -28vmax;
-  background: radial-gradient(closest-side, rgba(10, 99, 52, 0.55), transparent);
-  animation: apb-glow-b 32s ease-in-out infinite alternate;
+  width: 58vmax;
+  height: 58vmax;
+  right: -20vmax;
+  bottom: -26vmax;
+  background: radial-gradient(closest-side, rgba(10, 17, 14, 0.7), transparent);
+  animation: apb-glow-b 30s ease-in-out infinite alternate;
 }
-.apb-defs {
-  position: absolute;
-  width: 0;
-  height: 0;
-  overflow: hidden;
-}
-.apb-art {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-.apb-art.is-tall {
-  display: none;
+.apb-glow-c {
+  width: 34vmax;
+  height: 34vmax;
+  right: 8vmax;
+  top: 6vmax;
+  background: radial-gradient(closest-side, rgba(21, 145, 92, 0.6), transparent);
+  animation: apb-glow-c 20s ease-in-out infinite alternate;
 }
 
-/* Traço branco simples, como um rascunho. */
+/* Um único desenho grande, atrás do cartão. */
+.apb-banner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(1240px, 92vw);
+  height: auto;
+  max-height: 88vh;
+  translate: -50% -50%;
+  rotate: -2deg;
+  animation: apb-float 16s ease-in-out infinite alternate;
+}
+.apb-banner.is-tall {
+  display: none;
+}
 .apb-sheet {
-  fill: rgba(255, 255, 255, 0.1);
-  stroke: rgba(255, 255, 255, 0.55);
-  stroke-width: 1.5;
+  fill: rgba(230, 242, 234, 0.05);
+  stroke: rgba(184, 245, 183, 0.5);
+  stroke-width: 1.6;
 }
 .apb-line,
-.apb-check {
+.apb-mountain {
   fill: none;
-  stroke: rgba(255, 255, 255, 0.55);
-  stroke-width: 1.5;
+  stroke: rgba(184, 245, 183, 0.45);
+  stroke-width: 1.6;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+.apb-hero {
+  fill: rgba(144, 238, 143, 0.07);
+  stroke: rgba(184, 245, 183, 0.4);
+  stroke-width: 1.4;
+}
+.apb-sun {
+  fill: rgba(144, 238, 143, 0.16);
+  stroke: rgba(184, 245, 183, 0.55);
+  stroke-width: 1.4;
+}
+.apb-route {
+  fill: none;
+  stroke: #90ee8f;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-dasharray: 3 14;
+  opacity: 0.75;
+  animation: apb-route 24s linear infinite;
+}
+.apb-pin {
+  fill: #90ee8f;
+  opacity: 0.85;
+}
 .apb-dot {
-  fill: rgba(255, 255, 255, 0.5);
+  fill: rgba(184, 245, 183, 0.45);
+}
+.apb-node {
+  fill: rgba(144, 238, 143, 0.12);
+  stroke: rgba(184, 245, 183, 0.55);
+  stroke-width: 1.4;
 }
 .apb-block {
-  fill: rgba(255, 255, 255, 0.08);
-  stroke: rgba(255, 255, 255, 0.45);
+  fill: rgba(230, 242, 234, 0.04);
+  stroke: rgba(184, 245, 183, 0.35);
+  stroke-width: 1.4;
+}
+.apb-photo {
+  fill: rgba(144, 238, 143, 0.08);
+}
+.apb-field {
+  fill: rgba(230, 242, 234, 0.05);
+  stroke: rgba(184, 245, 183, 0.3);
   stroke-width: 1.2;
 }
-.apb-block.is-strong {
-  fill: rgba(255, 255, 255, 0.16);
-  stroke: rgba(255, 255, 255, 0.7);
-}
 .apb-bar {
-  fill: rgba(255, 255, 255, 0.5);
+  fill: rgba(230, 242, 234, 0.32);
 }
 .apb-bar.is-soft {
-  fill: rgba(255, 255, 255, 0.26);
+  fill: rgba(230, 242, 234, 0.16);
+}
+.apb-bar.is-strong {
+  fill: rgba(230, 242, 234, 0.45);
 }
 .apb-pill {
   fill: none;
-  stroke: rgba(255, 255, 255, 0.6);
+  stroke: rgba(184, 245, 183, 0.5);
   stroke-width: 1.4;
 }
 .apb-pill.is-solid {
-  fill: rgba(255, 255, 255, 0.55);
+  fill: rgba(144, 238, 143, 0.4);
   stroke: none;
 }
-.apb-field {
-  fill: rgba(255, 255, 255, 0.06);
-  stroke: rgba(255, 255, 255, 0.4);
-  stroke-width: 1.2;
-}
-.apb-node {
-  fill: rgba(255, 255, 255, 0.14);
-  stroke: rgba(255, 255, 255, 0.6);
-  stroke-width: 1.4;
-}
-.apb-links path {
-  fill: none;
-  stroke: rgba(255, 255, 255, 0.45);
-  stroke-width: 1.5;
-  stroke-linecap: round;
-  stroke-dasharray: 2 12;
-  animation: apb-flow 40s linear infinite;
-}
-.apb-links path:nth-child(2n) {
-  animation-direction: reverse;
-  animation-duration: 54s;
-}
 
-/* As páginas flutuam devagar, cada grupo num ritmo. */
-.apb-page {
-  transform-box: fill-box;
-}
-.apb-float-a {
-  animation: apb-float-a 14s ease-in-out infinite alternate;
-}
-.apb-float-b {
-  animation: apb-float-b 18s ease-in-out infinite alternate;
-}
-.apb-float-c {
-  animation: apb-float-c 16s ease-in-out infinite alternate;
-}
-@keyframes apb-float-a {
-  to {
-    translate: 0 -14px;
+@keyframes apb-gradient {
+  0% {
+    background-position: 0% 30%;
+  }
+  100% {
+    background-position: 100% 70%;
   }
 }
-@keyframes apb-float-b {
+@keyframes apb-float {
   to {
-    translate: 10px 12px;
+    translate: -50% calc(-50% - 12px);
+    rotate: -1deg;
   }
 }
-@keyframes apb-float-c {
+@keyframes apb-route {
   to {
-    translate: -8px -10px;
-  }
-}
-@keyframes apb-flow {
-  to {
-    stroke-dashoffset: -560;
+    stroke-dashoffset: -680;
   }
 }
 @keyframes apb-glow-a {
   to {
-    transform: translate(12vmax, 8vmax) scale(1.1);
+    transform: translate(14vmax, 10vmax) scale(1.12);
   }
 }
 @keyframes apb-glow-b {
   to {
-    transform: translate(-10vmax, -6vmax) scale(0.94);
+    transform: translate(-12vmax, -8vmax) scale(0.92);
+  }
+}
+@keyframes apb-glow-c {
+  to {
+    transform: translate(-16vmax, 18vmax) scale(1.1);
   }
 }
 
-/* No celular os desenhos ficam mais discretos para o formulário respirar. */
 @media (max-width: 640px) {
-  .apb-art.is-wide {
+  .apb-banner.is-wide {
     display: none;
   }
-  .apb-art.is-tall {
+  .apb-banner.is-tall {
     display: block;
-    opacity: 0.8;
+    width: min(360px, 90vw);
+    max-height: 92vh;
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .apb,
   .apb-glow,
-  .apb-links path,
-  .apb-page {
+  .apb-banner,
+  .apb-route {
     animation: none;
   }
 }
