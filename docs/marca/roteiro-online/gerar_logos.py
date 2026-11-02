@@ -78,14 +78,16 @@ def wordmark(c1, c2):
     b = "".join(f'<path d="{d}"/>' for d in ONLINE)
     return f'<g fill="{c1}">{a}</g><g fill="{c2}">{b}</g>'
 
+# Paleta Viaje On 2026-11: Verde Viaje #0A6346, Verde On #90EE8F, Verde Trilha #15915C,
+# Broto #D8F1D0, Nevoa #EFF3ED, Noite #0A110E
 PAL = {
-    # nome: (pin, aviao(None=vazado), roteiro, online, fundo de preview)
-    "principal":        ("#02BA80", None, "#02BA80", "#1FEBA0", "#FFFFFF"),
-    "fundo-escuro":     ("#1FEBA0", None, "#FFFFFF", "#1FEBA0", "#111111"),
-    "fundo-verde":      ("#FFFFFF", None, "#FFFFFF", "#FFFFFF", "#02BA80"),
-    "verde-cinza":      ("#02BA80", None, "#5E5E5E", "#02BA80", "#FFFFFF"),
-    "preto":            ("#111111", None, "#111111", "#111111", "#FFFFFF"),
-    "branco":           ("#FFFFFF", None, "#FFFFFF", "#FFFFFF", "#111111"),
+    # nome: (pin, aviao(None=cor do pin), roteiro, online, fundo de preview)
+    "principal":        ("#0A6346", None, "#0A6346", "#15915C", "#EFF3ED"),
+    "fundo-escuro":     ("#90EE8F", None, "#FFFFFF", "#90EE8F", "#0A110E"),
+    "fundo-verde":      ("#90EE8F", None, "#FFFFFF", "#90EE8F", "#0A6346"),
+    "verde-noite":      ("#0A6346", None, "#0A110E", "#15915C", "#FFFFFF"),
+    "noite":            ("#0A110E", None, "#0A110E", "#0A110E", "#FFFFFF"),
+    "branco":           ("#FFFFFF", None, "#FFFFFF", "#FFFFFF", "#0A110E"),
 }
 
 PAD = 0.0

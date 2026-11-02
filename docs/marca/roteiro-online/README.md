@@ -13,14 +13,16 @@
 - `vertical`: pin em cima, "roteiro" e "online" empilhados
 - `icone`: só o pin (avatar, favicon, app)
 
-## Variações de cor
+## Variações de cor (paleta Viaje On de 2026-11)
+Mesma paleta do painel (`frontend/src/styles/main.css`): Verde Viaje #0A6346, Verde On #90EE8F, Verde Trilha #15915C, Névoa #EFF3ED e Noite #0A110E.
+
 | Arquivo | Uso | Pin | roteiro | online |
 |---|---|---|---|---|
-| `principal` | fundo claro | #02BA80 | #02BA80 | #1FEBA0 |
-| `fundo-escuro` | fundo escuro | #1FEBA0 | #FFFFFF | #1FEBA0 |
-| `fundo-verde` | sobre o verde #02BA80 | branco | branco | branco |
-| `verde-cinza` | fundo claro, mais sóbrio | #02BA80 | #5E5E5E | #02BA80 |
-| `preto` | uma cor, fundo claro | #111111 | #111111 | #111111 |
+| `principal` | fundo claro (branco ou Névoa) | Verde Viaje #0A6346 | Verde Viaje #0A6346 | Verde Trilha #15915C |
+| `fundo-escuro` | fundo Noite #0A110E | Verde On #90EE8F | branco | Verde On #90EE8F |
+| `fundo-verde` | fundo Verde Viaje #0A6346 | Verde On #90EE8F | branco | Verde On #90EE8F |
+| `verde-noite` | fundo claro, mais sóbrio | Verde Viaje #0A6346 | Noite #0A110E | Verde Trilha #15915C |
+| `noite` | uma cor, fundo claro | Noite #0A110E | Noite #0A110E | Noite #0A110E |
 | `branco` | uma cor, fundo escuro | branco | branco | branco |
 
 O círculo do pin é vazado (transparente), então aparece a cor do fundo.
