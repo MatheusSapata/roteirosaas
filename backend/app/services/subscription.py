@@ -437,6 +437,13 @@ def schedule_expiration_job(interval_minutes: int = 60) -> None:
                 hourly_tick(SessionLocal)
             except Exception:
                 logger.exception("Erro no ciclo de arquivos das empresas")
+            try:
+                # Avisos de cobrança aos clientes: a rotina do dia (depois das 08:07) e as novas tentativas.
+                from app.services.billing_notices import hourly_tick as billing_notices_tick
+
+                billing_notices_tick(SessionLocal)
+            except Exception:
+                logger.exception("Erro nos avisos de cobrança")
             await asyncio.sleep(interval_minutes * 60)
 
     try:

@@ -5,7 +5,7 @@
       style="background-color: #41ce5f;"
     >
       <div class="relative z-10 max-w-xl space-y-6 p-16 text-white">
-        <img src="../../assets/Logo Branco - Roteiro Online.png" :alt="viewCopy.brandAlt" class="w-full max-w-[180px]" />
+        <img :src="brandLogoWhite" :alt="viewCopy.brandAlt" class="w-full max-w-[180px]" />
         <h2 class="text-4xl font-bold leading-tight text-white" v-html="viewCopy.hero.headline"></h2>
         <p class="text-lg text-white">{{ viewCopy.hero.description }}</p>
         <div class="flex items-center gap-3 text-sm text-white">
@@ -18,7 +18,7 @@
       class="flex w-full flex-col items-center bg-[#41ce5f] px-4 py-10 lg:min-h-screen lg:w-2/5 lg:justify-center lg:bg-[#f8f8f8] lg:px-12"
     >
       <div class="mb-8 flex w-full justify-center lg:hidden">
-        <img src="../../assets/Logo Branco - Roteiro Online.png" :alt="viewCopy.brandAlt" class="w-32" />
+        <img :src="brandLogoWhite" :alt="viewCopy.brandAlt" class="w-32" />
       </div>
       <div class="w-full max-w-md rounded-3xl border border-slate-100 bg-white p-8 shadow-xl shadow-slate-200/40">
         <div class="mb-8 space-y-2">
@@ -66,6 +66,8 @@ import { ref } from "vue";
 import { RouterLink } from "vue-router";
 import api from "../../services/api";
 import { createAdminLocalizer } from "../../utils/adminI18n";
+import { usePlatformBranding } from "../../composables/usePlatformBranding";
+const { logoWhite: brandLogoWhite, logoColor: brandLogoColor } = usePlatformBranding();
 
 const t = createAdminLocalizer();
 

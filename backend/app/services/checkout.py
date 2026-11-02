@@ -253,6 +253,12 @@ def _extract_pix_automatic_qr_code(authorization: dict[str, Any]) -> dict[str, A
     }
 
 
+def _asaas_notifications_disabled() -> bool:
+    from app.services.billing_notices import asaas_notifications_disabled
+
+    return asaas_notifications_disabled()
+
+
 def _build_asaas_customer_payload(*, name: str, email: str, document: str, phone: str, session_token: str) -> dict[str, Any]:
     return {
         "name": name,
@@ -260,7 +266,8 @@ def _build_asaas_customer_payload(*, name: str, email: str, document: str, phone
         "cpfCnpj": _normalize_digits(document),
         "mobilePhone": _normalize_digits(phone),
         "externalReference": f"checkout:{session_token}",
-        "notificationDisabled": False,
+        # Avisos do próprio Asaas: seguem a chave de Admin master › Avisos de cobrança.
+        "notificationDisabled": _asaas_notifications_disabled(),
         "groupName": ASAAS_CUSTOMER_GROUP_NAME,
     }
 

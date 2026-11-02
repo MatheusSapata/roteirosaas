@@ -683,6 +683,13 @@ async def webhook(request: Request, db: Session = Depends(get_db)) -> Dict[str, 
         event_log.processed_at = datetime.utcnow()
         db.add(event_log)
         db.commit()
+        # Aviso de pagamento confirmado ao cliente (em segundo plano; a trava evita repetir).
+        try:
+            from app.services.billing_notices import schedule_payment_event
+
+            schedule_payment_event(payload)
+        except Exception:  # noqa: BLE001 - o aviso nunca quebra o webhook
+            logger.exception("Falha ao agendar o aviso de pagamento confirmado")
         return {"received": True}
     except Exception as exc:  # noqa: BLE001
         event_log.status = "error"

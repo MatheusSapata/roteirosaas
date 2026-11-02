@@ -47,9 +47,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
-import RoteiroDarkLogo from "../../assets/Logo Branco - Roteiro Online.png";
-import RoteiroLightLogo from "../../assets/Logo Cor - Roteiro Online.png";
-import RoteiroMark from "../../assets/Favicon.png";
+import { usePlatformBranding } from "../../composables/usePlatformBranding";
 import ViajeonDarkLogo from "../../assets/logo-viajeon-modoescuro.png";
 import ViajeonLightLogo from "../../assets/logo-viajeon-modoclaro.png";
 import {
@@ -66,8 +64,9 @@ const emit = defineEmits<{
 const themeStore = useThemeStore();
 const root = ref<HTMLElement | null>(null);
 const open = ref(false);
-const roteiroLogo = computed(() => (themeStore.isDark ? RoteiroDarkLogo : RoteiroLightLogo));
-const roteiroMark = RoteiroMark;
+const platformBrand = usePlatformBranding();
+const roteiroLogo = computed(() => (themeStore.isDark ? platformBrand.logoWhite.value : platformBrand.logoColor.value));
+const roteiroMark = platformBrand.favicon;
 const viajeonLogo = computed(() => (themeStore.isDark ? ViajeonDarkLogo : ViajeonLightLogo));
 
 const selectViajeon = () => {

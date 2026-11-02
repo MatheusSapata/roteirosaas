@@ -78,6 +78,7 @@ if engine.dialect.name == "postgresql":
                 "UPDATE webhook_notification_rules SET pushover_sound = NULL WHERE pushover_sound = 'cashregister' "
                 "AND event_key IN ('purchase_approved', 'subscription_created', 'subscription_renewed', 'upgrade_realizado')"
             ))
+        connection.execute(text("ALTER TABLE billing_notice_settings ADD COLUMN IF NOT EXISTS schedule_since DATE"))
         connection.execute(text("ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS deactivated_at TIMESTAMP WITH TIME ZONE"))
         connection.execute(text(
             "ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS deactivation_estimated BOOLEAN NOT NULL DEFAULT FALSE"
@@ -128,7 +129,11 @@ def _frontend_response(html_content: str) -> HTMLResponse:
 
 def _safe_load_frontend() -> str:
     try:
-        return load_frontend_index()
+        # Telas da plataforma (login, painel, checkout): título, descrição, favicon e imagem de
+        # compartilhamento de Admin master › Marca e SEO.
+        from app.services.platform_branding import apply_head_meta
+
+        return apply_head_meta(load_frontend_index())
     except FrontendTemplateNotReady as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 

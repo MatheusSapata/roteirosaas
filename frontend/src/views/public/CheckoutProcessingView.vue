@@ -1,7 +1,7 @@
 <template>
   <div class="checkout-processing-view flex min-h-screen items-center justify-center bg-[#41ce5f] px-4">
     <div class="w-full max-w-md rounded-3xl bg-white/95 p-8 text-center shadow-2xl shadow-emerald-900/30">
-      <img src="../../assets/Logo Cor - Roteiro Online.png" :alt="viewCopy.brand.alt" class="mx-auto mb-6 w-32" />
+      <img :src="brandLogoColor" :alt="viewCopy.brand.alt" class="mx-auto mb-6 w-32" />
 
       <h1 class="text-2xl font-bold text-slate-900">{{ viewCopy.heading }}</h1>
 
@@ -30,6 +30,8 @@ import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { CHECKOUT_SESSION_STORAGE_KEY, getCheckoutSessionStatus } from "../../services/cakto";
 import { createLocalizer, getCurrentLanguage } from "../../utils/i18n";
+import { usePlatformBranding } from "../../composables/usePlatformBranding";
+const { logoWhite: brandLogoWhite, logoColor: brandLogoColor } = usePlatformBranding();
 
 const router = useRouter();
 const route = useRoute();

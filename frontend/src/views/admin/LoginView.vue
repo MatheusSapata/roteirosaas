@@ -5,7 +5,7 @@
     <AuthBackdrop />
 
     <main class="lg-main">
-      <img src="../../assets/Logo Branco - Roteiro Online.png" :alt="viewCopy.brand.alt" class="lg-logo" />
+      <img :src="brandLogoWhite" :alt="viewCopy.brand.alt" class="lg-logo" />
       <h1 class="sr-only">{{ viewCopy.brand.tagline }}</h1>
 
       <div class="lg-card">
@@ -77,6 +77,8 @@ import { useRouter } from "vue-router";
 import api from "../../services/api";
 import { useAuthStore } from "../../store/useAuthStore";
 import { createAdminLocalizer } from "../../utils/adminI18n";
+import { usePlatformBranding } from "../../composables/usePlatformBranding";
+const { logoWhite: brandLogoWhite, logoColor: brandLogoColor } = usePlatformBranding();
 
 const router = useRouter();
 const auth = useAuthStore();

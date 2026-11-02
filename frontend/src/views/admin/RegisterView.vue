@@ -5,7 +5,7 @@
       style="background-color: #41ce5f;"
     >
       <div class="relative z-10 max-w-xl space-y-6 p-16 text-white">
-        <img src="../../assets/Logo Branco - Roteiro Online.png" :alt="viewCopy.brand.alt" class="w-full max-w-[180px]" />
+        <img :src="brandLogoWhite" :alt="viewCopy.brand.alt" class="w-full max-w-[180px]" />
         <h2 class="text-4xl font-bold leading-tight text-white" v-html="viewCopy.hero.headline"></h2>
         <p class="text-lg text-white" v-html="viewCopy.hero.description"></p>
         <div class="flex items-center gap-3 text-sm text-white">
@@ -16,7 +16,7 @@
     </div>
     <div class="flex w-full flex-col items-center bg-[#41ce5f] px-4 py-10 lg:w-2/5 lg:bg-[#f8f8f8] lg:px-12">
       <div class="mb-8 flex w-full justify-center lg:hidden">
-        <img src="../../assets/Logo Branco - Roteiro Online.png" :alt="viewCopy.brand.alt" class="w-32" />
+        <img :src="brandLogoWhite" :alt="viewCopy.brand.alt" class="w-32" />
       </div>
       <div class="w-full max-w-md rounded-3xl border border-slate-100 bg-white p-8 shadow-xl shadow-slate-200/40">
         <div class="mb-8 space-y-2">
@@ -110,6 +110,8 @@ import { captureAttribution } from "../../utils/attribution";
 import { useAuthStore } from "../../store/useAuthStore";
 import { addTagsToContactByEmail, viajeChatTagIds } from "../../services/viajeChat";
 import { createAdminLocalizer } from "../../utils/adminI18n";
+import { usePlatformBranding } from "../../composables/usePlatformBranding";
+const { logoWhite: brandLogoWhite, logoColor: brandLogoColor } = usePlatformBranding();
 
 const router = useRouter();
 const auth = useAuthStore();

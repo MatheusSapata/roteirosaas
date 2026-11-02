@@ -400,9 +400,9 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import LandingLogo from "../../assets/Logo Branco - Roteiro Online.png";
+import { usePlatformBranding } from "../../composables/usePlatformBranding";
 
-const landingLogo = LandingLogo;
+const landingLogo = usePlatformBranding().logoWhite;
 
 const heroMetrics = [
   { label: "Campanhas montadas por mês", value: "2x mais rápidas" },
