@@ -147,6 +147,18 @@ DEFAULT_WEBHOOK_RULES: list[dict[str, Any]] = [
         "is_builtin": True,
     },
     {
+        "event_key": "billing_whatsapp_disconnected",
+        "display_name": "WhatsApp da cobrança desconectado",
+        "description": "O WhatsApp que envia os avisos de cobrança aos clientes caiu: leia o QR code de novo em Admin master › Avisos de cobrança.",
+        "enabled": True,
+        "title_template": "WhatsApp da cobrança desconectado",
+        "body_template": "Leia o QR code em Admin master › Avisos de cobrança. {{customer_phone}} | {{occurred_at}}",
+        "icon_tag": "rotating_light",
+        "priority": 4,
+        "sort_order": 56,
+        "is_builtin": True,
+    },
+    {
         "event_key": "subscription_cancelled",
         "display_name": "Assinatura cancelada",
         "description": "Dispara quando a assinatura é cancelada.",
@@ -263,12 +275,13 @@ def ensure_default_rules(db: Session) -> None:
                 db.add(WebhookNotificationRule(**row))
         except IntegrityError:
             pass  # outra requisição criou o mesmo evento ao mesmo tempo
-    if any(row["event_key"] == "paid_but_blocked" for row in missing):
-        # Quem já recebe "Cobrança vencida" passa a receber também este aviso (mesma equipe de cobrança).
-        for account in db.query(PushoverAccount).all():
-            keys = list(account.event_keys or [])
-            if "payment_overdue" in keys and "paid_but_blocked" not in keys:
-                account.event_keys = keys + ["paid_but_blocked"]
+    for new_key in ("paid_but_blocked", "billing_whatsapp_disconnected"):
+        if any(row["event_key"] == new_key for row in missing):
+            # Quem já recebe "Cobrança vencida" passa a receber também este aviso (mesma equipe de cobrança).
+            for account in db.query(PushoverAccount).all():
+                keys = list(account.event_keys or [])
+                if "payment_overdue" in keys and new_key not in keys:
+                    account.event_keys = keys + [new_key]
     db.commit()
 
 

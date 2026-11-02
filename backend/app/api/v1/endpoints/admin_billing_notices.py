@@ -10,10 +10,8 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_superuser, get_db
-from app.models.agency import Agency
 from app.models.billing_notice import BillingNoticeSend
 from app.models.user import User
-from app.models.whatsapp import WhatsAppConnection
 from app.services import billing_notices as notices
 from app.services.asaas import AsaasAPIError
 
@@ -35,7 +33,6 @@ class TemplateIn(BaseModel):
 
 class SettingsIn(BaseModel):
     enabled: bool
-    whatsapp_connection_id: int | None = None
     available_lead_days: int = Field(notices.DEFAULT_LEAD_DAYS, ge=notices.MIN_LEAD_DAYS, le=notices.MAX_LEAD_DAYS)
     steps: dict[str, StepChannelsIn] = Field(default_factory=dict)
     templates: dict[str, TemplateIn] = Field(default_factory=dict)
@@ -59,24 +56,16 @@ class PlannedRefIn(BaseModel):
     due_date: date | None = None
 
 
-def _connections(db: Session) -> list[dict[str, Any]]:
-    rows = (
-        db.query(WhatsAppConnection, Agency.name)
-        .outerjoin(Agency, Agency.id == WhatsAppConnection.agency_id)
-        .order_by(WhatsAppConnection.status.desc(), WhatsAppConnection.id.desc())
-        .limit(300)
-        .all()
-    )
-    return [
-        {
-            "id": connection.id,
-            "name": connection.name,
-            "phone_number": connection.phone_number,
-            "status": connection.status,
-            "agency_name": agency_name,
-        }
-        for connection, agency_name in rows
-    ]
+def _sender_out(row) -> dict[str, Any]:
+    return {
+        "created": bool(row.sender_instance_name),
+        "instance_name": row.sender_instance_name,
+        "status": row.sender_status,
+        "phone": row.sender_phone,
+        "connected_at": row.sender_connected_at.isoformat() if row.sender_connected_at else None,
+        "checked_at": row.sender_checked_at.isoformat() if row.sender_checked_at else None,
+        "problem": notices.sender_problem(row),
+    }
 
 
 def _stats(db: Session) -> dict[str, Any]:
@@ -97,21 +86,12 @@ def _stats(db: Session) -> dict[str, Any]:
 
 def _settings_out(db: Session) -> dict[str, Any]:
     row = notices.get_settings_row(db)
-    connection = notices.sender_connection(db, row)
     from app.core.config import get_settings
     from app.services.email import EmailClient
 
     return {
         "enabled": bool(row.enabled),
-        "whatsapp_connection_id": row.whatsapp_connection_id,
-        "whatsapp_connection": {
-            "id": connection.id,
-            "name": connection.name,
-            "status": connection.status,
-            "phone_number": connection.phone_number,
-        }
-        if connection
-        else None,
+        "sender": _sender_out(row),
         "available_lead_days": notices.lead_days(row),
         "asaas_notifications_enabled": bool(row.asaas_notifications_enabled),
         "steps": [
@@ -129,7 +109,6 @@ def _settings_out(db: Session) -> dict[str, Any]:
         "custom_fields": notices.custom_template_fields(row),
         "variables": [{"key": key, "label": label} for key, label in notices.VARIABLES],
         "sample": notices.SAMPLE_CONTEXT,
-        "connections": _connections(db),
         "email_configured": EmailClient()._is_configured(),
         "asaas_configured": bool(get_settings().asaas_api_key),
         "daily_run_at": "08:07",
@@ -149,15 +128,12 @@ def update_billing_notice_settings(
     payload: SettingsIn, db: Session = Depends(get_db), _: User = Depends(get_current_superuser)
 ):
     row = notices.get_settings_row(db)
-    if payload.whatsapp_connection_id is not None and db.get(WhatsAppConnection, payload.whatsapp_connection_id) is None:
-        raise HTTPException(422, "Conexão de WhatsApp não encontrada.")
     turned_on = payload.enabled and not row.enabled
     lead_changed = payload.available_lead_days != notices.lead_days(row)
     if turned_on or lead_changed or row.schedule_since is None:
         # Sem envio retroativo: o que deveria ter saído antes de hoje não sai mais.
         row.schedule_since = notices.sao_paulo_today()
     row.enabled = payload.enabled
-    row.whatsapp_connection_id = payload.whatsapp_connection_id
     row.available_lead_days = payload.available_lead_days
     current = notices.step_channels(row)
     for key, value in payload.steps.items():
@@ -169,6 +145,29 @@ def update_billing_notice_settings(
     db.add(row)
     db.commit()
     return _settings_out(db)
+
+
+@router.post("/billing-notices/sender/connect")
+def connect_sender(db: Session = Depends(get_db), _: User = Depends(get_current_superuser)):
+    """Cria o WhatsApp da cobrança (uma vez) e devolve o QR code para ler no celular."""
+    try:
+        result = notices.connect_sender(db)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(502, f"Não foi possível falar com o servidor do WhatsApp: {exc}") from exc
+    return {**result, "sender": _sender_out(notices.get_settings_row(db))}
+
+
+@router.get("/billing-notices/sender/status")
+def sender_status(db: Session = Depends(get_db), _: User = Depends(get_current_superuser)):
+    row = notices.get_settings_row(db)
+    notices.refresh_sender(db, row, alert=False)
+    return _sender_out(row)
+
+
+@router.post("/billing-notices/sender/disconnect")
+def disconnect_sender(db: Session = Depends(get_db), _: User = Depends(get_current_superuser)):
+    notices.disconnect_sender(db)
+    return _sender_out(notices.get_settings_row(db))
 
 
 @router.post("/billing-notices/asaas-notifications")

@@ -35,7 +35,6 @@ from app.core.config import get_settings
 from app.models.billing_notice import BillingNoticeSend, BillingNoticeSettings
 from app.models.subscription import Subscription
 from app.models.user import User
-from app.models.whatsapp import WhatsAppConnection
 from app.services.asaas import AsaasAPIError, AsaasClient
 from app.services.billing_account import (
     covered_by_paid,
@@ -365,10 +364,102 @@ def clean_templates(raw: dict[str, Any] | None) -> dict[str, dict[str, str]]:
     return result
 
 
-def sender_connection(db: Session, settings_row: BillingNoticeSettings) -> WhatsAppConnection | None:
-    if not settings_row.whatsapp_connection_id:
-        return None
-    return db.get(WhatsAppConnection, settings_row.whatsapp_connection_id)
+# ---------------------------------------------------------------- WhatsApp da cobrança
+
+
+SENDER_INSTANCE_NAME = "roteiroonline-cobranca"
+
+
+def sender_problem(settings_row: BillingNoticeSettings) -> str | None:
+    """Por que o WhatsApp da cobrança não envia agora (None: pronto)."""
+    if not settings_row.sender_instance_name:
+        return "WhatsApp da cobrança ainda não conectado"
+    if settings_row.sender_status != "connected":
+        return "WhatsApp da cobrança desconectado"
+    return None
+
+
+def _evolution():
+    from app.services.evolution import EvolutionService
+
+    return EvolutionService()
+
+
+def refresh_sender(db: Session, settings_row: BillingNoticeSettings, *, alert: bool = True) -> str:
+    """Lê na Evolution se o WhatsApp da cobrança está conectado e grava. Se caiu (estava conectado e
+    não está mais) com os avisos ligados, avisa no Pushover."""
+    name = settings_row.sender_instance_name
+    if not name:
+        return "disconnected"
+    previous = settings_row.sender_status
+    try:
+        data = _evolution().get_connection_status(instance_name=name)
+        status = str(data.get("status") or "disconnected")
+        phone = data.get("phone")
+    except Exception as exc:  # noqa: BLE001 - Evolution fora do ar conta como desconectado
+        logger.warning("Não foi possível ler o WhatsApp da cobrança: %s", exc)
+        status, phone = "disconnected", None
+    now = datetime.now(timezone.utc)
+    settings_row.sender_status = status if status in {"connected", "connecting", "qr_needed"} else "disconnected"
+    settings_row.sender_checked_at = now
+    if settings_row.sender_status == "connected":
+        settings_row.sender_connected_at = settings_row.sender_connected_at or now
+        if isinstance(phone, str) and phone.strip():
+            settings_row.sender_phone = phone.strip()[:30]
+    else:
+        settings_row.sender_connected_at = None
+    db.add(settings_row)
+    db.commit()
+    if alert and previous == "connected" and settings_row.sender_status != "connected" and settings_row.enabled:
+        _alert_sender_down(settings_row)
+    return settings_row.sender_status
+
+
+def _alert_sender_down(settings_row: BillingNoticeSettings) -> None:
+    from app.services.webhook_notifications import notify_safely
+
+    notify_safely(
+        event_key="billing_whatsapp_disconnected",
+        context={
+            "event_label": "WhatsApp da cobrança desconectado",
+            "customer_phone": settings_row.sender_phone or "",
+            "occurred_at": sao_paulo_now().strftime("%d/%m/%Y %H:%M"),
+        },
+    )
+
+
+def connect_sender(db: Session) -> dict[str, Any]:
+    """Cria (uma vez) a instância da cobrança na Evolution e devolve o QR code para ler no celular."""
+    settings_row = get_settings_row(db)
+    evolution = _evolution()
+    name = settings_row.sender_instance_name or SENDER_INSTANCE_NAME
+    if not settings_row.sender_instance_name:
+        # Sem webhook: o número só envia; resposta de cliente não entra em caixa de entrada nenhuma.
+        evolution.create_instance(instance_name=name, with_webhook=False)
+        settings_row.sender_instance_name = name
+        db.add(settings_row)
+        db.commit()
+    if refresh_sender(db, settings_row, alert=False) == "connected":
+        return {"status": "connected", "qr_code_base64": None, "pairing_code": None}
+    qr = evolution.get_qr_code(instance_name=name)
+    settings_row.sender_status = "qr_needed"
+    db.add(settings_row)
+    db.commit()
+    return {
+        "status": "qr_needed",
+        "qr_code_base64": qr.get("qr_code_base64"),
+        "pairing_code": qr.get("pairing_code"),
+    }
+
+
+def disconnect_sender(db: Session) -> None:
+    settings_row = get_settings_row(db)
+    if settings_row.sender_instance_name:
+        _evolution().disconnect_instance(instance_name=settings_row.sender_instance_name)
+    settings_row.sender_status = "disconnected"
+    settings_row.sender_connected_at = None
+    db.add(settings_row)
+    db.commit()
 
 
 # ---------------------------------------------------------------- texto
@@ -459,14 +550,16 @@ SAMPLE_CONTEXT = {
 
 
 def send_whatsapp(db: Session, settings_row: BillingNoticeSettings, number: str, text: str) -> None:
-    from app.services.evolution import EvolutionService
-
-    connection = sender_connection(db, settings_row)
-    if connection is None:
-        raise RuntimeError("Nenhuma conexão de WhatsApp escolhida para os avisos.")
-    if str(connection.status or "").lower() != "connected":
-        raise RuntimeError(f"A conexão de WhatsApp “{connection.name}” não está conectada.")
-    EvolutionService().send_text_target(target=number, text=text, instance_name=connection.instance_name)
+    if not settings_row.sender_instance_name:
+        raise RuntimeError("O WhatsApp da cobrança ainda não foi conectado.")
+    if settings_row.sender_status != "connected" and refresh_sender(db, settings_row) != "connected":
+        raise RuntimeError("O WhatsApp da cobrança está desconectado. Leia o QR code em Avisos de cobrança.")
+    try:
+        _evolution().send_text_target(target=number, text=text, instance_name=settings_row.sender_instance_name)
+    except Exception:
+        # Falhou: confere se a conexão caiu (e avisa no Pushover se caiu).
+        refresh_sender(db, settings_row)
+        raise
 
 
 def send_email(to_email: str, subject: str, html_body: str, text_body: str) -> None:
@@ -791,12 +884,7 @@ def plan_notices(
     since = schedule_since(settings_row, today)
     channels_on = step_channels(settings_row)
     replaced = replaced_payment_ids(db, [str(item.get("id") or "") for item in payments])
-    connection = sender_connection(db, settings_row)
-    whatsapp_problem = None
-    if connection is None:
-        whatsapp_problem = "Nenhuma conexão de WhatsApp escolhida"
-    elif str(connection.status or "").lower() != "connected":
-        whatsapp_problem = "Conexão de WhatsApp desconectada"
+    whatsapp_problem = sender_problem(settings_row)
     day_list = list(days)
     payment_ids = [str(item.get("id") or "") for item in payments]
     # "Fatura disponível" que já saiu (ou foi cancelada) num dia anterior: não sai de novo e não
@@ -975,6 +1063,11 @@ def hourly_tick(session_factory: Callable[[], Session], now: datetime | None = N
         settings_row = get_settings_row(db)
         if not settings_row.enabled:
             return
+        # Confere a conexão toda hora: se cair, o Pushover avisa antes da rotina das 08:07.
+        try:
+            refresh_sender(db, settings_row)
+        except Exception:
+            logger.exception("Erro ao conferir o WhatsApp da cobrança")
         current = (now or sao_paulo_now()).astimezone(BRAZIL_TZ)
         if daily_due(current) and mark_event_once(
             db,

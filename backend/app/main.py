@@ -79,6 +79,19 @@ if engine.dialect.name == "postgresql":
                 "AND event_key IN ('purchase_approved', 'subscription_created', 'subscription_renewed', 'upgrade_realizado')"
             ))
         connection.execute(text("ALTER TABLE billing_notice_settings ADD COLUMN IF NOT EXISTS schedule_since DATE"))
+        # WhatsApp próprio da cobrança (a tabela pode ter sido criada antes destas colunas).
+        connection.execute(text("ALTER TABLE billing_notice_settings ADD COLUMN IF NOT EXISTS sender_instance_name VARCHAR(120)"))
+        connection.execute(text(
+            "ALTER TABLE billing_notice_settings ADD COLUMN IF NOT EXISTS sender_status VARCHAR(20) NOT NULL DEFAULT 'disconnected'"
+        ))
+        connection.execute(text("ALTER TABLE billing_notice_settings ADD COLUMN IF NOT EXISTS sender_phone VARCHAR(30)"))
+        connection.execute(text(
+            "ALTER TABLE billing_notice_settings ADD COLUMN IF NOT EXISTS sender_connected_at TIMESTAMP WITH TIME ZONE"
+        ))
+        connection.execute(text(
+            "ALTER TABLE billing_notice_settings ADD COLUMN IF NOT EXISTS sender_checked_at TIMESTAMP WITH TIME ZONE"
+        ))
+        # A coluna antiga da escolha de conexão de agência deixa de ser usada (fica, sem efeito).
         connection.execute(text("ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS deactivated_at TIMESTAMP WITH TIME ZONE"))
         connection.execute(text(
             "ALTER TABLE subscriptions ADD COLUMN IF NOT EXISTS deactivation_estimated BOOLEAN NOT NULL DEFAULT FALSE"

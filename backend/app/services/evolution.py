@@ -88,11 +88,11 @@ class EvolutionService:
         detail = " | ".join(errors) if errors else "unknown error"
         raise RuntimeError(f"Evolution request failed for all candidates: {detail}")
 
-    def create_instance(self, instance_name: str | None = None) -> dict[str, Any]:
+    def create_instance(self, instance_name: str | None = None, *, with_webhook: bool = True) -> dict[str, Any]:
         name = (instance_name or self.test_instance_name).strip()
         webhook_url = (
             (self.settings.evolution_webhook_url or "").strip()
-            if self.settings.whatsapp_inbox_webhooks_enabled
+            if self.settings.whatsapp_inbox_webhooks_enabled and with_webhook
             else ""
         )
         events = [

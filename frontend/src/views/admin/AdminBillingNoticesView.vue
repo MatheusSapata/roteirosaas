@@ -27,8 +27,8 @@
         icon="wa"
         :tone="whatsappTone"
         label="WhatsApp que envia"
-        :value="settings.whatsapp_connection?.name || 'Não escolhido'"
-        :hint="settings.whatsapp_connection ? connectionStatusLabel(settings.whatsapp_connection.status) : 'Escolha em Configuração'"
+        :value="connectionStatusLabel(settings.sender.created ? settings.sender.status : 'not_created')"
+        :hint="settings.sender.phone ? `Número ${formatPhone(settings.sender.phone)}` : 'Conecte em Configuração'"
       />
       <AdminMasterKpi icon="check" tone="info" label="Enviados em 7 dias" :value="formatInt(settings.stats.sent_7d)" />
       <AdminMasterKpi
@@ -59,18 +59,51 @@
           </button>
         </div>
 
-        <div class="am-grid-2">
-          <div class="am-field">
-            <label for="bn-connection">WhatsApp que envia as mensagens</label>
-            <select id="bn-connection" v-model="form.whatsapp_connection_id" class="am-input">
-              <option :value="null">Nenhum (não envia por WhatsApp)</option>
-              <option v-for="connection in settings.connections" :key="connection.id" :value="connection.id">
-                {{ connection.name }}{{ connection.phone_number ? ` · ${connection.phone_number}` : "" }}{{ connection.agency_name ? ` · ${connection.agency_name}` : "" }} — {{ connectionStatusLabel(connection.status) }}
-              </option>
-            </select>
-            <p class="setting-hint mt-1.5">As conexões ficam em Admin master › WhatsApp.</p>
+        <div class="sender-card">
+          <div class="sender-head">
+            <div>
+              <p class="setting-title">WhatsApp da cobrança</p>
+              <p class="setting-hint">
+                Conexão só para os avisos de cobrança, separada das conexões das agências: não aparece em caixa de entrada
+                nenhuma e nenhuma agência consegue desconectar. Use um número dedicado à cobrança.
+              </p>
+            </div>
+            <span class="am-badge am-dot" :class="whatsappTone === 'success' ? 'am-tone-success' : whatsappTone === 'danger' ? 'am-tone-danger' : 'am-tone-neutral'">
+              {{ connectionStatusLabel(settings.sender.created ? settings.sender.status : "not_created") }}
+            </span>
           </div>
-          <div class="am-field">
+          <p v-if="settings.sender.phone && settings.sender.status === 'connected'" class="setting-hint">
+            Enviando pelo número <b>{{ formatPhone(settings.sender.phone) }}</b>{{ settings.sender.connected_at ? ` · conectado em ${dateTime(settings.sender.connected_at)}` : "" }}.
+          </p>
+          <div v-if="qrCode" class="qr-box">
+            <img :src="qrCode" alt="QR code para conectar o WhatsApp da cobrança" />
+            <div>
+              <p class="setting-title">Leia com o celular do número da cobrança</p>
+              <ol class="setting-hint qr-steps">
+                <li>Abra o WhatsApp no celular.</li>
+                <li>Toque em Mais opções (⋮) ou Configurações › Aparelhos conectados.</li>
+                <li>Toque em Conectar um aparelho e aponte para este código.</li>
+              </ol>
+              <p class="setting-hint mt-2"><span class="am-spinner align-middle"></span> Esperando a leitura…</p>
+            </div>
+          </div>
+          <p v-else-if="pairingCode" class="setting-hint">Código de pareamento: <b class="am-mono">{{ pairingCode }}</b></p>
+          <div class="flex flex-wrap gap-2">
+            <button v-if="settings.sender.status !== 'connected'" type="button" class="am-btn am-btn-primary am-btn-sm" :disabled="senderBusy" @click="connectSender">
+              <AmIcon name="wa" />{{ senderBusy ? "Abrindo…" : settings.sender.created ? "Mostrar QR code" : "Conectar WhatsApp da cobrança" }}
+            </button>
+            <button v-if="settings.sender.created" type="button" class="am-btn am-btn-sm" :disabled="senderBusy" @click="refreshSender(false)">
+              <AmIcon name="refresh" />Conferir conexão
+            </button>
+            <button v-if="settings.sender.status === 'connected'" type="button" class="am-btn am-btn-sm" :disabled="senderBusy" @click="disconnectSender">
+              Desconectar
+            </button>
+          </div>
+          <p class="setting-hint">A conexão é conferida toda hora. Se cair, chega um aviso no Pushover (Webhooks e push › “WhatsApp da cobrança desconectado”).</p>
+        </div>
+
+        <div class="am-grid-2">
+          <div class="am-field" style="grid-column: 1 / -1">
             <label for="bn-lead">“Fatura disponível” sai quando faltam até</label>
             <div class="flex items-center gap-2">
               <input id="bn-lead" v-model.number="form.available_lead_days" class="am-input" style="max-width: 96px" type="number" min="1" max="60" />
@@ -112,7 +145,7 @@
           </li>
           <li :class="whatsappTone === 'success' ? 'ok' : 'bad'">
             <AmIcon :name="whatsappTone === 'success' ? 'check' : 'alert'" />
-            {{ whatsappTone === "success" ? "WhatsApp conectado." : "WhatsApp sem conexão ativa: as mensagens de WhatsApp vão falhar." }}
+            {{ whatsappTone === "success" ? "WhatsApp da cobrança conectado." : "WhatsApp da cobrança não conectado: as mensagens de WhatsApp vão falhar." }}
           </li>
         </ul>
 
@@ -385,7 +418,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import api from "../../services/api";
 import AmIcon from "../../components/admin/master/AmIcon.vue";
 import AdminMasterHeader from "../../components/admin/master/AdminMasterHeader.vue";
@@ -394,11 +427,18 @@ import AdminMasterKpi from "../../components/admin/master/AdminMasterKpi.vue";
 type ChannelId = "whatsapp" | "email";
 type Templates = Record<string, { whatsapp: string; email_subject: string; email_body: string }>;
 type Channels = Record<string, Record<ChannelId, boolean>>;
-type Connection = { id: number; name: string; phone_number: string | null; status: string; agency_name?: string | null };
+type Sender = {
+  created: boolean;
+  instance_name: string | null;
+  status: string;
+  phone: string | null;
+  connected_at: string | null;
+  checked_at: string | null;
+  problem: string | null;
+};
 type Settings = {
   enabled: boolean;
-  whatsapp_connection_id: number | null;
-  whatsapp_connection: Connection | null;
+  sender: Sender;
   available_lead_days: number;
   asaas_notifications_enabled: boolean;
   steps: { key: string; label: string; description: string; kind: string }[];
@@ -408,7 +448,6 @@ type Settings = {
   custom_fields: Record<string, string[]>;
   variables: { key: string; label: string }[];
   sample: Record<string, string>;
-  connections: Connection[];
   email_configured: boolean;
   asaas_configured: boolean;
   daily_run_at: string;
@@ -469,7 +508,6 @@ const error = ref("");
 const message = ref("");
 const form = reactive({
   enabled: false,
-  whatsapp_connection_id: null as number | null,
   available_lead_days: 10,
   channels: {} as Channels,
   templates: {} as Templates
@@ -490,7 +528,6 @@ function flash(text: string) {
 function applySettings(data: Settings) {
   settings.value = data;
   form.enabled = data.enabled;
-  form.whatsapp_connection_id = data.whatsapp_connection_id;
   form.available_lead_days = data.available_lead_days;
   form.channels = JSON.parse(JSON.stringify(data.channels));
   form.templates = JSON.parse(JSON.stringify(data.templates));
@@ -511,14 +548,13 @@ async function load() {
 }
 
 async function save() {
-  if (form.enabled && !form.whatsapp_connection_id && Object.values(form.channels).some(c => c.whatsapp)) {
-    if (!window.confirm("Nenhum WhatsApp foi escolhido: as mensagens de WhatsApp vão falhar. Salvar assim mesmo?")) return;
+  if (form.enabled && settings.value?.sender.status !== "connected" && Object.values(form.channels).some(c => c.whatsapp)) {
+    if (!window.confirm("O WhatsApp da cobrança não está conectado: as mensagens de WhatsApp vão falhar. Salvar assim mesmo?")) return;
   }
   saving.value = true;
   try {
     const { data } = await api.put<Settings>("/admin/billing-notices/settings", {
       enabled: form.enabled,
-      whatsapp_connection_id: form.whatsapp_connection_id,
       available_lead_days: form.available_lead_days,
       steps: form.channels,
       templates: form.templates
@@ -758,12 +794,105 @@ watch(tab, value => {
 // ---------------------------------------------------------------- formatos
 
 const whatsappTone = computed(() => {
-  const connection = settings.value?.whatsapp_connection;
-  if (!connection) return "neutral";
-  return connection.status === "connected" ? "success" : "danger";
+  const sender = settings.value?.sender;
+  if (!sender?.created) return "neutral";
+  return sender.status === "connected" ? "success" : "danger";
 });
 const connectionStatusLabel = (status: string) =>
-  ({ connected: "Conectado", connecting: "Conectando", disconnected: "Desconectado" } as Record<string, string>)[status] || status;
+  (
+    {
+      connected: "Conectado",
+      connecting: "Conectando",
+      qr_needed: "Esperando o QR code",
+      disconnected: "Desconectado",
+      not_created: "Não conectado"
+    } as Record<string, string>
+  )[status] || status;
+const formatPhone = (value: string) => {
+  const digits = value.replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "");
+  if (digits.length === 11) return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  if (digits.length === 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  return value;
+};
+
+// ---------------------------------------------------------------- WhatsApp da cobrança
+
+const qrCode = ref<string | null>(null);
+const pairingCode = ref<string | null>(null);
+const senderBusy = ref(false);
+let senderPoll: number | undefined;
+let senderPollUntil = 0;
+
+function stopSenderPoll() {
+  window.clearInterval(senderPoll);
+  senderPoll = undefined;
+}
+
+async function refreshSender(quiet: boolean) {
+  try {
+    const { data } = await api.get<Sender>("/admin/billing-notices/sender/status");
+    if (settings.value) settings.value = { ...settings.value, sender: data };
+    if (data.status === "connected") {
+      if (qrCode.value || pairingCode.value) flash("WhatsApp da cobrança conectado.");
+      qrCode.value = pairingCode.value = null;
+      stopSenderPoll();
+    } else if (!quiet && !qrCode.value) {
+      error.value = "O WhatsApp da cobrança não está conectado. Use “Mostrar QR code” para conectar.";
+    }
+  } catch (e) {
+    if (!quiet) error.value = detail(e, "Não foi possível conferir a conexão.");
+  }
+}
+
+async function connectSender() {
+  senderBusy.value = true;
+  try {
+    const { data } = await api.post("/admin/billing-notices/sender/connect", {}, { timeout: 60000 });
+    if (settings.value) settings.value = { ...settings.value, sender: data.sender };
+    if (data.status === "connected") {
+      qrCode.value = pairingCode.value = null;
+      flash("WhatsApp da cobrança já está conectado.");
+      return;
+    }
+    const raw = data.qr_code_base64 as string | null;
+    qrCode.value = raw ? (raw.startsWith("data:") ? raw : `data:image/png;base64,${raw}`) : null;
+    pairingCode.value = data.pairing_code || null;
+    if (!qrCode.value && !pairingCode.value) {
+      error.value = "O servidor do WhatsApp não devolveu o QR code. Tente de novo em alguns segundos.";
+      return;
+    }
+    // Confere a cada 3 s por até 2 min; o QR code expira e é preciso pedir outro.
+    stopSenderPoll();
+    senderPollUntil = Date.now() + 120000;
+    senderPoll = window.setInterval(() => {
+      if (Date.now() > senderPollUntil) {
+        stopSenderPoll();
+        qrCode.value = pairingCode.value = null;
+        error.value = "O QR code expirou. Clique em “Mostrar QR code” para gerar outro.";
+        return;
+      }
+      refreshSender(true);
+    }, 3000);
+  } catch (e) {
+    error.value = detail(e, "Não foi possível gerar o QR code.");
+  } finally {
+    senderBusy.value = false;
+  }
+}
+
+async function disconnectSender() {
+  if (!window.confirm("Desconectar o WhatsApp da cobrança? Os avisos por WhatsApp param até conectar de novo.")) return;
+  senderBusy.value = true;
+  try {
+    const { data } = await api.post<Sender>("/admin/billing-notices/sender/disconnect");
+    if (settings.value) settings.value = { ...settings.value, sender: data };
+    flash("WhatsApp da cobrança desconectado.");
+  } catch (e) {
+    error.value = detail(e, "Não foi possível desconectar.");
+  } finally {
+    senderBusy.value = false;
+  }
+}
 const stateLabel = (state: string) =>
   (
     {
@@ -802,6 +931,7 @@ function dayLabel(value: string) {
 }
 
 onMounted(load);
+onBeforeUnmount(stopSenderPoll);
 </script>
 
 <style scoped>
@@ -825,6 +955,41 @@ onMounted(load);
   font-size: 12.5px;
   color: var(--muted-foreground);
   line-height: 1.5;
+}
+.sender-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+.sender-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.qr-box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 18px;
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--muted);
+}
+.qr-box img {
+  width: 220px;
+  height: 220px;
+  padding: 8px;
+  border-radius: 10px;
+  background: #fff;
+}
+.qr-steps {
+  margin-top: 6px;
+  padding-left: 18px;
+  list-style: decimal;
 }
 .checks {
   display: flex;
