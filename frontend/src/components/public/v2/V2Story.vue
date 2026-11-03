@@ -69,7 +69,7 @@ import { computed, inject, onBeforeUnmount, onMounted, ref, toRef, watch } from 
 import { STATIC_RENDER_KEY } from "./useEntrance";
 import type { StorySection } from "../../../types/page";
 import { resolveMediaUrl } from "../../../utils/media";
-import { extractYoutubeId, normalizeYoutubeEmbedUrl } from "../../../utils/video";
+import { extractYoutubeId, toVideoEmbedUrl } from "../../../utils/video";
 import V2Section from "./V2Section.vue";
 import V2Img from "./V2Img.vue";
 import V2Head from "./V2Head.vue";
@@ -97,12 +97,16 @@ const imageLeft = computed(() => props.section.imagePosition === "left");
 const media = computed(() => {
   const videos = [...(Array.isArray(props.section.videoUrls) ? props.section.videoUrls : [])];
   const single = (props.section.videoUrl || "").trim();
-  if (single && !videos.includes(single)) videos.unshift(single);
+  if (single && !videos.some(url => typeof url === "string" && url.trim() === single)) videos.unshift(single);
+  const seen = new Set<string>();
   const videoItems = videos
     .map(url => (typeof url === "string" ? url.trim() : ""))
     .filter(Boolean)
     .map(url => {
-      const embed = normalizeYoutubeEmbedUrl(url);
+      // Só YouTube e Vimeo viram vídeo; outro link qualquer não entra num iframe da página.
+      const embed = toVideoEmbedUrl(url);
+      if (!embed || seen.has(embed)) return null;
+      seen.add(embed);
       const id = extractYoutubeId(url);
       return embed ? { type: "video" as const, url: embed, thumb: id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : "" } : null;
     })
