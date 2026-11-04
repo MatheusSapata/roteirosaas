@@ -344,7 +344,7 @@ watch(
   }
 );
 
-const companyLink = (company: MasterUserCompany) => ({ path: "/admin/administracao/empresas", query: { empresa: String(company.id) } });
+const companyLink = (company: MasterUserCompany) => ({ path: `/admin/administracao/empresas/${company.id}` });
 const whatsappLink = (person: MasterUser) => {
   const digits = String(person.whatsapp || "").replace(/\D/g, "");
   if (!digits) return "";

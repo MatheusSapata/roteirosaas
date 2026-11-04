@@ -334,6 +334,12 @@ const platformRoutes: RouteRecordRaw[] = [
         meta: { requiresSuperuser: true }
       },
       {
+        path: "administracao/empresas/:id(\\d+)",
+        name: "admin-management-company",
+        component: () => import("../views/admin/CompanyDetailView.vue"),
+        meta: { requiresSuperuser: true }
+      },
+      {
         path: "administracao/armazenamento",
         name: "admin-management-storage",
         component: () => import("../views/admin/AdminManagementView.vue"),

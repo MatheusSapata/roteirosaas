@@ -113,57 +113,18 @@ def list_companies(db: Session = Depends(get_db), _: User = Depends(get_current_
         .all()
     )
     archives = {record.agency_id: record for record in db.query(AgencyMediaArchive).all()}
-    items: list[CompanyOut] = []
-    for agency, owner in agencies_with_owner(db):
-        status = company_status(owner, now)
-        record = archives.get(agency.id)
-        stage = record.stage if record else "hot"
-        subscription = owner.subscription if owner else None
-        total, published = pages.get(agency.id, (0, 0))
-        items.append(CompanyOut(
-            id=agency.id,
-            name=agency.name,
-            slug=agency.slug,
-            owner_id=owner.id if owner else None,
-            owner_name=owner.name if owner else None,
-            owner_email=owner.email if owner else None,
-            owner_whatsapp=owner.whatsapp if owner else None,
-            owner_is_superuser=bool(owner and owner.is_superuser),
-            plan=(owner.plan if owner else None),
-            status=status.key,
-            status_label=status.label,
-            online=status.online,
-            status_since=status.since,
-            status_days=status.days,
-            since_estimated=status.estimated,
-            access_until=status.ends,
-            valid_until=subscription.valid_until if subscription else None,
-            trial_plan=owner.trial_plan if owner else None,
-            trial_ends_at=owner.trial_ends_at if owner else None,
-            subscription_provider=subscription.provider if subscription else None,
-            subscription_status=subscription.status if subscription else None,
-            subscription_asaas_subscription_id=subscription.asaas_subscription_id if subscription else None,
-            subscription_cakto_order_id=subscription.cakto_order_id if subscription else None,
-            subscription_cakto_subscription_code=subscription.cakto_subscription_code if subscription else None,
-            billing_cycle=subscription.billing_cycle if subscription else None,
-            payment_method=subscription.payment_method_type if subscription else None,
-            mrr_amount=float(subscription.mrr_amount or 0) if subscription else 0,
-            failed_attempts=int(subscription.failed_attempts or 0) if subscription else 0,
-            members_count=sum(1 for rel in agency.users or [] if rel.user and not rel.hidden_from_team),
-            # Cadastro = criação da conta do dono (a agência pode nascer só no pagamento).
-            created_at=(owner.created_at if owner and owner.created_at else agency.created_at),
-            last_access_at=last_access.get(agency.id),
-            pages_total=total,
-            pages_published=published,
+    items: list[CompanyOut] = [
+        _company_out(
+            agency,
+            owner,
+            now,
+            pages=pages.get(agency.id, (0, 0)),
             visits_30d=int(visits.get(agency.id) or 0),
-            media_stage=stage,
-            media_files=record.files_count if record else 0,
-            media_bytes=int(record.total_bytes or 0) if record else 0,
-            media_shared_skipped=record.shared_skipped if record else 0,
-            media_measured_at=record.measured_at if record else None,
-            media_error=record.last_error if record else None,
-            next_step=_next_step(status.key, status.days, stage),
-        ))
+            last_access_at=last_access.get(agency.id),
+            record=archives.get(agency.id),
+        )
+        for agency, owner in agencies_with_owner(db)
+    ]
     counts: dict[str, int] = {}
     for item in items:
         counts[item.status] = counts.get(item.status, 0) + 1
@@ -186,6 +147,96 @@ def list_companies(db: Session = Depends(get_db), _: User = Depends(get_current_
     oldest = datetime.min.replace(tzinfo=timezone.utc)
     items.sort(key=lambda item: (_aware(item.created_at) or oldest, item.id), reverse=True)
     return CompaniesResponse(items=items, summary=summary)
+
+
+def _company_out(
+    agency: Agency,
+    owner: User | None,
+    now: datetime,
+    *,
+    pages: tuple[int, int],
+    visits_30d: int,
+    last_access_at: datetime | None,
+    record: AgencyMediaArchive | None,
+) -> CompanyOut:
+    status = company_status(owner, now)
+    stage = record.stage if record else "hot"
+    subscription = owner.subscription if owner else None
+    total, published = pages
+    return CompanyOut(
+        id=agency.id,
+        name=agency.name,
+        slug=agency.slug,
+        owner_id=owner.id if owner else None,
+        owner_name=owner.name if owner else None,
+        owner_email=owner.email if owner else None,
+        owner_whatsapp=owner.whatsapp if owner else None,
+        owner_is_superuser=bool(owner and owner.is_superuser),
+        plan=(owner.plan if owner else None),
+        status=status.key,
+        status_label=status.label,
+        online=status.online,
+        status_since=status.since,
+        status_days=status.days,
+        since_estimated=status.estimated,
+        access_until=status.ends,
+        valid_until=subscription.valid_until if subscription else None,
+        trial_plan=owner.trial_plan if owner else None,
+        trial_ends_at=owner.trial_ends_at if owner else None,
+        subscription_provider=subscription.provider if subscription else None,
+        subscription_status=subscription.status if subscription else None,
+        subscription_asaas_subscription_id=subscription.asaas_subscription_id if subscription else None,
+        subscription_cakto_order_id=subscription.cakto_order_id if subscription else None,
+        subscription_cakto_subscription_code=subscription.cakto_subscription_code if subscription else None,
+        billing_cycle=subscription.billing_cycle if subscription else None,
+        payment_method=subscription.payment_method_type if subscription else None,
+        mrr_amount=float(subscription.mrr_amount or 0) if subscription else 0,
+        failed_attempts=int(subscription.failed_attempts or 0) if subscription else 0,
+        members_count=sum(1 for rel in agency.users or [] if rel.user and not rel.hidden_from_team),
+        # Cadastro = criação da conta do dono (a agência pode nascer só no pagamento).
+        created_at=(owner.created_at if owner and owner.created_at else agency.created_at),
+        last_access_at=last_access_at,
+        pages_total=total,
+        pages_published=published,
+        visits_30d=visits_30d,
+        media_stage=stage,
+        media_files=record.files_count if record else 0,
+        media_bytes=int(record.total_bytes or 0) if record else 0,
+        media_shared_skipped=record.shared_skipped if record else 0,
+        media_measured_at=record.measured_at if record else None,
+        media_error=record.last_error if record else None,
+        next_step=_next_step(status.key, status.days, stage),
+    )
+
+
+def build_company(db: Session, agency: Agency) -> CompanyOut:
+    """A mesma linha da lista, para uma empresa só (página da empresa)."""
+    owner = agency_owner(agency)
+    total, published = db.query(
+        func.count(Page.id), func.count(Page.id).filter(Page.status == "published")
+    ).filter(Page.agency_id == agency.id).one()
+    visits = (
+        db.query(func.coalesce(func.sum(PageVisitStats.visits), 0))
+        .join(Page, PageVisitStats.page_id == Page.id)
+        .filter(Page.agency_id == agency.id, PageVisitStats.date >= date.today() - timedelta(days=30))
+        .scalar()
+    )
+    last_access = (
+        db.query(func.max(UserSession.last_seen_at))
+        .join(AgencyUser, UserSession.user_id == AgencyUser.user_id)
+        .filter(AgencyUser.agency_id == agency.id)
+        .scalar()
+    )
+    record = db.query(AgencyMediaArchive).filter(AgencyMediaArchive.agency_id == agency.id).first()
+    return _company_out(
+        agency,
+        owner,
+        datetime.now(timezone.utc),
+        pages=(int(total or 0), int(published or 0)),
+        visits_30d=int(visits or 0),
+        last_access_at=last_access,
+        record=record,
+    )
 
 
 def _aware(value: datetime | None) -> datetime | None:
@@ -314,6 +365,7 @@ class CompanyTrackingOut(BaseModel):
 class CompanyDetailOut(BaseModel):
     id: int
     slug: str
+    company: Optional[CompanyOut] = None
     members: list[CompanyMemberOut]
     pages: list[CompanyPageOut]
     tracking: list[CompanyTrackingOut]
@@ -381,4 +433,6 @@ def company_detail(agency_id: int, db: Session = Depends(get_db), _: User = Depe
         if owner
         else []
     )
-    return CompanyDetailOut(id=agency.id, slug=agency.slug, members=members, pages=pages, tracking=tracking)
+    return CompanyDetailOut(
+        id=agency.id, slug=agency.slug, company=build_company(db, agency), members=members, pages=pages, tracking=tracking
+    )

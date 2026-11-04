@@ -163,7 +163,6 @@
       </div>
     </section>
 
-    <CompanyDrawer :company="selectedCompany" :free-days="summary.rules.free_access_days || 7" @close="closeCompany" @changed="handleChanged" />
     <CreateCompanyDrawer :open="createOpen" @close="createOpen = false" @created="handleChanged" />
   </section>
 </template>
@@ -177,7 +176,6 @@ import AdminMasterHeader from "./master/AdminMasterHeader.vue";
 import AdminMasterKpi from "./master/AdminMasterKpi.vue";
 import { useSelection, useTableSort } from "./master/useTableSort";
 import { daysSince, daysUntil, formatDate, formatInt, formatMoney, gatewayLabel, planLabel, plural, relativeDay, statusTone } from "./master/format";
-import CompanyDrawer from "./companies/CompanyDrawer.vue";
 import CreateCompanyDrawer from "./companies/CreateCompanyDrawer.vue";
 import { billingProvider, isCombo, statusDetail } from "./companies/companyStatus";
 
@@ -327,19 +325,28 @@ watch(totalPages, total => {
 const selection = useSelection(pageItems);
 const selectedItems = computed(() => items.value.filter(item => selection.selected.value.includes(item.id)));
 
-// ---------- Empresa aberta (fica no endereço para dar para compartilhar) ----------
-const selectedId = ref<number | null>(Number(firstQuery(route.query.empresa)) || null);
-const selectedCompany = computed(() => items.value.find(item => item.id === selectedId.value) || null);
+// ---------- Empresa aberta: página própria (a lista guarda o filtro e a busca para a volta) ----------
+const selectedId = ref<number | null>(null);
+const listQuery = () => {
+  const next: Record<string, string> = {};
+  const filterKey = Object.keys(queryFilters).find(key => queryFilters[key] === filter.value);
+  if (filter.value !== "all" && filterKey) next.filtro = filterKey;
+  if (query.value.trim()) next.busca = query.value.trim();
+  return next;
+};
 const openCompany = (item: Company) => {
   selectedId.value = item.id;
-  void router.replace({ query: { ...route.query, empresa: String(item.id) } });
+  void router.push({ path: `/admin/administracao/empresas/${item.id}`, query: listQuery() });
 };
-const closeCompany = () => {
-  selectedId.value = null;
+// Links antigos (?empresa=ID) abriam o painel lateral: agora vão para a página da empresa.
+const legacyId = Number(firstQuery(route.query.empresa)) || 0;
+if (legacyId) {
   const next = { ...route.query };
   delete next.empresa;
-  void router.replace({ query: next });
-};
+  void router.replace({ path: `/admin/administracao/empresas/${legacyId}`, query: next });
+}
+// Aviso de quem voltou da página da empresa (ex.: empresa excluída).
+const backNotice = firstQuery(route.query.aviso);
 watch(
   () => route.query.filtro,
   value => {
@@ -408,7 +415,15 @@ const load = async (keepMessage = false) => {
   }
 };
 
-onMounted(() => load());
+onMounted(async () => {
+  await load();
+  if (backNotice) {
+    successMessage.value = backNotice;
+    const next = { ...route.query };
+    delete next.aviso;
+    void router.replace({ query: next });
+  }
+});
 </script>
 
 <style scoped>

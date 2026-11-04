@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session, aliased
 
 from app.api.deps import get_current_superuser, get_db
 from app.api.v1.endpoints.billing import set_subscription_cancelled
+from app.services.admin_audit import record_admin_action, subscription_snapshot
 from app.core.config import get_settings
 from app.models.cakto import CaktoOnboardingToken
 from app.models.cakto import CaktoEventLog
@@ -1028,7 +1029,7 @@ def revoke_user_sessions(
 def grant_trial(
     user_id: int,
     payload: TrialRequest,
-    _: User = Depends(get_current_superuser),
+    admin: User = Depends(get_current_superuser),
     db: Session = Depends(get_db),
 ) -> AdminUserOut:
     user = db.query(User).filter(User.id == user_id).first()
@@ -1037,10 +1038,19 @@ def grant_trial(
     # Conta bloqueada pelo fim de um teste teve todas as páginas despublicadas: voltam ao ar,
     # como na reativação por pagamento.
     was_trial_blocked = bool(user.trial_blocked)
+    before = subscription_snapshot(user)
     start_trial(user, payload.plan, payload.days)
     if was_trial_blocked:
         republish_all_user_pages(user, db)
     db.add(user)
+    record_admin_action(
+        db,
+        actor=admin,
+        target_user_id=user.id,
+        action="grant_trial",
+        summary=f"Liberou {payload.days} dias de teste do plano {payload.plan}.",
+        details={"before": before, "after": subscription_snapshot(user)},
+    )
     db.commit()
     db.refresh(user)
     return user
@@ -1221,7 +1231,7 @@ def list_global_agency_admins(
 def update_user_subscription_admin(
     user_id: int,
     payload: AdminSubscriptionUpdateRequest,
-    _: User = Depends(get_current_superuser),
+    admin: User = Depends(get_current_superuser),
     db: Session = Depends(get_db),
 ) -> AdminUserOut:
     user = db.query(User).filter(User.id == user_id).first()
@@ -1233,6 +1243,7 @@ def update_user_subscription_admin(
         raise HTTPException(status_code=404, detail="Assinatura não encontrada.")
 
     updates_applied = False
+    before = subscription_snapshot(user)
 
     if payload.plan is not None:
         plan = str(payload.plan).strip().lower()
@@ -1267,6 +1278,22 @@ def update_user_subscription_admin(
         raise HTTPException(status_code=400, detail="Nenhuma alteração informada.")
 
     db.add_all([user, subscription])
+    after = subscription_snapshot(user)
+    changes = []
+    if payload.plan is not None:
+        changes.append(f"plano {before['plan'] or '—'} → {after['plan']}")
+    if payload.status is not None:
+        changes.append(f"situação {before['status'] or '—'} → {after['status']}")
+    if payload.valid_until is not None:
+        changes.append(f"validade {(before['valid_until'] or '—')[:10]} → {(after['valid_until'] or '—')[:10]}")
+    record_admin_action(
+        db,
+        actor=admin,
+        target_user_id=user.id,
+        action="subscription_update",
+        summary="Alterou " + ", ".join(changes) + ".",
+        details={"before": before, "after": after},
+    )
     db.commit()
     db.refresh(user)
     return user
@@ -1276,7 +1303,7 @@ def update_user_subscription_admin(
 def refund_user_subscription(
     user_id: int,
     payload: RefundRequest,
-    _: User = Depends(get_current_superuser),
+    admin: User = Depends(get_current_superuser),
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
     user = (
@@ -1304,11 +1331,20 @@ def refund_user_subscription(
             detail = str(raw_detail)
         raise HTTPException(status_code=502, detail=detail) from exc
 
+    before = subscription_snapshot(user)
     set_subscription_cancelled(subscription)
     user.plan = "free"
     user.is_active = False
     unpublish_all_user_pages(user, db)
     db.add_all([user, subscription])
+    record_admin_action(
+        db,
+        actor=admin,
+        target_user_id=user.id,
+        action="refund",
+        summary=f"Pediu reembolso na Cakto (pedido {subscription.cakto_order_id or '—'}) e bloqueou a conta.",
+        details={"before": before, "after": subscription_snapshot(user), "reason": payload.reason},
+    )
     db.commit()
     try:
         mark_viajechat_cancelled(
@@ -1325,7 +1361,7 @@ def refund_user_subscription(
 @router.post("/users/{user_id}/asaas-cancel-immediate")
 def admin_cancel_asaas_immediately(
     user_id: int,
-    _: User = Depends(get_current_superuser),
+    admin: User = Depends(get_current_superuser),
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
     user = db.query(User).filter(User.id == user_id).first()
@@ -1413,12 +1449,21 @@ def admin_cancel_asaas_immediately(
         else:
             logger.info("Cakto API não configurada. Cancelamento remoto ignorado para subscription_id=%s", subscription.id)
 
+    before = subscription_snapshot(user)
     subscription.status = "inactive"
     subscription.valid_until = None
     subscription.failed_attempts = 3
     subscription.mrr_amount = 0
     user.is_active = False
     db.add_all([user, subscription])
+    record_admin_action(
+        db,
+        actor=admin,
+        target_user_id=user.id,
+        action="cancel_immediate",
+        summary=f"Cancelou a assinatura agora ({provider or 'sem cobrança'}).",
+        details={"before": before, "after": subscription_snapshot(user)},
+    )
     db.commit()
     try:
         mark_viajechat_cancelled(
@@ -1434,7 +1479,7 @@ def admin_cancel_asaas_immediately(
 @router.post("/users/{user_id}/asaas-cancel-at-period-end")
 def admin_schedule_asaas_cancel_at_period_end(
     user_id: int,
-    _: User = Depends(get_current_superuser),
+    admin: User = Depends(get_current_superuser),
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
     user = db.query(User).filter(User.id == user_id).first()
@@ -1446,10 +1491,19 @@ def admin_schedule_asaas_cancel_at_period_end(
     if not subscription.valid_until:
         raise HTTPException(status_code=400, detail="Não foi possível determinar a validade atual da assinatura.")
 
+    before = subscription_snapshot(user)
     subscription.status = "cancel_at_period_end"
     user.is_active = True
     db.add(subscription)
     db.add(user)
+    record_admin_action(
+        db,
+        actor=admin,
+        target_user_id=user.id,
+        action="schedule_cancel",
+        summary=f"Programou o cancelamento para o fim da validade ({subscription.valid_until:%d/%m/%Y}).",
+        details={"before": before, "after": subscription_snapshot(user)},
+    )
     db.commit()
     return {"detail": "Cancelamento programado para o fim da validade atual da assinatura."}
 
@@ -1457,7 +1511,7 @@ def admin_schedule_asaas_cancel_at_period_end(
 @router.post("/users/{user_id}/asaas-cancel-scheduled-cancellation")
 def admin_cancel_scheduled_asaas_cancellation(
     user_id: int,
-    _: User = Depends(get_current_superuser),
+    admin: User = Depends(get_current_superuser),
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
     user = db.query(User).filter(User.id == user_id).first()
@@ -1473,6 +1527,13 @@ def admin_cancel_scheduled_asaas_cancellation(
     user.is_active = True
     db.add(subscription)
     db.add(user)
+    record_admin_action(
+        db,
+        actor=admin,
+        target_user_id=user.id,
+        action="unschedule_cancel",
+        summary="Desfez o cancelamento programado: a assinatura volta a renovar.",
+    )
     db.commit()
     return {"detail": "Cancelamento programado removido com sucesso."}
 

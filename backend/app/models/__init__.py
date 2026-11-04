@@ -39,3 +39,4 @@ from .viajeon_webhook_event import ViajeonWebhookEvent
 from .billing_notice import BillingNoticeSend, BillingNoticeSettings
 from .platform_settings import PlatformSettings
 
+from .activity_log import AdminActionLog, EmailLog

@@ -37,11 +37,16 @@ class EmailClient:
         html_body: str,
         text_body: str | None = None,
         raise_errors: bool = False,
+        kind: str | None = None,
+        record: bool = True,
     ) -> None:
         """Com raise_errors, a falha (inclusive SMTP não configurado) sobe para quem chamou; sem ele,
-        fica só no log."""
+        fica só no log. Cada envio fica registrado em email_logs (aparece na página da empresa no
+        Admin Master); record=False para quem tem registro próprio (avisos de cobrança)."""
         if not self._is_configured():
             logger.info("SMTP nao configurado. Ignorando envio para %s", to_email)
+            if record:
+                _record_email(to_email, subject, kind, "not_configured", None)
             if raise_errors:
                 raise RuntimeError("O envio de e-mail (SMTP) não está configurado no servidor.")
             return
@@ -63,6 +68,7 @@ class EmailClient:
 
         context = ssl.create_default_context()
         server: smtplib.SMTP | smtplib.SMTP_SSL | None = None
+        failed = False
         try:
             if cfg.smtp_use_ssl:
                 server = smtplib.SMTP_SSL(cfg.smtp_host, cfg.smtp_port, context=context, timeout=30)
@@ -76,6 +82,9 @@ class EmailClient:
             server.sendmail(from_email, [to_email], message.as_string())
         except Exception as exc:  # pragma: no cover - depende do ambiente SMTP
             logger.exception("Falha ao enviar e-mail para %s: %s", to_email, exc)
+            failed = True
+            if record:
+                _record_email(to_email, subject, kind, "failed", str(exc))
             if raise_errors:
                 raise
         finally:
@@ -84,6 +93,30 @@ class EmailClient:
                     server.quit()
                 except Exception:  # pragma: no cover - limpeza melhor esforco
                     logger.debug("Nao foi possivel encerrar conexao SMTP com seguranca.")
+        if record and not failed:
+            _record_email(to_email, subject, kind, "sent", None)
+
+
+def _record_email(to_email: str, subject: str | None, kind: str | None, status: str, error: str | None) -> None:
+    """Melhor esforço: o registro nunca impede nem derruba o envio."""
+    try:
+        from app.db import session as db_session
+        from app.models.activity_log import EmailLog
+
+        db = db_session.SessionLocal()
+        try:
+            db.add(EmailLog(
+                to_email=(to_email or "")[:255],
+                subject=(subject or "")[:500] or None,
+                kind=(kind or None),
+                status=status,
+                error=(error or None) and str(error)[:2000],
+            ))
+            db.commit()
+        finally:
+            db.close()
+    except Exception:  # pragma: no cover - registro não pode quebrar o e-mail
+        logger.debug("Não foi possível registrar o e-mail enviado.", exc_info=True)
 
 
 def _plan_label(plan_key: str | None) -> str:
@@ -213,7 +246,7 @@ def _send_system_email(key: str, *, to_email: str, values: dict, button_url: str
     from app.services.platform_branding import build_system_email
 
     subject, html_body, text_body = build_system_email(key, values, button_url=button_url, highlight=highlight)
-    EmailClient().send_email(to_email=to_email, subject=subject, html_body=html_body, text_body=text_body)
+    EmailClient().send_email(to_email=to_email, subject=subject, html_body=html_body, text_body=text_body, kind=key)
 
 
 def send_cakto_onboarding_email(

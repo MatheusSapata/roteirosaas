@@ -217,7 +217,8 @@ def test_email(payload: EmailTestIn, _: User = Depends(get_current_superuser)):
     )
     try:
         EmailClient().send_email(
-            to_email=to, subject=f"[Teste] {subject}", html_body=html_body, text_body=text_body, raise_errors=True
+            to_email=to, subject=f"[Teste] {subject}", html_body=html_body, text_body=text_body, raise_errors=True,
+            kind=spec.key,
         )
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(502, f"O teste não saiu: {exc}") from exc
