@@ -934,8 +934,20 @@ def list_billing_invoices(
     subscription = current_user.subscription
     if not subscription or subscription.provider != "asaas":
         return BillingInvoicesResponse(items=[], total=0, counts=dict(_EMPTY_COUNTS))
+    try:
+        return collect_asaas_invoices(db, current_user)
+    except AsaasAPIError as exc:  # noqa: BLE001
+        logger.exception("Erro ao listar faturas no Asaas: %s", exc)
+        raise HTTPException(status_code=502, detail="Erro ao listar faturas no Asaas") from exc
 
-    client = _get_asaas_client()
+
+def collect_asaas_invoices(db: Session, user: User) -> BillingInvoicesResponse:
+    """Faturas do Asaas da conta (pelo cliente no Asaas ou, sem ele, pela assinatura), com o período
+    coberto e o resumo da conta. Usada pela tela do cliente e pela página da empresa no Admin Master.
+    Erro do Asaas sobe para quem chamou."""
+    subscription = user.subscription
+    if not subscription:
+        return BillingInvoicesResponse(items=[], total=0, counts=dict(_EMPTY_COUNTS))
     query: dict[str, Any] = {}
     if subscription.asaas_customer_id:
         query["customer"] = subscription.asaas_customer_id
@@ -944,12 +956,8 @@ def list_billing_invoices(
     else:
         return BillingInvoicesResponse(items=[], total=0, counts=dict(_EMPTY_COUNTS))
 
-    try:
-        payments = _fetch_asaas_payments(client, query)
-    except AsaasAPIError as exc:  # noqa: BLE001
-        logger.exception("Erro ao listar faturas no Asaas: %s", exc)
-        raise HTTPException(status_code=502, detail="Erro ao listar faturas no Asaas") from exc
-
+    client = _get_asaas_client()
+    payments = _fetch_asaas_payments(client, query)
     items = [_normalize_asaas_payment(payment) for payment in payments if payment.get("id")]
     _classify_invoices(db, subscription, items)
     order = {"overdue": 0, "upcoming": 1, "paid": 2, "replaced": 3}
@@ -962,7 +970,7 @@ def list_billing_invoices(
     )
     counts = {key: sum(1 for item in items if item.bucket == key) for key in _EMPTY_COUNTS}
     return BillingInvoicesResponse(
-        items=items, total=len(items), counts=counts, account=_build_account(db, current_user, items)
+        items=items, total=len(items), counts=counts, account=_build_account(db, user, items)
     )
 
 

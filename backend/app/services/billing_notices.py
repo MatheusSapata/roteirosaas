@@ -565,7 +565,7 @@ def send_whatsapp(db: Session, settings_row: BillingNoticeSettings, number: str,
 def send_email(to_email: str, subject: str, html_body: str, text_body: str) -> None:
     from app.services.email import EmailClient
 
-    EmailClient().send_email(to_email=to_email, subject=subject, html_body=html_body, text_body=text_body, raise_errors=True)
+    EmailClient().send_email(to_email=to_email, subject=subject, html_body=html_body, text_body=text_body, raise_errors=True, record=False)
 
 
 def deliver(db: Session, settings_row: BillingNoticeSettings, step_key: str, channel: str, recipient: str, context: dict[str, Any]) -> None:
