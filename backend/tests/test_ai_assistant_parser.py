@@ -703,6 +703,9 @@ def test_agency_context_lists_registered_data_and_pages(monkeypatch) -> None:
     )
 
     class Query:
+        def __init__(self, rows):
+            self.rows = rows
+
         def filter(self, *a):
             return self
 
@@ -713,9 +716,9 @@ def test_agency_context_lists_registered_data_and_pages(monkeypatch) -> None:
             return self
 
         def all(self):
-            return [other]
+            return self.rows
 
-    db = SimpleNamespace(query=lambda *a: Query())
+    db = SimpleNamespace(query=lambda model, *a: Query([] if model is ctx.PageTag else [other]))
     monkeypatch.setattr(ctx, "curated_catalog", lambda db: ["beto carrero nerf", "beto carrero castelo"])
     import app.api.v1.endpoints.public_pages as public_pages
 
@@ -1185,3 +1188,47 @@ def test_itinerary_day_drops_leaked_prompt_instructions():
     assert days[0]["description"] == "Chegada, traslado ao hotel e tarde livre na praia."
     assert days[1]["description"] == "Passeio de jangada pelas piscinas naturais."
     assert all("1 a 3" not in day["description"] and "linha seguinte" not in day["description"] for day in days)
+
+
+def test_links_por_tag_guarda_a_regra_sem_cards() -> None:
+    config, _ = build_page_base_config_from_reply(reply_with(
+        "🟩 SEÇÃO: LINKS/ROTEIROS\nEtiqueta: Brasil\nTítulo: Viagens nacionais\nTags: Nacionais, Praia\n"
+        "Combinar: todas\nOrdem: mais recentes\nLimite: 6\nLayout: grade\nBotão: Ver roteiro",
+        "🟩 SEÇÃO: LINKS/ROTEIROS\nTítulo: Internacionais\nTags: Internacionais",
+    ))
+    nacionais, internacionais = config["sections"]
+    assert nacionais["mode"] == "tag" and nacionais["aiTagNames"] == ["Nacionais", "Praia"]
+    assert nacionais["items"] == [] and nacionais["tagIds"] == []
+    assert nacionais["tagMatch"] == "all" and nacionais["tagSort"] == "recent" and nacionais["tagLimit"] == 6
+    assert nacionais["carouselEnabled"] is False and nacionais["tagButtonLabel"] == "Ver roteiro"
+    assert nacionais["headingLabel"] == "Brasil" and nacionais["title"] == "Viagens nacionais"
+    # Sem as linhas opcionais, ficam os padrões da seção (o servidor usa qualquer tag, saída e 12).
+    assert internacionais["aiTagNames"] == ["Internacionais"]
+    for key in ("tagMatch", "tagSort", "tagLimit", "carouselEnabled", "tagHidePast"):
+        assert key not in internacionais
+
+
+def test_troca_de_links_por_tag_muda_so_as_tags_e_cards_voltam_para_manual() -> None:
+    config, _ = build_page_base_config_from_reply(reply_with(
+        "🟩 SEÇÃO: LINKS/ROTEIROS\nSubstitui: viagens-2\nTags: Réveillon",
+        "🟩 SEÇÃO: LINKS/ROTEIROS\nSubstitui: viagens-3\nViagem: Gramado\nValor: R$ 990",
+    ))
+    tag, manual = config["sections"]
+    assert set(tag["aiSetKeys"]) == {"mode", "tagIds"}
+    assert manual["mode"] == "manual" and "mode" in manual["aiSetKeys"] and "items" in manual["aiSetKeys"]
+
+
+def test_texto_e_imagens_com_video_do_youtube_ou_vimeo() -> None:
+    config, _ = build_page_base_config_from_reply(reply_with(
+        "🟩 SEÇÃO: TEXTO E IMAGENS\nTítulo: Como é a viagem\nTexto: Veja.\n"
+        "Vídeo: https://youtu.be/abc123 | https://vimeo.com/987 | https://exemplo.com/video.mp4",
+    ))
+    assert config["sections"][0]["videoUrls"] == ["https://youtu.be/abc123", "https://vimeo.com/987"]
+
+
+def test_contrato_explica_links_por_tag_e_home_pelas_tags() -> None:
+    from app.services.ai_assistant import PLATFORM_FORMAT_CONTRACT
+
+    assert "LINKS/ROTEIROS POR TAG" in PLATFORM_FORMAT_CONTRACT
+    assert "HOME OU VITRINE A PARTIR DAS TAGS" in PLATFORM_FORMAT_CONTRACT
+    assert "Tags:" in PLATFORM_FORMAT_CONTRACT

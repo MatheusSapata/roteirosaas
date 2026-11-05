@@ -10,9 +10,13 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.models.page import Page
+from app.models.page_tag import PageTag
 from app.services.stock_images import curated_catalog
 
 MAX_PAGES = 40
+MAX_TAGS = 40
+TAG_PAGE_SAMPLES = 6
+TAG_SORT_NAMES = {"departure": "data de saída", "recent": "mais recentes", "title": "título"}
 NETWORK_NAMES = {"instagram": "Instagram", "facebook": "Facebook", "youtube": "YouTube", "tiktok": "TikTok", "linkedin": "LinkedIn"}
 STATUS_NAMES = {"published": "publicada", "draft": "rascunho"}
 # Nome de cada seção no editor (o mesmo que o usuário vê e que a IA usa na resposta).
@@ -77,6 +81,9 @@ def _page_summary(page: Page) -> str:
     ]
     if prices:
         details.append(f"a partir de {_price_br(min(prices))}")
+    tags = [tag.name for tag in getattr(page, "tags", None) or []]
+    if tags:
+        details.append("tags: " + ", ".join(tags))
     subtitle = _short(_plain(hero.get("subtitle")), 90)
     line = f'- {page.slug}: "{_plain(page.title)}" ({", ".join(details)})'
     return f"{line} · {subtitle}" if subtitle else line
@@ -104,7 +111,28 @@ def _header_summary(section: dict[str, Any]) -> str:
     return " · " + " · ".join(parts)
 
 
-def _sections_summary(sections: list[dict[str, Any]]) -> list[str]:
+def _tag_rule_summary(section: dict[str, Any], tag_names: dict[int, str]) -> str:
+    """Seção Links/Roteiros por tag como está: quais tags e as opções que mudam os cards."""
+    names = []
+    for raw in section.get("tagIds") or []:
+        try:
+            names.append(tag_names.get(int(raw), ""))
+        except (TypeError, ValueError):
+            continue
+    names = [name for name in names if name]
+    parts = ["tags: " + (", ".join(names) if names else "nenhuma escolhida")]
+    if section.get("tagMatch") == "all" and len(names) > 1:
+        parts.append("só roteiros com todas as tags")
+    parts.append("ordem: " + TAG_SORT_NAMES.get(str(section.get("tagSort") or "departure"), "data de saída"))
+    limit = section.get("tagLimit", 12)
+    parts.append(f"limite: {limit}" if limit else "limite: todos")
+    if section.get("tagHidePast") is False:
+        parts.append("mostra viagens que já saíram")
+    parts.append("grade" if section.get("carouselEnabled") is False else "carrossel")
+    return " (por tag · " + " · ".join(parts) + ")"
+
+
+def _sections_summary(sections: list[dict[str, Any]], tag_names: dict[int, str] | None = None) -> list[str]:
     lines = []
     for number, section in enumerate(sections, 1):
         kind = str(section.get("type") or "")
@@ -118,6 +146,8 @@ def _sections_summary(sections: list[dict[str, Any]]) -> list[str]:
         if kind == "reasons":
             # Estilo atual dos cards, para a IA manter (ou trocar, se pedirem).
             style = " (com emojis)" if section.get("iconMode") == "emoji" else " (com ícones)"
+        if kind == "links":
+            style = _tag_rule_summary(section, tag_names or {}) if section.get("mode") == "tag" else ""
         if kind == "header":
             # O menu não tem título: vai como está, para a IA mexer só no que pedirem.
             style = _header_summary(section)
@@ -168,6 +198,30 @@ def _agency_voice(pages: list[Page], agency_name: str = "") -> list[str]:
     return lines
 
 
+def _tags_summary(tags: list[PageTag], current_page_id: int) -> list[str]:
+    """Tags da agência com os roteiros de cada uma: base da seção Links/Roteiros por tag."""
+    if not tags:
+        return [
+            "Tags de páginas: nenhuma criada. A seção Links/Roteiros por tag depende delas: para usar, a agência cria "
+            'as tags e marca os roteiros na lista de páginas (botão "Tags") ou no editor (ícone Tags no menu lateral).'
+        ]
+    lines = [
+        'TAGS DE PÁGINAS DA AGÊNCIA (para Links/Roteiros por tag: escreva "Tags:" com estes nomes exatos; só os '
+        "roteiros publicados aparecem, e viagens que já saíram ficam de fora):"
+    ]
+    for tag in tags:
+        pages = [item for item in tag.pages if item.id != current_page_id]
+        published = [item for item in pages if item.status == "published"]
+        drafts = len(pages) - len(published)
+        count = f"{len(published)} publicada" + ("s" if len(published) != 1 else "")
+        if drafts:
+            count += f", {drafts} rascunho" + ("s" if drafts != 1 else "")
+        titles = "; ".join(_short(_plain(item.title), 50) for item in published[:TAG_PAGE_SAMPLES])
+        more = f" e mais {len(published) - TAG_PAGE_SAMPLES}" if len(published) > TAG_PAGE_SAMPLES else ""
+        lines.append(f"- {tag.name} ({count})" + (f": {titles}{more}" if titles else ""))
+    return lines
+
+
 def build_agency_context(
     db: Session, page: Page, page_sections: list[dict[str, Any]] | None = None, *, include_images: bool = True
 ) -> str:
@@ -200,7 +254,10 @@ def build_agency_context(
     if page_sections is None:
         config = page.config_json if isinstance(page.config_json, dict) else {}
         page_sections = [section for section in config.get("sections") or [] if isinstance(section, dict)]
-    summary = _sections_summary(page_sections)
+    tags = (
+        db.query(PageTag).filter(PageTag.agency_id == agency.id).order_by(PageTag.name).limit(MAX_TAGS).all()
+    )
+    summary = _sections_summary(page_sections, {tag.id: tag.name for tag in tags})
     if summary:
         lines.append('SEÇÕES DESTA PÁGINA (na ordem; para trocar uma, use "Substitui: identificador" com o que vem antes dos dois-pontos):')
         lines.extend(summary)
@@ -220,6 +277,8 @@ def build_agency_context(
             + "; ".join(catalog)
         )
 
+    lines.extend(_tags_summary(tags, page.id))
+
     others = (
         db.query(Page)
         .filter(Page.agency_id == agency.id, Page.id != page.id, Page.status.in_(tuple(STATUS_NAMES)))
@@ -230,7 +289,7 @@ def build_agency_context(
     if others:
         lines.append(
             "Outras páginas da agência (quando o usuário falar de uma viagem que já tem página, ligue a ela com "
-            '"Página: identificador" no card da VITRINE DE VIAGENS; o identificador é o que vem antes dos dois-pontos):'
+            '"Página: identificador" no card do Links/Roteiros; o identificador é o que vem antes dos dois-pontos):'
         )
         lines.extend(_page_summary(other) for other in others)
         lines.extend(_agency_voice(others, agency.name))

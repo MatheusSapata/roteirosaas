@@ -413,6 +413,7 @@ async def _generate(db: Session, page: Page, payload: dict[str, Any]) -> None:
     )
     from app.services.ai_assistant import _reply_has_structure
     from app.services.ai_assistant_context import build_agency_context
+    from app.services.page_tags import apply_ai_tag_sections
     from app.services.construtor_prompt import get_active_gpt_model
     from app.services.stock_images import clear_photo_queries, fill_section_photos
 
@@ -462,6 +463,7 @@ async def _generate(db: Session, page: Page, payload: dict[str, Any]) -> None:
     base = _config_dict(page)
     base.pop(MARKER, None)
     config, suggested_title = build_page_base_config_from_reply(reply, base)
+    apply_ai_tag_sections(db, page.agency, config["sections"], host_page_id=page.id)
     client_photos = [url for _name, url in [*sent_photos, *pdf_photos]]
     if not stock_images:
         clear_photo_queries(config["sections"])

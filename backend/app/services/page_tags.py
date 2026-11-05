@@ -308,3 +308,84 @@ def sections_using_tags(db: Session, agency_id: int) -> dict[int, list[dict]]:
             for tag_id in section_tag_ids(section):
                 usage.setdefault(tag_id, []).append({"page_id": page.id, "page_title": page.title})
     return usage
+
+
+def _tag_key(value: str) -> str:
+    return slugify_tag(value).replace("-", "")
+
+
+def _singular(key: str) -> str:
+    """Singular simples em português, para "Nacional" achar a tag "Nacionais"."""
+    for plural, single in (("ais", "al"), ("eis", "el"), ("ois", "ol"), ("uis", "ul"), ("oes", "ao"), ("aes", "ao")):
+        if key.endswith(plural) and len(key) > 4:
+            return key[: -len(plural)] + single
+    if key.endswith(("res", "zes", "ses")) and len(key) > 4:
+        return key[:-2]
+    return key[:-1] if key.endswith("s") and len(key) > 3 else key
+
+
+def _match_tag(name: str, tags: list[PageTag]) -> Optional[PageTag]:
+    """Tag da agência com esse nome: igual, no singular/plural ou, se só uma bate, parte do nome."""
+    key = _tag_key(name)
+    if not key:
+        return None
+    for tag in tags:
+        if _tag_key(tag.name) == key or _tag_key(tag.slug) == key:
+            return tag
+    for tag in tags:
+        other = _tag_key(tag.name)
+        if _singular(other) == _singular(key):
+            return tag
+    partial = [tag for tag in tags if len(key) >= 4 and (key in _tag_key(tag.name) or _tag_key(tag.name) in key)]
+    return partial[0] if len(partial) == 1 else None
+
+
+def apply_ai_tag_sections(db: Session, agency: Optional[Agency], sections: list[dict], *, host_page_id: Optional[int] = None) -> None:
+    """Sugestão do assistente de IA: liga as tags escritas pelo nome ("Tags: Nacionais") às tags
+    da agência e já monta os cards para a prévia. Cards ligados a uma página ("Página: slug") que
+    vieram sem datas ou preço recebem os da página, como na escolha manual do editor."""
+    if agency is None:
+        return
+    links = [section for section in sections if isinstance(section, dict) and section.get("type") == "links"]
+    if not links:
+        return
+    tags: Optional[list[PageTag]] = None
+    pages_by_slug: Optional[dict[str, Page]] = None
+    base: Optional[str] = None
+    for section in links:
+        names = section.pop("aiTagNames", None)
+        if names is not None:
+            if tags is None:
+                tags = db.query(PageTag).filter(PageTag.agency_id == agency.id).order_by(PageTag.name).all()
+            ids: list[int] = []
+            for name in names:
+                tag = _match_tag(str(name), tags)
+                if tag and tag.id not in ids:
+                    ids.append(tag.id)
+            section["tagIds"] = ids
+            if base is None:
+                base = agency_page_base(db, agency)
+            section["items"], _excluded = resolve_tag_section(db, section, agency=agency, host_page_id=host_page_id, base=base)
+            keys = section.get("aiSetKeys")
+            if isinstance(keys, list):
+                section["aiSetKeys"] = list(dict.fromkeys([*keys, "mode", "tagIds", "items"]))
+            continue
+        for card in section.get("items") or []:
+            slug = card.get("pageSlug") if isinstance(card, dict) else None
+            if not slug:
+                continue
+            if pages_by_slug is None:
+                rows = db.query(Page).filter(Page.agency_id == agency.id, Page.id != (host_page_id or 0)).all()
+                pages_by_slug = {page.slug: page for page in rows}
+            page = pages_by_slug.get(slug)
+            if not page:
+                continue
+            data = page_card_data(page)
+            if not card.get("departureDate") and data["departureDate"]:
+                card.update({"showDates": True, "departureDate": data["departureDate"]})
+                if data["returnDate"] and data["returnDate"] >= data["departureDate"]:
+                    card["returnDate"] = data["returnDate"]
+            if not card.get("priceValue") and data["price"]:
+                card.update({"showPrice": True, "priceValue": data["price"]})
+                card["pricePrefix"] = card.get("pricePrefix") or "a partir de"
+                card["priceSuffix"] = card.get("priceSuffix") or "por pessoa"

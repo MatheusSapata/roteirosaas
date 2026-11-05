@@ -245,3 +245,48 @@ def test_preco_do_checkout_e_datas_da_excursao_entram_no_card(client, db_session
     card = _public_items(client)[0]
     assert card["priceValue"] == "R$ 4.200"
     assert (card["departureDate"], card["returnDate"]) == ("2099-07-01", "2099-07-08")
+
+
+def test_assistente_liga_tags_pelo_nome_e_monta_a_previa(client, db_session, agency):
+    from app.services.page_tags import apply_ai_tag_sections
+
+    nacionais = _tag(client, agency, "Nacionais")["id"]
+    praia = _tag(client, agency, "Praia")["id"]
+    home = _page(db_session, agency, "home")
+    gramado = _page(db_session, agency, "gramado", sections=[_hero("2099-07-01", "2099-07-05"), _prices(990)])
+    maceio = _page(db_session, agency, "maceio", sections=[_hero("2099-09-01")])
+    _set_tags(client, gramado, nacionais)
+    _set_tags(client, maceio, nacionais, praia)
+
+    sections = [
+        {"type": "links", "mode": "tag", "aiTagNames": ["nacional", "Praias", "Não existe"], "tagIds": [], "items": [], "aiSetKeys": ["mode"]},
+        {"type": "links", "mode": "manual", "items": [{"title": "Gramado", "pageSlug": "gramado"}]},
+    ]
+    apply_ai_tag_sections(db_session, agency, sections, host_page_id=home.id)
+    por_tag, manual = sections
+    assert por_tag["tagIds"] == [nacionais, praia] and "aiTagNames" not in por_tag
+    assert [card["title"] for card in por_tag["items"]] == ["Gramado", "Maceio"]
+    assert set(por_tag["aiSetKeys"]) == {"mode", "tagIds", "items"}
+    card = manual["items"][0]
+    assert card["departureDate"] == "2099-07-01" and card["returnDate"] == "2099-07-05"
+    assert card["priceValue"] == "R$ 990" and card["pricePrefix"] == "a partir de"
+
+
+def test_contexto_do_assistente_lista_tags_e_secao_por_tag(client, db_session, agency):
+    from app.services.ai_assistant_context import build_agency_context
+
+    nacionais = _tag(client, agency, "Nacionais")["id"]
+    _tag(client, agency, "Vazia")
+    home = _page(db_session, agency, "home", sections=[_tag_section([nacionais], anchorId="nacionais", tagLimit=6)])
+    gramado = _page(db_session, agency, "gramado", title="Gramado no inverno")
+    rascunho = _page(db_session, agency, "rascunho", status="draft")
+    _set_tags(client, gramado, nacionais)
+    _set_tags(client, rascunho, nacionais)
+    db_session.refresh(home)
+
+    text = build_agency_context(db_session, home, include_images=False)
+    assert "TAGS DE PÁGINAS DA AGÊNCIA" in text
+    assert "- Nacionais (1 publicada, 1 rascunho): Gramado no inverno" in text
+    assert "- Vazia (0 publicadas)" in text
+    assert "nacionais: Links/Roteiros (por tag · tags: Nacionais · ordem: data de saída · limite: 6 · carrossel)" in text
+    assert '- gramado: "Gramado no inverno" (publicada, tags: Nacionais)' in text
