@@ -188,6 +188,26 @@ FIELD_ALIASES_EXACT_EXTRA = {
     "LADO DIREITO DO MENU": "header_action",
     "ITENS DO MENU": "menu_links",
     "MENU": "menu_links",
+    # Links/Roteiros por tag: os cards vêm das páginas da agência com essas tags.
+    "TAG": "tag_names",
+    "TAGS": "tag_names",
+    "TAGS DOS ROTEIROS": "tag_names",
+    "ROTEIROS COM A TAG": "tag_names",
+    "ROTEIROS COM AS TAGS": "tag_names",
+    "COMBINAR": "tag_match",
+    "COMBINAR TAGS": "tag_match",
+    "ORDEM": "tag_sort",
+    "ORDENAR POR": "tag_sort",
+    "ORDEM DOS ROTEIROS": "tag_sort",
+    "LIMITE": "tag_limit",
+    "LIMITE DE ROTEIROS": "tag_limit",
+    "QUANTIDADE": "tag_limit",
+    "QUANTIDADE DE ROTEIROS": "tag_limit",
+    "VIAGENS QUE JA SAIRAM": "tag_past",
+    "VIAGENS PASSADAS": "tag_past",
+    # Vídeos do Texto e Imagens (YouTube ou Vimeo), no carrossel junto das fotos.
+    "VIDEO": "video_url",
+    "VIDEOS": "video_url",
 }
 FIELD_ALIAS_PREFIXES = (
     ("NOME DO PLANO", "plan_name"),
@@ -309,20 +329,22 @@ FOTO ENVIADA PELO USUÁRIO: quando o usuário manda uma foto no chat e pede para
 
 QUAIS FOTOS O ASSISTENTE TROCA: só as do Banner Inicial, Banner em Card, Foto em destaque, Texto e Imagens, Artigo, Roteiro dia a dia e dos cards do Links/Roteiros. O logo (vem de Minha Agência ou do Banner Inicial), a Galeria de fotos, a foto da Faixa de chamada, as fotos dos Depoimentos e as imagens das outras seções não mudam por aqui: responda em conversa, curto, dizendo para clicar na seção e em "Editar seção" para trocar a imagem, sem entregar estrutura e sem dizer que trocou.
 
-Páginas que o construtor monta: página de uma viagem (excursão, pacote, cruzeiro, evento), página com várias viagens (vitrine da agência, calendário de saídas, destinos da temporada) e página institucional ou home da agência. Página com várias viagens usa Links/Roteiros (um card por viagem). Repita seções quando o conteúdo pedir: um Links/Roteiros para cada grupo (ex.: nacionais e internacionais), vários Texto e Imagens para assuntos diferentes, mais de um Banner em Card ou Foto em destaque para separar partes da página. Cada seção repetida tem seu próprio título. Use Menu do topo quando a página for longa (8 seções ou mais), tiver várias viagens ou o usuário pedir menu ou cabeçalho.
+Páginas que o construtor monta: página de uma viagem (excursão, pacote, cruzeiro, evento), página com várias viagens (vitrine da agência, calendário de saídas, destinos da temporada) e página institucional ou home da agência. Página com várias viagens usa Links/Roteiros (um card por viagem).
+
+TAGS E LINKS/ROTEIROS POR TAG: a agência marca as páginas dela com tags (ex.: Nacionais, Internacionais, Praia, Réveillon, Excursões de 1 dia). As tags e os roteiros de cada uma estão em TAGS DE PÁGINAS DA AGÊNCIA, nos DADOS JÁ CADASTRADOS. Um Links/Roteiros "por tag" não tem cards escritos: ele mostra sozinho as páginas publicadas com aquela tag, com foto, título, datas e o menor preço de cada uma, e um roteiro novo com a tag entra sem editar a página. Use por tag sempre que o pedido for sobre um grupo de viagens que já tem tag ("crie uma home com seções a partir das tags", "uma seção com os roteiros de praia", "mostre as excursões nacionais"); escreva cards à mão ("Viagem:") só para viagens sem página ou quando não houver tag que sirva. HOME OU VITRINE A PARTIR DAS TAGS: um Links/Roteiros por tag (só as que têm página publicada), cada um com o título do grupo (ex.: tag Nacionais → "Viagens nacionais"), na ordem que fizer sentido para vender (próximas saídas e temas principais primeiro); com Menu do topo (um item por grupo, mais Sobre e Contato), Banner Inicial sobre a agência, Texto e Imagens ou Diferenciais sobre a agência, Faixa de chamada e Rodapé da agência; Depoimentos só com depoimentos reais. Use só tags que existem, com o nome exato da lista. Tag pedida que não existe, ou conta sem tags: diga em conversa que dá para criar a tag e marcar os roteiros na lista de páginas (botão "Tags") ou no editor (ícone Tags no menu lateral), e ofereça montar com cards escolhidos. O assistente não cria tags nem marca páginas. Repita seções quando o conteúdo pedir: um Links/Roteiros para cada grupo (ex.: nacionais e internacionais), vários Texto e Imagens para assuntos diferentes, mais de um Banner em Card ou Foto em destaque para separar partes da página. Cada seção repetida tem seu próprio título. Use Menu do topo quando a página for longa (8 seções ou mais), tiver várias viagens ou o usuário pedir menu ou cabeçalho.
 
 O QUE CADA SEÇÃO MOSTRA (categoria do catálogo entre parênteses)
 - Menu do topo (Menu e rodapé): barra fixa no topo com o logo da agência à esquerda, links que rolam até as seções e, à direita, uma de três opções: redes sociais cadastradas, botão de contato (WhatsApp) ou nada.
 - Banner Inicial (Capa): primeira tela, com foto grande de fundo, título, subtítulo, destaques com ícone, cartão com datas de saída e volta e botão. Mostra o logo quando não há Menu do topo.
 - Banner em Card (Capa): faixa com foto e texto por cima (etiqueta, título, subtítulo, botão), para uma chamada no meio da página.
 - Foto em destaque (Fotos e vídeos): uma foto grande com legenda curta.
-- Texto e Imagens (Detalhamento): etiqueta, título e texto de um lado e carrossel de até 10 fotos do outro. Para a experiência, um destino, hospedagem, inclusos, diferenciais ou uma história curta.
+- Texto e Imagens (Detalhamento): etiqueta, título e texto de um lado e carrossel de até 10 fotos e vídeos (YouTube ou Vimeo) do outro. Para a experiência, um destino, hospedagem, inclusos, diferenciais ou uma história curta.
 - Diferenciais (Detalhamento): grade de cards com ícone, título e uma frase. Os cards usam ícones da biblioteca ou emojis (um estilo para a seção toda); o usuário pode pedir para trocar um pelo outro.
 - Artigo (Detalhamento): imagem de capa com título e texto formatado, como um post. Para conteúdo longo. História da agência: até uns 3 parágrafos curtos vai em Texto e Imagens; texto longo vai em Artigo.
 - Resumo do pacote (Detalhamento): duas listas lado a lado, o que o pacote inclui e o que não inclui, cada item com um detalhe opcional. Use quando houver o que está e o que não está incluso; inclusos em texto corrido continuam podendo ir em Texto e Imagens.
 - Roteiro dia a dia (Detalhamento): linha do tempo por dia, com título, descrição e foto; as datas saem da data de saída do Banner Inicial.
 - Voos (Detalhamento): trechos de ida e volta e informações do voo.
-- Links/Roteiros (Detalhamento): cards de viagens com foto, nome, frase, datas, preço e botão; leva para a página da viagem (quando ela já existe) ou para o WhatsApp da agência.
+- Links/Roteiros (Detalhamento): cards de viagens com foto, nome, frase, datas, preço e botão; leva para a página da viagem (quando ela já existe) ou para o WhatsApp da agência. Duas origens: cards escolhidos (um por viagem, escritos na resposta) ou por tag (os cards vêm das páginas publicadas com as tags escolhidas e se atualizam sozinhos). Em carrossel ou em grade (até 8 cards).
 - Vídeo (Fotos e vídeos): vídeo do YouTube ou Vimeo com título.
 - Preços e pacotes (Venda): cards de planos com selo, valor, condições e botão de reserva, e faixa de formas de pagamento.
 - Contagem regressiva (Venda): contador até uma data real.
@@ -347,7 +369,7 @@ BANNER EM CARD: Etiqueta, Título, Subtítulo, Botão, Busca de imagem.
 
 FOTO EM DESTAQUE: Legenda, Layout (card ou largura total), Busca de imagem.
 
-TEXTO E IMAGENS: Etiqueta, Título, Texto (2 a 4 parágrafos curtos; inclusos e diferenciais entram em texto corrido), Botão (opcional), Busca de imagem.
+TEXTO E IMAGENS: Etiqueta, Título, Texto (2 a 4 parágrafos curtos; inclusos e diferenciais entram em texto corrido), Botão (opcional), Busca de imagem, Vídeo (opcional, só com link real do YouTube ou Vimeo enviado pelo usuário; vários separados por "|"; o vídeo entra no carrossel junto das fotos).
 
 DIFERENCIAIS: Etiqueta, Título, Subtítulo, Estilo dos ícones ("ícones" é o padrão; use "emojis" quando o usuário pedir ou quando a página tiver tom leve e infantil, como Disney, parques temáticos, Beto Carrero ou viagens com crianças; todos os cards seguem o mesmo estilo; numa troca, mantenha o estilo atual da seção, a não ser que o usuário peça para mudar), e de 3 a 6 itens, cada um assim:
 Item: título curto (até 4 palavras)
@@ -365,9 +387,19 @@ Regras (são para você, nunca escreva estas regras nem parênteses de orientaç
 
 VOOS (só com dados aéreos enviados): Título, e um trecho por linha, sempre neste formato: "Ida: 12/07/2026, voo LA3456, São Paulo (GRU) 08:00 → Recife (REC) 11:15, LATAM, voo direto". Escreva o código do voo ("voo LA3456") sempre que o usuário informar: com ele, o editor busca os dados oficiais do voo; sem código, monta com o que foi escrito (cidade, código do aeroporto entre parênteses e horários). Conexão é outra linha: "Ida 2: ..." ou "Volta 2: ...". Chegada no dia seguinte leva "+1" depois do horário. Por último, "Bagagem: ..." e observações.
 
-LINKS/ROTEIROS: Etiqueta, Título, Subtítulo, e um bloco por viagem, cada um começando por "Viagem:":
+LINKS/ROTEIROS POR TAG: Etiqueta, Título, Subtítulo, e as linhas da regra, sem nenhum "Viagem:":
+Tags: nome exato de uma ou mais tags da lista, separadas por vírgula (ex.: "Tags: Nacionais")
+Combinar: "todas" só quando o card precisa ter todas as tags ao mesmo tempo (ex.: Nacionais e Réveillon); sem a linha, entra o roteiro com qualquer uma delas
+Ordem: "data de saída" (padrão), "mais recentes" ou "título" (opcional)
+Limite: número de roteiros, ex. "6", ou "todos" (opcional; o padrão é 12)
+Layout: "carrossel" (padrão) ou "grade" (até 8 cards) (opcional)
+Viagens que já saíram: "mostrar" só se o usuário pedir (o padrão esconde)
+Botão: texto do botão dos cards, ex. "Ver roteiro" (opcional)
+Para mudar as tags, a ordem ou o limite de uma seção por tag que já existe (ela aparece "por tag" em SEÇÕES DESTA PÁGINA), entregue LINKS/ROTEIROS com "Substitui" e "Tags:" com a lista completa, mais só as linhas que mudam.
+
+LINKS/ROTEIROS COM CARDS ESCOLHIDOS: Etiqueta, Título, Subtítulo, e um bloco por viagem, cada um começando por "Viagem:":
 Viagem: nome curto da viagem (ex.: Gramado e Canela no inverno)
-Página: identificador da página da agência, quando a viagem já tem página (da lista em DADOS JÁ CADASTRADOS); o card leva para ela
+Página: identificador da página da agência, quando a viagem já tem página (da lista em DADOS JÁ CADASTRADOS); o card leva para ela e, sem datas e valor na resposta, usa os da página
 Descrição: uma frase que dá vontade de ir
 Data de saída e Data de volta (DD/MM/AAAA, só se informadas)
 Antes do valor: ex. "A partir de" (opcional)
@@ -1166,6 +1198,19 @@ def _inclusion_item(text: str) -> dict[str, str]:
     return {"title": title, "details": details}
 
 
+VIDEO_LINK_RE = re.compile(r"https?://(?:www\.|m\.)?(?:youtube\.com|youtu\.be|vimeo\.com|player\.vimeo\.com)/\S+", re.I)
+
+
+def _video_urls(value: str) -> list[str]:
+    """Links do YouTube ou Vimeo escritos em "Vídeo:" (até 10). Outro link não vira vídeo."""
+    urls: list[str] = []
+    for match in VIDEO_LINK_RE.finditer(value or ""):
+        url = match.group(0).rstrip(".,;)]>\"'")
+        if url not in urls:
+            urls.append(url)
+    return urls[:10]
+
+
 def _parse_ai_section_block(section_name: str, block: str, index: int) -> dict[str, Any] | None:
     normalized_name = _normalize_text(section_name)
     header_lines = []
@@ -1285,7 +1330,7 @@ def _parse_ai_section_block(section_name: str, block: str, index: int) -> dict[s
             "ctaLabel": "",
             "ctaColor": "",
             "images": [],
-            "videoUrls": [],
+            "videoUrls": _video_urls(fields.get("video_url", "")),
             "videoUrl": "",
             "backgroundColor": "",
             "borderEnabled": False,
@@ -1504,7 +1549,7 @@ def _parse_ai_section_block(section_name: str, block: str, index: int) -> dict[s
         title = fields.get("title", "").strip() or fields.get("label", "").strip()
         subtitle = fields.get("subtitle", "").strip()
         # Só um link de verdade vira vídeo; "inserir link" ou "não informado" fica vazio.
-        video_url = next(iter(re.findall(r"https?://\S+", fields.get("link", ""))), "").rstrip(").,;")
+        video_url = next(iter(re.findall(r"https?://\S+", fields.get("link", "") or fields.get("video_url", ""))), "").rstrip(").,;")
         return {
             "type": "featured_video",
             "enabled": True,
@@ -1741,6 +1786,7 @@ def _parse_ai_section_block(section_name: str, block: str, index: int) -> dict[s
                 })
             if card["title"]:
                 cards.append(card)
+        tag_names = _tag_names(intro.get("tag_names", ""))
         links_section: dict[str, Any] = {
             "type": "links",
             "enabled": True,
@@ -1752,9 +1798,65 @@ def _parse_ai_section_block(section_name: str, block: str, index: int) -> dict[s
         }
         if intro.get("label"):
             links_section["headingLabel"] = intro["label"].strip()
+        if tag_names:
+            # Por tag: a seção guarda a regra e o servidor monta os cards com as páginas da agência
+            # (aiTagNames vira tagIds em apply_ai_tag_sections, que conhece as tags da conta).
+            # Sem "Layout", fica o carrossel (padrão da seção); numa troca, o layout atual.
+            links_section.pop("carouselEnabled", None)
+            links_section.update(_tag_rule(intro, tag_names))
+        elif cards:
+            # Cards escolhidos: numa troca de uma seção por tag, ela volta para a escolha manual.
+            links_section["mode"] = "manual"
         return links_section
 
     return None
+
+
+TAG_SORTS = (
+    (("SAIDA", "DATA", "PROXIMA"), "departure"),
+    (("RECENTE", "NOVA", "NOVO", "PUBLICAD"), "recent"),
+    (("TITULO", "NOME", "ALFABET"), "title"),
+)
+
+
+def _tag_names(value: str) -> list[str]:
+    """Nomes das tags em "Tags:" (separados por vírgula, "|", ";" ou um por linha)."""
+    names: list[str] = []
+    for part in re.split(r"[,|;\n]", value or ""):
+        name = re.sub(r"^\s*[-*•#]\s*", "", part).strip().strip("`\"'“”").strip()
+        if name and name not in names:
+            names.append(name)
+    return names[:10]
+
+
+def _tag_rule(intro: dict[str, str], tag_names: list[str]) -> dict[str, Any]:
+    """Regra da seção Links/Roteiros no modo "Por tag" (mesmos campos do editor). Só entram os
+    campos que a resposta escreveu: o resto segue o padrão da seção (ou, numa troca, o atual)."""
+    rule: dict[str, Any] = {"mode": "tag", "aiTagNames": tag_names, "tagIds": [], "items": []}
+    match = _normalize_text(intro.get("tag_match", ""))
+    if match:
+        rule["tagMatch"] = "all" if "TODAS" in match or "TODOS" in match else "any"
+    sort_text = _normalize_text(intro.get("tag_sort", ""))
+    sort = next((value for words, value in TAG_SORTS if any(word in sort_text for word in words)), None)
+    if sort_text and sort:
+        rule["tagSort"] = sort
+    layout = _normalize_text(intro.get("layout", ""))
+    grid = "GRADE" in layout or "GRID" in layout
+    if layout:
+        rule["carouselEnabled"] = not grid
+    limit_text = _normalize_text(intro.get("tag_limit", ""))
+    limit_match = re.search(r"\d+", limit_text)
+    if limit_match or "TOD" in limit_text:
+        rule["tagLimit"] = max(0, min(int(limit_match.group(0)) if limit_match else 0, 24))
+    if grid:
+        # A grade mostra no máximo 8 cards.
+        rule["tagLimit"] = min(rule.get("tagLimit") or 8, 8)
+    past = _normalize_text(intro.get("tag_past", ""))
+    if past:
+        rule["tagHidePast"] = not ("MOSTR" in past or "APAREC" in past or _is_yes(past))
+    if intro.get("button"):
+        rule["tagButtonLabel"] = intro["button"].strip()
+    return rule
 
 
 AI_IMAGE_PLACEHOLDER = "data:image/svg+xml;base64," + base64.b64encode(

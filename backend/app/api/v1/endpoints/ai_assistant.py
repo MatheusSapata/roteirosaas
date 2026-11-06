@@ -42,6 +42,7 @@ from app.services.ai_assistant import (
 )
 from app.models.media import MediaAsset
 from app.services.ai_assistant_context import build_agency_context
+from app.services.page_tags import apply_ai_tag_sections
 from app.services.image_optimizer import optimize_image
 from app.services.agency_photos import mark_pdf_photos
 from app.services.pdf_photos import MAX_PDF_PHOTOS, PDF_SOURCE, extract_pdf_photos, is_pdf
@@ -524,6 +525,7 @@ def create_page_base(
 
     current_config = normalize_config(page.config_json)
     new_config, suggested_title = build_page_base_config_from_reply(payload.reply, current_config)
+    apply_ai_tag_sections(db, page.agency, new_config["sections"], host_page_id=page.id)
     try:
         fill_section_photos(db, new_config["sections"], page.agency_id, exclude_page_id=page.id)
     except Exception:  # pragma: no cover - sem foto, a seção fica com a imagem provisória
@@ -577,6 +579,9 @@ def preview_page_base(
     ensure_agency_member(db, page.agency_id, current_user)
     ensure_pages_editor_permission(db, page.agency_id, current_user)
     config, _ = build_page_base_config_from_reply(payload.reply, normalize_config(page.config_json), strict=True)
+    # Links/Roteiros por tag: as tags escritas pelo nome viram as tags da agência e os cards já
+    # aparecem na prévia.
+    apply_ai_tag_sections(db, page.agency, config["sections"], host_page_id=page.id)
     _photo_days_for_itinerary_swaps(config["sections"], payload.itinerary_days)
     # Fotos dos bancos no lugar das imagens provisórias (a IA escolhe entre as candidatas), a não
     # ser que o usuário tenha desligado "Inserir imagens".

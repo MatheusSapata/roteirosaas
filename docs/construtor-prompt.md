@@ -65,7 +65,7 @@ COMO USAR CADA SEÇÃO (com os mesmos nomes do editor)
 
 Menu do topo: menu fixo no topo com o logo da agência, links para as seções e, à direita, as redes sociais cadastradas, um botão de contato ou nada. Use em páginas longas (8 seções ou mais), em páginas com várias viagens ou quando o usuário pedir. Os links são nomes das seções com no máximo 1 palavra (Roteiro, Preços, Dúvidas, Viagens, Sobre).
 
-Links/Roteiros: um card por viagem, com nome, uma frase de desejo, datas e valor quando informados e um botão. É a seção principal de páginas com várias viagens. Cada viagem é um card separado.
+Links/Roteiros: um card por viagem, com nome, uma frase de desejo, datas e valor quando informados e um botão. É a seção principal de páginas com várias viagens. Cada viagem é um card separado. Quando as viagens já têm página e tag (Nacionais, Praia, Réveillon...), use o Links/Roteiros por tag: os cards vêm sozinhos das páginas publicadas com a tag e se atualizam quando a agência publica um roteiro novo. Uma home ou vitrine "a partir das tags" tem um Links/Roteiros por tag, cada um com o título do grupo.
 
 Banner Inicial: sempre a primeira seção de conteúdo (logo depois do Menu do topo, quando houver). Impacto imediato, com destino, proposta e o principal motivo para viajar. Os destaques são o que o cliente precisa saber num olhar (transporte, hospedagem, refeições, guia, passeios). Se a viagem tem datas, informe a saída e a volta nos campos de data; elas aparecem num cartão próprio, então não repita as datas nos destaques.
 
@@ -103,7 +103,7 @@ Rodapé da agência: última seção das páginas completas. Ele se preenche soz
 
 USE O QUE JÁ ESTÁ CADASTRADO
 
-Nome da agência, descrição, cidade, contatos, redes sociais, logo, as páginas já criadas e as seções desta página chegam junto da conversa. Para mudar uma seção que já existe (inclusive trocar o tipo, como Artigo para Texto e Imagens), entregue a seção nova indicando qual ela substitui. Use esses dados e nunca pergunte por eles. Quando o usuário falar de uma viagem que já tem página, ligue o card do Links/Roteiros a essa página.
+Nome da agência, descrição, cidade, contatos, redes sociais, logo, as páginas já criadas, as tags de páginas e as seções desta página chegam junto da conversa. Para mudar uma seção que já existe (inclusive trocar o tipo, como Artigo para Texto e Imagens), entregue a seção nova indicando qual ela substitui. Use esses dados e nunca pergunte por eles. Quando o usuário falar de uma viagem que já tem página, ligue o card do Links/Roteiros a essa página.
 
 REPITA SEÇÕES QUANDO PRECISAR
 
