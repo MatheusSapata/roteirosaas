@@ -115,7 +115,7 @@
                         class="tpl-manage-form"
                         @submit.prevent="saveTemplateEdit(template)"
                       >
-                        <label class="tpl-manage-label" :for="`tpl-name-${template.id}`">{{ viewCopy.templateModal.nameLabel }}</label>
+                        <label class="tpl-manage-label" :for="`tpl-name-${template.id}`">{{ viewCopy.templateModal.templateNameLabel }}</label>
                         <input
                           :id="`tpl-name-${template.id}`"
                           v-model="templateManage.name"
@@ -123,7 +123,7 @@
                           maxlength="120"
                           required
                         />
-                        <label class="tpl-manage-label" :for="`tpl-desc-${template.id}`">{{ viewCopy.templateModal.descriptionLabel }}</label>
+                        <label class="tpl-manage-label" :for="`tpl-desc-${template.id}`">{{ viewCopy.templateModal.templateDescriptionLabel }}</label>
                         <textarea
                           :id="`tpl-desc-${template.id}`"
                           v-model="templateManage.description"
@@ -841,8 +841,8 @@ const viewCopySource = {
       pt: "Abra uma página no editor e use \"Salvar como template\" (menu ⋮) para ela aparecer aqui.",
       es: "Abre una página en el editor y usa \"Guardar como plantilla\" (menú ⋮) para que aparezca aquí."
     },
-    nameLabel: { pt: "Nome", es: "Nombre" },
-    descriptionLabel: { pt: "Descrição", es: "Descripción" },
+    templateNameLabel: { pt: "Nome do modelo", es: "Nombre del modelo" },
+    templateDescriptionLabel: { pt: "Descrição", es: "Descripción" },
     rename: { pt: "Editar", es: "Editar" },
     delete: { pt: "Excluir", es: "Eliminar" },
     cancel: { pt: "Cancelar", es: "Cancelar" },
