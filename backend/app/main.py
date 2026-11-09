@@ -45,6 +45,17 @@ if engine.dialect.name == "postgresql":
             "viajechat_custom_field_mappings JSONB NOT NULL DEFAULT '[]'::jsonb"
         ))
         connection.execute(text("ALTER TABLE agencies ADD COLUMN IF NOT EXISTS description TEXT"))
+        # Modelos salvos pelo cliente no editor ("Salvar como template") pertencem à agência.
+        connection.execute(text(
+            "ALTER TABLE page_templates ADD COLUMN IF NOT EXISTS agency_id INTEGER "
+            "REFERENCES agencies(id) ON DELETE CASCADE"
+        ))
+        connection.execute(text(
+            "ALTER TABLE page_templates ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT now()"
+        ))
+        connection.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_page_templates_agency_id ON page_templates (agency_id)"
+        ))
         connection.execute(text(
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS temporary_password BOOLEAN NOT NULL DEFAULT FALSE"
         ))

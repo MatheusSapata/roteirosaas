@@ -122,6 +122,53 @@
       </div>
     </Teleport>
 
+    <!-- Salvar como template: vira um modelo próprio da agência, na tela "Escolha um modelo" -->
+    <Teleport to="body" v-if="saveTemplateModal.open">
+      <div class="fixed inset-0 z-[120] flex items-center justify-center px-4 page-editor-overlay" @click.self="closeSaveTemplateModal">
+        <form class="editor-dialog-shell w-full max-w-lg p-6" @submit.prevent="confirmSaveTemplate">
+          <h3 class="text-xl font-bold text-slate-900">{{ viewCopy.saveTemplateModal.title }}</h3>
+          <p class="mt-2 text-sm text-slate-600">{{ viewCopy.saveTemplateModal.description }}</p>
+
+          <label class="mt-4 block text-sm font-semibold text-slate-700" for="save-template-name">
+            {{ viewCopy.saveTemplateModal.nameLabel }}
+          </label>
+          <input
+            id="save-template-name"
+            v-model="saveTemplateModal.name"
+            class="ved-input mt-1 w-full"
+            maxlength="120"
+            required
+            autofocus
+          />
+          <label class="mt-3 block text-sm font-semibold text-slate-700" for="save-template-description">
+            {{ viewCopy.saveTemplateModal.descriptionLabel }}
+          </label>
+          <textarea
+            id="save-template-description"
+            v-model="saveTemplateModal.description"
+            class="ved-input mt-1 w-full"
+            rows="2"
+            maxlength="500"
+            :placeholder="viewCopy.saveTemplateModal.descriptionPlaceholder"
+          ></textarea>
+          <p v-if="saveTemplateModal.error" class="mt-3 text-sm font-medium text-red-600">{{ saveTemplateModal.error }}</p>
+
+          <div class="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <button type="button" class="editor-dialog-action editor-dialog-action--neutral" @click="closeSaveTemplateModal">
+              {{ viewCopy.saveTemplateModal.cancel }}
+            </button>
+            <button
+              type="submit"
+              class="editor-dialog-action editor-dialog-action--primary"
+              :disabled="saveTemplateModal.saving || !saveTemplateModal.name.trim()"
+            >
+              {{ saveTemplateModal.saving ? viewCopy.saveTemplateModal.saving : viewCopy.saveTemplateModal.confirm }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </Teleport>
+
     <!-- Diálogo de confirmação ao sair sem salvar -->
     <Teleport to="body" v-if="unsavedNavigationModal.open">
       <div class="fixed inset-0 z-[120] flex items-center justify-center px-4 page-editor-overlay">
@@ -1822,6 +1869,7 @@ import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, p
 import type { Component } from "vue";
 import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 import api from "../../services/api";
+import { createAgencyTemplate } from "../../services/templates";
 import { importFlightJourneys } from "../../services/flightDetails";
 import {
   previewAiAssistantPageBase,
@@ -2325,12 +2373,29 @@ const viewCopy = {
     }),
     templateLoginRequired: t({ pt: "Faça login para salvar um template.", es: "Inicia sesión para guardar una plantilla." }),
     templateUnavailable: t({ pt: "Recurso indisponível no momento.", es: "Recurso no disponible en este momento." }),
+    templateEmpty: t({
+      pt: "Adicione pelo menos uma seção antes de salvar como template.",
+      es: "Agrega al menos una sección antes de guardar como plantilla."
+    }),
     templateSaved: t({
-      pt: "Template salvo! Novas páginas iniciarão com essa estrutura.",
-      es: "¡Plantilla guardada! Las nuevas páginas iniciarán con esta estructura."
+      pt: "Template salvo! Ele aparece em \"Meus modelos\" ao criar uma nova página.",
+      es: "¡Plantilla guardada! Aparece en \"Mis modelos\" al crear una nueva página."
     }),
     templateSavedToast: t({ pt: "Template salvo com sucesso", es: "Plantilla guardada con éxito" }),
     templateSaveError: t({ pt: "Não foi possível salvar o template.", es: "No fue posible guardar la plantilla." })
+  },
+  saveTemplateModal: {
+    title: t({ pt: "Salvar como template", es: "Guardar como plantilla" }),
+    description: t({
+      pt: "As seções e o visual desta página viram um modelo seu. Ele aparece em \"Meus modelos\" quando você criar uma nova página.",
+      es: "Las secciones y el diseño de esta página se convierten en un modelo tuyo. Aparece en \"Mis modelos\" al crear una nueva página."
+    }),
+    nameLabel: t({ pt: "Nome do modelo", es: "Nombre del modelo" }),
+    descriptionLabel: t({ pt: "Descrição (opcional)", es: "Descripción (opcional)" }),
+    descriptionPlaceholder: t({ pt: "Ex.: roteiro de 7 dias com preços e FAQ", es: "Ej.: itinerario de 7 días con precios y FAQ" }),
+    cancel: t({ pt: "Cancelar", es: "Cancelar" }),
+    confirm: t({ pt: "Salvar modelo", es: "Guardar modelo" }),
+    saving: t({ pt: "Salvando...", es: "Guardando..." })
   }
 };
 
@@ -4630,14 +4695,6 @@ const sectionModalPanelStyle = computed(() => {
     maxHeight: `${viewportCap}px`
   };
 });
-const getBrowserStorage = () => {
-  if (!hasWindow) return null;
-  try {
-    return window.localStorage;
-  } catch {
-    return null;
-  }
-};
 provide(sectionsInjectionKey, sections);
 provide(
   PAGE_DESIGN_KEY,
@@ -4838,7 +4895,6 @@ const buildCatalogPreview = (type: SectionType): PageSection => {
   return ensureSectionAnchor(base);
 };
 
-const templateKey = computed(() => (auth.user ? `page_template_${auth.user.id}` : null));
 const whatsappDigits = computed(() => {
   const agency =
     agencyStore.agencies.find(a => a.id === agencyStore.currentAgencyId) || agencyStore.agencies[0];
@@ -6533,17 +6589,17 @@ const showSnackbar = (text: string) => {
 };
 
 /**
- * BLOQUEIO: plano free NÃO pode salvar template.
- * Deve abrir dialog com Fechar / Ver planos.
+ * Salvar como template: cria um modelo próprio da agência (fica no servidor e aparece em
+ * "Meus modelos" na tela de escolha de modelo). BLOQUEIO: plano free NÃO pode salvar template.
  */
+const saveTemplateModal = ref({ open: false, name: "", description: "", saving: false, error: "" });
+
 const saveTemplate = () => {
-  // se não logou
   if (!auth.user) {
     errorMessage.value = viewCopy.feedback.templateLoginRequired;
     return;
   }
 
-  // bloqueio do plano free
   const plan = auth.user?.plan || "free";
   if (plan === "free") {
     limitModal.value = {
@@ -6553,31 +6609,54 @@ const saveTemplate = () => {
     return;
   }
 
-  const key = templateKey.value;
-  if (!key) {
-    errorMessage.value = viewCopy.feedback.templateLoginRequired;
+  if (!page.value?.agency_id) {
+    errorMessage.value = viewCopy.feedback.templateUnavailable;
     return;
   }
 
+  flushPendingSectionUpdates();
+  if (!sections.value.length) {
+    errorMessage.value = viewCopy.feedback.templateEmpty;
+    return;
+  }
+
+  saveTemplateModal.value = {
+    open: true,
+    name: (pageTitle.value || page.value?.title || "").trim(),
+    description: "",
+    saving: false,
+    error: ""
+  };
+};
+
+const closeSaveTemplateModal = () => {
+  if (saveTemplateModal.value.saving) return;
+  saveTemplateModal.value.open = false;
+};
+
+const confirmSaveTemplate = async () => {
+  const agencyId = page.value?.agency_id;
+  const name = saveTemplateModal.value.name.trim();
+  if (!agencyId || !name || saveTemplateModal.value.saving) return;
+  saveTemplateModal.value.saving = true;
+  saveTemplateModal.value.error = "";
   try {
     flushPendingSectionUpdates();
-    const payload = {
-      sections: sections.value,
-      theme: { ...theme.value, color1: colorA.value, color2: colorB.value }
-    };
-
-    const storage = getBrowserStorage();
-    if (!storage) {
-      errorMessage.value = viewCopy.feedback.templateUnavailable;
-      return;
-    }
-
-    storage.setItem(key, JSON.stringify(payload));
+    await createAgencyTemplate({
+      agency_id: agencyId,
+      name,
+      description: saveTemplateModal.value.description.trim() || null,
+      config_json: buildConfig()
+    });
+    saveTemplateModal.value.saving = false;
+    saveTemplateModal.value.open = false;
     message.value = viewCopy.feedback.templateSaved;
     showSnackbar(viewCopy.feedback.templateSavedToast);
-  } catch (err) {
+  } catch (err: any) {
     console.error(err);
-    errorMessage.value = viewCopy.feedback.templateSaveError;
+    saveTemplateModal.value.saving = false;
+    const detail = err?.response?.data?.detail;
+    saveTemplateModal.value.error = typeof detail === "string" && detail ? detail : viewCopy.feedback.templateSaveError;
   }
 };
 
