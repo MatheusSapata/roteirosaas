@@ -98,44 +98,113 @@
                 </div>
 
                 <div v-else class="tpl-cards">
-                  <article
-                    v-for="template in templateModal.templates"
-                    :key="template.id"
-                    class="tpl-card"
-                    :class="{ on: templateModal.selectedTemplate?.id === template.id }"
-                  >
-                    <button
-                      type="button"
-                      class="tpl-card-main"
-                      :aria-pressed="templateModal.selectedTemplate?.id === template.id"
-                      @click="isMobileViewport ? handleTemplatePreview(template) : handleTemplateCardClick(template)"
+                  <template v-for="group in templateGroups" :key="group.key">
+                    <p class="tpl-group-head">
+                      {{ group.title }}
+                      <span class="tpl-group-count">{{ group.items.length }}</span>
+                    </p>
+                    <p v-if="!group.items.length" class="tpl-group-empty">{{ viewCopy.templateModal.ownEmpty }}</p>
+                    <article
+                      v-for="template in group.items"
+                      :key="template.id"
+                      class="tpl-card"
+                      :class="{ on: templateModal.selectedTemplate?.id === template.id }"
                     >
-                      <span class="tpl-thumb" :style="templateThumbStyle(template)">
-                        <span v-if="!templateThumbnail(template)" class="tpl-thumb-mock" aria-hidden="true">
-                          <i></i><i></i><i></i>
-                        </span>
-                      </span>
-                      <span class="tpl-card-text">
-                        <span class="tpl-card-name">
-                          {{ template.name }}
-                          <span v-if="template.is_default" class="tpl-badge">Padrão</span>
-                        </span>
-                        <span class="tpl-card-desc">{{ template.description || "Sem descrição" }}</span>
-                        <span class="tpl-card-meta">
-                          <LayersIcon aria-hidden="true" />
-                          {{ templateSectionCount(template) }} {{ templateSectionCount(template) === 1 ? "seção" : "seções" }}
-                        </span>
-                      </span>
-                    </button>
-                    <button
-                      v-if="isMobileViewport"
-                      type="button"
-                      class="np-btn np-btn-primary tpl-card-use"
-                      @click="useTemplateNow(template)"
-                    >
-                      Usar este modelo
-                    </button>
-                  </article>
+                      <form
+                        v-if="templateManage.editingId === template.id"
+                        class="tpl-manage-form"
+                        @submit.prevent="saveTemplateEdit(template)"
+                      >
+                        <label class="tpl-manage-label" :for="`tpl-name-${template.id}`">{{ viewCopy.templateModal.templateNameLabel }}</label>
+                        <input
+                          :id="`tpl-name-${template.id}`"
+                          v-model="templateManage.name"
+                          class="tpl-manage-input"
+                          maxlength="120"
+                          required
+                        />
+                        <label class="tpl-manage-label" :for="`tpl-desc-${template.id}`">{{ viewCopy.templateModal.templateDescriptionLabel }}</label>
+                        <textarea
+                          :id="`tpl-desc-${template.id}`"
+                          v-model="templateManage.description"
+                          class="tpl-manage-input"
+                          rows="2"
+                          maxlength="500"
+                        ></textarea>
+                        <div class="tpl-manage-actions">
+                          <button type="button" class="np-btn" :disabled="templateManage.busy" @click="cancelTemplateManage">
+                            {{ viewCopy.templateModal.cancel }}
+                          </button>
+                          <button
+                            type="submit"
+                            class="np-btn np-btn-primary"
+                            :disabled="templateManage.busy || !templateManage.name.trim()"
+                          >
+                            {{ viewCopy.templateModal.save }}
+                          </button>
+                        </div>
+                      </form>
+                      <template v-else>
+                        <button
+                          type="button"
+                          class="tpl-card-main"
+                          :aria-pressed="templateModal.selectedTemplate?.id === template.id"
+                          @click="isMobileViewport ? handleTemplatePreview(template) : handleTemplateCardClick(template)"
+                        >
+                          <span class="tpl-thumb" :style="templateThumbStyle(template)">
+                            <span v-if="!templateThumbnail(template)" class="tpl-thumb-mock" aria-hidden="true">
+                              <i></i><i></i><i></i>
+                            </span>
+                          </span>
+                          <span class="tpl-card-text">
+                            <span class="tpl-card-name">
+                              {{ template.name }}
+                              <span v-if="template.is_default" class="tpl-badge">Padrão</span>
+                            </span>
+                            <span class="tpl-card-desc">{{ template.description || "Sem descrição" }}</span>
+                            <span class="tpl-card-meta">
+                              <LayersIcon aria-hidden="true" />
+                              {{ templateSectionCount(template) }} {{ templateSectionCount(template) === 1 ? "seção" : "seções" }}
+                            </span>
+                          </span>
+                        </button>
+                        <div v-if="templateManage.confirmDeleteId === template.id" class="tpl-manage-confirm">
+                          <span>{{ viewCopy.templateModal.deleteConfirm }}</span>
+                          <div class="tpl-manage-actions">
+                            <button type="button" class="np-btn" :disabled="templateManage.busy" @click="cancelTemplateManage">
+                              {{ viewCopy.templateModal.cancel }}
+                            </button>
+                            <button
+                              type="button"
+                              class="np-btn tpl-btn-danger"
+                              :disabled="templateManage.busy"
+                              @click="confirmDeleteTemplate(template)"
+                            >
+                              {{ viewCopy.templateModal.delete }}
+                            </button>
+                          </div>
+                        </div>
+                        <div v-else-if="isOwnTemplate(template) && canEditPages" class="tpl-card-tools">
+                          <button type="button" class="tpl-tool" @click="startTemplateEdit(template)">
+                            <PencilIcon aria-hidden="true" />
+                            {{ viewCopy.templateModal.rename }}
+                          </button>
+                          <button type="button" class="tpl-tool tpl-tool-danger" @click="askDeleteTemplate(template)">
+                            <Trash2Icon aria-hidden="true" />
+                            {{ viewCopy.templateModal.delete }}
+                          </button>
+                        </div>
+                        <button
+                          v-if="isMobileViewport"
+                          type="button"
+                          class="np-btn np-btn-primary tpl-card-use"
+                          @click="useTemplateNow(template)"
+                        >
+                          Usar este modelo
+                        </button>
+                      </template>
+                    </article>
+                  </template>
                 </div>
               </aside>
 
@@ -612,7 +681,7 @@ import { useAuthStore } from "../../store/useAuthStore";
 import { getCustomerPlanLabel } from "../../utils/planLabels";
 import { createAdminLocalizer, getAdminLanguage } from "../../utils/adminI18n";
 import PageTemplatePreview from "../../components/admin/PageTemplatePreview.vue";
-import { listPageTemplates } from "../../services/templates";
+import { deleteAgencyTemplate, listPageTemplates, updateAgencyTemplate } from "../../services/templates";
 import type { PageTemplate } from "../../types/templates";
 import { applyTemplateBranding } from "../../utils/pageTemplates";
 import { sanitizeDigits, buildWhatsappLink } from "../../utils/whatsapp";
@@ -647,6 +716,7 @@ import {
   SmartphoneIcon,
   StarIcon,
   TagIcon,
+  Trash2Icon,
   UserPlusIcon,
   XIcon
 } from "lucide-vue-next";
@@ -765,6 +835,22 @@ const viewCopySource = {
       es: "Empieza con un diseño listo y ajusta solo el contenido de tu itinerario."
     },
     listTitle: { pt: "Modelos disponíveis", es: "Modelos disponibles" },
+    ownGroup: { pt: "Meus modelos", es: "Mis modelos" },
+    platformGroup: { pt: "Modelos da plataforma", es: "Modelos de la plataforma" },
+    ownEmpty: {
+      pt: "Abra uma página no editor e use \"Salvar como template\" (menu ⋮) para ela aparecer aqui.",
+      es: "Abre una página en el editor y usa \"Guardar como plantilla\" (menú ⋮) para que aparezca aquí."
+    },
+    templateNameLabel: { pt: "Nome do modelo", es: "Nombre del modelo" },
+    templateDescriptionLabel: { pt: "Descrição", es: "Descripción" },
+    rename: { pt: "Editar", es: "Editar" },
+    delete: { pt: "Excluir", es: "Eliminar" },
+    cancel: { pt: "Cancelar", es: "Cancelar" },
+    save: { pt: "Salvar", es: "Guardar" },
+    deleteConfirm: {
+      pt: "Excluir este modelo? As páginas já criadas com ele não mudam.",
+      es: "¿Eliminar este modelo? Las páginas ya creadas con él no cambian."
+    },
     listLoading: { pt: "Carregando modelos...", es: "Cargando modelos..." },
     listEmpty: {
       pt: "Nenhum modelo disponível no momento.",
@@ -906,6 +992,10 @@ const viewCopySource = {
       pt: "Não foi possível criar a página com este modelo.",
       es: "No fue posible crear la página con esta plantilla."
     },
+    templateUpdated: { pt: "Modelo atualizado.", es: "Modelo actualizado." },
+    templateUpdateError: { pt: "Não foi possível atualizar o modelo.", es: "No fue posible actualizar el modelo." },
+    templateDeleted: { pt: "Modelo excluído.", es: "Modelo eliminado." },
+    templateDeleteError: { pt: "Não foi possível excluir o modelo.", es: "No fue posible eliminar el modelo." },
     aiWip: {
       pt: "Funcionalidade em desenvolvimento.",
       es: "Funcionalidad en desarrollo."
@@ -1270,11 +1360,87 @@ const loadPageStats = async () => {
   }
 };
 
+// Modelos salvos pela agência ("Salvar como template" no editor) vêm primeiro, com editar/excluir.
+const isOwnTemplate = (template: PageTemplate) => template.agency_id != null;
+const templateGroups = computed(() => {
+  const own = templateModal.value.templates.filter(isOwnTemplate);
+  const platform = templateModal.value.templates.filter(template => !isOwnTemplate(template));
+  return [
+    { key: "own", title: viewCopy.templateModal.ownGroup, items: own },
+    ...(platform.length ? [{ key: "platform", title: viewCopy.templateModal.platformGroup, items: platform }] : [])
+  ];
+});
+const orderedTemplates = computed(() => templateGroups.value.flatMap(group => group.items));
+
+const templateManage = ref({ editingId: null as number | null, confirmDeleteId: null as number | null, name: "", description: "", busy: false });
+const cancelTemplateManage = () => {
+  if (templateManage.value.busy) return;
+  templateManage.value = { editingId: null, confirmDeleteId: null, name: "", description: "", busy: false };
+};
+const startTemplateEdit = (template: PageTemplate) => {
+  templateManage.value = {
+    editingId: template.id,
+    confirmDeleteId: null,
+    name: template.name,
+    description: template.description || "",
+    busy: false
+  };
+};
+const askDeleteTemplate = (template: PageTemplate) => {
+  templateManage.value = { editingId: null, confirmDeleteId: template.id, name: "", description: "", busy: false };
+};
+const errorDetail = (err: any, fallback: string) => {
+  const detail = err?.response?.data?.detail;
+  return typeof detail === "string" && detail ? detail : fallback;
+};
+const saveTemplateEdit = async (template: PageTemplate) => {
+  const name = templateManage.value.name.trim();
+  if (!name || templateManage.value.busy) return;
+  templateManage.value.busy = true;
+  try {
+    const updated = await updateAgencyTemplate(template.id, {
+      name,
+      description: templateManage.value.description.trim() || null
+    });
+    templateModal.value.templates = templateModal.value.templates.map(item => (item.id === updated.id ? updated : item));
+    if (templateModal.value.selectedTemplate?.id === updated.id) {
+      selectTemplateForModal(updated);
+    }
+    templateManage.value.busy = false;
+    cancelTemplateManage();
+    showSnackbar(viewCopy.messages.templateUpdated);
+  } catch (err) {
+    console.error(err);
+    templateManage.value.busy = false;
+    showSnackbar(errorDetail(err, viewCopy.messages.templateUpdateError), "error");
+  }
+};
+const confirmDeleteTemplate = async (template: PageTemplate) => {
+  if (templateManage.value.busy) return;
+  templateManage.value.busy = true;
+  try {
+    await deleteAgencyTemplate(template.id);
+    templateModal.value.templates = templateModal.value.templates.filter(item => item.id !== template.id);
+    templateManage.value.busy = false;
+    cancelTemplateManage();
+    if (templateModal.value.selectedTemplate?.id === template.id) {
+      templateModal.value.selectedTemplate = null;
+      const [first] = orderedTemplates.value;
+      if (!isMobileViewport.value && first) selectTemplateForModal(first);
+    }
+    showSnackbar(viewCopy.messages.templateDeleted);
+  } catch (err) {
+    console.error(err);
+    templateManage.value.busy = false;
+    showSnackbar(errorDetail(err, viewCopy.messages.templateDeleteError), "error");
+  }
+};
+
 const loadTemplateOptions = async () => {
   templateModal.value.loading = true;
   templateModal.value.error = "";
   try {
-    templateModal.value.templates = await listPageTemplates();
+    templateModal.value.templates = await listPageTemplates(agencyStore.currentAgencyId);
   } catch (err) {
     console.error(err);
     templateModal.value.error = viewCopy.messages.templateLoadError;
@@ -1296,11 +1462,11 @@ const openTemplateModal = async () => {
   templateModal.value.error = "";
   previewFullscreen.value = false;
   resetTemplatePreviewDevice();
-  if (!templateModal.value.templates.length) {
-    await loadTemplateOptions();
-  }
+  cancelTemplateManage();
+  // Sempre recarrega: o cliente pode ter salvo um modelo novo no editor ou trocado de agência.
+  await loadTemplateOptions();
   // No computador a prévia já abre com o primeiro modelo, sem tela vazia.
-  const [firstTemplate] = templateModal.value.templates;
+  const [firstTemplate] = orderedTemplates.value;
   if (!isMobileViewport.value && firstTemplate && !templateModal.value.selectedTemplate) {
     selectTemplateForModal(firstTemplate);
   }
@@ -3136,6 +3302,121 @@ onMounted(async () => {
 
 .tpl-card-use {
   margin: 0 10px 10px;
+}
+
+.tpl-group-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.tpl-group-head:first-child {
+  margin-top: 0;
+}
+
+.tpl-group-count {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0;
+}
+
+.tpl-group-empty {
+  padding: 12px 14px;
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+  color: var(--muted-foreground);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.tpl-card-tools {
+  display: flex;
+  gap: 4px;
+  margin: -6px 10px 8px;
+}
+
+.tpl-tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.tpl-tool:hover {
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.tpl-tool svg {
+  width: 13px;
+  height: 13px;
+}
+
+.tpl-tool-danger:hover {
+  background: var(--status-danger);
+  color: var(--status-danger-foreground);
+}
+
+.tpl-manage-form,
+.tpl-manage-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  color: var(--foreground);
+  font-size: 13px;
+}
+
+.tpl-manage-confirm {
+  margin: -6px 0 0;
+  padding-top: 0;
+}
+
+.tpl-manage-label {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.tpl-manage-input {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--background);
+  color: var(--foreground);
+  font-size: 13px;
+  resize: vertical;
+}
+
+.tpl-manage-input:focus {
+  border-color: var(--primary);
+  outline: none;
+}
+
+.tpl-manage-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.tpl-btn-danger {
+  border-color: var(--destructive);
+  background: var(--destructive);
+  color: #fff;
 }
 
 .tpl-state {

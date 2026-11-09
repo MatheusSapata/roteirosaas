@@ -7,6 +7,21 @@ export interface PageTemplate {
   description?: string | null;
   is_default: boolean;
   config_json: PageConfig;
+  /** Preenchido quando o modelo foi salvo pelo cliente (próprio da agência). */
+  agency_id?: number | null;
+  created_at?: string | null;
+}
+
+export interface CreateAgencyTemplatePayload {
+  agency_id: number;
+  name: string;
+  description?: string | null;
+  config_json: PageConfig;
+}
+
+export interface UpdateAgencyTemplatePayload {
+  name?: string;
+  description?: string | null;
 }
 
 export interface CreateTemplateFromPagePayload {

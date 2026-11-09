@@ -676,7 +676,8 @@ def create_page(
     template = None
     if page_in.template_id:
         template = db.query(PageTemplate).filter(PageTemplate.id == page_in.template_id).first()
-        if not template:
+        # Modelo salvo por um cliente só serve para a própria agência.
+        if not template or (template.agency_id is not None and template.agency_id != page_in.agency_id):
             raise HTTPException(status_code=404, detail="Modelo não encontrado.")
     payload = page_in.dict()
     payload["config_json"] = normalize_config(payload.get("config_json"))
