@@ -138,6 +138,32 @@
             </template>
             <EdText :model-value="readText(item.buttonLabel)" label="Texto do botão" placeholder="Ver roteiro" @update:model-value="update({ buttonLabel: writeText(item.buttonLabel, $event) })" />
             <EdToggle v-if="item.source === 'external'" :model-value="item.openInNewTab !== false" label="Abrir em nova aba" @update:model-value="update({ openInNewTab: $event })" />
+            <div class="ved-field">
+              <span class="ved-label">Destaques</span>
+              <span class="ved-hint">Faixas sobre a foto, tipo "LOTADO". Até 3 por card.</span>
+              <EdList
+                :items="item.highlights || []"
+                :item-title="h => readText(h.text)"
+                :new-item="newHighlight"
+                add-label="Adicionar destaque"
+                item-label="Destaque"
+                :max="3"
+                @update:items="update({ highlights: $event })"
+              >
+                <template #default="{ item: highlight, update: updateHighlight }">
+                  <EdText :model-value="readText(highlight.text)" label="Texto" placeholder="LOTADO" @update:model-value="updateHighlight({ text: writeText(highlight.text, $event) })" />
+                  <EdColor :model-value="highlight.color" label="Cor de fundo" @update:model-value="updateHighlight({ color: $event })" />
+                </template>
+              </EdList>
+            </div>
+            <div class="ved-field">
+              <span class="ved-label">Ícone do card</span>
+              <span class="ved-hint">Aparece no canto do card, na diagonal.</span>
+              <div class="fl-icon-row">
+                <TravelIconPicker :model-value="item.icon || ''" @update:model-value="update({ icon: $event })" />
+                <EdColor v-if="item.icon" :model-value="item.iconColor" label="Cor de fundo do ícone" @update:model-value="update({ iconColor: $event })" />
+              </div>
+            </div>
           </template>
         </EdList>
       </EdGroup>
@@ -170,10 +196,12 @@ import { errorDetail, usePageTags } from "../../../../composables/usePageTags";
 import { useAgencyStore } from "../../../../store/useAgencyStore";
 import { tagStyle } from "../../../../types/pageTag";
 import { pageCardPrefillFields } from "../../../../utils/pageCardPrefill";
-import type { LinkCardItem, LinksSection } from "../../../../types/page";
+import type { LinkCardItem, LinkHighlight, LinksSection } from "../../../../types/page";
 import ImageUploadField from "../../inputs/ImageUploadField.vue";
+import TravelIconPicker from "../../inputs/TravelIconPicker.vue";
 import EdAlign from "../EdAlign.vue";
 import EdBackground from "../EdBackground.vue";
+import EdColor from "../EdColor.vue";
 import EdGroup from "../EdGroup.vue";
 import EdHeading from "../EdHeading.vue";
 import EdLayouts from "../EdLayouts.vue";
@@ -201,8 +229,12 @@ const newItem = (): LinkCardItem => ({
   buttonLabel: "Ver roteiro",
   openInNewTab: false,
   showDates: false,
-  showPrice: false
+  showPrice: false,
+  highlights: [],
+  icon: "",
+  iconColor: "#F59E0B"
 });
+const newHighlight = (): LinkHighlight => ({ id: `hl-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, text: "", color: "#F59E0B" });
 
 const { pages, loading: loadingPages, load: loadPages, pageUrl } = useAgencyPages();
 onMounted(loadPages);
@@ -347,6 +379,12 @@ const setLayout = (layout: string) => {
 </script>
 
 <style scoped>
+.fl-icon-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
 .fl-chips {
   display: flex;
   flex-wrap: wrap;

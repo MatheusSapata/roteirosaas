@@ -14,7 +14,20 @@
           class="v2-card v2-link-card v2-links-card v2-in"
           :class="`v2-d${Math.min(idx + 3, 7)}`"
         >
-          <span class="v2-links-media"><V2Img v-if="item.image" :src="item.image" alt="" sizes="(max-width: 640px) 100vw, 420px" /></span>
+          <span class="v2-links-media">
+            <V2Img v-if="item.image" :src="item.image" alt="" sizes="(max-width: 640px) 100vw, 420px" />
+            <span v-if="item.highlights.length" class="v2-links-highlights">
+              <span
+                v-for="highlight in item.highlights"
+                :key="highlight.key"
+                class="v2-links-highlight"
+                :style="{ background: highlight.color, color: highlight.textColor }"
+              >{{ highlight.text }}</span>
+            </span>
+            <span v-if="item.icon" class="v2-links-icon-badge" :style="{ background: item.iconColor, color: item.iconTextColor }">
+              <TravelIcon :name="item.icon" :size="18" />
+            </span>
+          </span>
           <span class="v2-links-body">
             <!-- Título e texto ocupam a mesma altura em todos os cards (a do maior). -->
             <span class="v2-links-text">
@@ -62,10 +75,23 @@ import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, toRef, wat
 import { STATIC_RENDER_KEY } from "./useEntrance";
 import type { LinksSection } from "../../../types/page";
 import { resolveMediaUrl } from "../../../utils/media";
+import TravelIcon from "../../shared/TravelIcon.vue";
 import V2Section from "./V2Section.vue";
 import V2Img from "./V2Img.vue";
 import V2Head from "./V2Head.vue";
 import { localize, text, useHeading } from "./useHeading";
+
+// Texto preto ou branco conforme o brilho da cor de fundo escolhida, para o destaque/ícone ficar legível.
+const readableText = (hex?: string) => {
+  const match = /^#?([0-9a-f]{6})$/i.exec((hex || "").trim());
+  if (!match) return "#ffffff";
+  const value = match[1];
+  const r = parseInt(value.slice(0, 2), 16);
+  const g = parseInt(value.slice(2, 4), 16);
+  const b = parseInt(value.slice(4, 6), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.6 ? "#14110c" : "#ffffff";
+};
 
 const props = defineProps<{ section: LinksSection; previewDevice?: "desktop" | "mobile" }>();
 const { label, title, subtitleHtml, align: headAlign } = useHeading(toRef(props, "section"), "links");
@@ -104,7 +130,14 @@ const items = computed(() =>
         price: showPrice ? item.priceValue || "" : "",
         pricePrefix: showPrice ? prefix : "",
         priceSuffix: showPrice ? suffix : "",
-        buttonLabel: text(item.buttonLabel) || copy.open
+        buttonLabel: text(item.buttonLabel) || copy.open,
+        highlights: (item.highlights || [])
+          .slice(0, 3)
+          .map((highlight, hIdx) => ({ key: highlight.id || `${idx}-${hIdx}`, text: text(highlight.text), color: highlight.color || "#F59E0B", textColor: readableText(highlight.color) }))
+          .filter(highlight => highlight.text),
+        icon: item.icon || "",
+        iconColor: item.iconColor || "#F59E0B",
+        iconTextColor: readableText(item.iconColor)
       };
     })
 );
@@ -292,6 +325,7 @@ const slide = (direction: number) => {
   }
 }
 .v2-links-media {
+  position: relative;
   display: block;
   overflow: hidden;
   aspect-ratio: 16 / 11;
@@ -302,6 +336,45 @@ const slide = (direction: number) => {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+/* Destaques: faixas sobre a foto, uma embaixo da outra (ex: "LOTADO"). */
+.v2-links-highlights {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 56px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+}
+.v2-links-highlight {
+  max-width: 100%;
+  padding: 5px 12px;
+  overflow: hidden;
+  border-radius: 5px;
+  box-shadow: 0 4px 10px -4px rgba(6, 12, 9, 0.5);
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+/* Ícone: ribbon na diagonal, cortado pelo canto da foto. */
+.v2-links-icon-badge {
+  position: absolute;
+  top: 16px;
+  right: -36px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 112px;
+  padding: 7px 0;
+  box-shadow: 0 4px 10px -4px rgba(6, 12, 9, 0.5);
+  transform: rotate(45deg);
 }
 .v2-links-body {
   flex: 1;

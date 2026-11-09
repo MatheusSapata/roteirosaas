@@ -535,6 +535,13 @@ export interface InclusionsSection extends SectionBase {
   backgroundColor?: string;
 }
 
+/** Faixa de destaque sobre a foto do card (ex: "LOTADO"). Até 3 por card. */
+export interface LinkHighlight {
+  id?: string;
+  text: LocalizedString;
+  color: string;
+}
+
 export interface LinkCardItem {
   id?: string;
   source: "page" | "external";
@@ -552,6 +559,10 @@ export interface LinkCardItem {
   pricePrefix?: LocalizedString;
   priceValue?: string;
   priceSuffix?: LocalizedString;
+  highlights?: LinkHighlight[];
+  /** Ícone de turismo no canto do card, no formato "icon:<chave>" (ver utils/travelIcons.ts). */
+  icon?: string;
+  iconColor?: string;
 }
 
 export interface LinksSection extends SectionBase {
