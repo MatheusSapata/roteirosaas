@@ -540,6 +540,8 @@ export interface LinkHighlight {
   id?: string;
   text: LocalizedString;
   color: string;
+  /** Ícone de turismo ("icon:<chave>") ou emoji livre, opcional, dentro da própria faixa. */
+  icon?: string;
 }
 
 export interface LinkCardItem {
@@ -560,9 +562,6 @@ export interface LinkCardItem {
   priceValue?: string;
   priceSuffix?: LocalizedString;
   highlights?: LinkHighlight[];
-  /** Ícone de turismo no canto do card, no formato "icon:<chave>" (ver utils/travelIcons.ts). */
-  icon?: string;
-  iconColor?: string;
 }
 
 export interface LinksSection extends SectionBase {

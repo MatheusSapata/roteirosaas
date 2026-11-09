@@ -22,11 +22,11 @@
                 :key="highlight.key"
                 class="v2-links-highlight"
                 :style="{ background: highlight.color, color: highlight.textColor }"
-              >{{ highlight.text }}</span>
-            </span>
-            <span v-if="item.icon" class="v2-links-icon-badge" :style="{ background: item.iconColor, color: item.iconTextColor }">
-              <TravelIcon v-if="item.iconIsLibrary" :name="item.icon" :size="22" />
-              <span v-else class="v2-links-icon-emoji">{{ item.icon }}</span>
+              >
+                <TravelIcon v-if="highlight.iconIsLibrary" :name="highlight.icon" :size="13" />
+                <span v-else-if="highlight.icon" class="v2-links-highlight-emoji">{{ highlight.icon }}</span>
+                {{ highlight.text }}
+              </span>
             </span>
           </span>
           <span class="v2-links-body">
@@ -135,12 +135,15 @@ const items = computed(() =>
         buttonLabel: text(item.buttonLabel) || copy.open,
         highlights: (item.highlights || [])
           .slice(0, 3)
-          .map((highlight, hIdx) => ({ key: highlight.id || `${idx}-${hIdx}`, text: text(highlight.text), color: highlight.color || "#F59E0B", textColor: readableText(highlight.color) }))
-          .filter(highlight => highlight.text),
-        icon: item.icon || "",
-        iconIsLibrary: !!iconValueName(item.icon),
-        iconColor: item.iconColor || "#F59E0B",
-        iconTextColor: readableText(item.iconColor)
+          .map((highlight, hIdx) => ({
+            key: highlight.id || `${idx}-${hIdx}`,
+            text: text(highlight.text),
+            color: highlight.color || "#F59E0B",
+            textColor: readableText(highlight.color),
+            icon: highlight.icon || "",
+            iconIsLibrary: !!iconValueName(highlight.icon)
+          }))
+          .filter(highlight => highlight.text)
       };
     })
 );
@@ -340,14 +343,13 @@ const slide = (direction: number) => {
   height: 100%;
   object-fit: cover;
 }
-/* Destaques: colados na borda esquerda (reta a partir daqui, já que o deslocamento
-   de cima é igual ao raio do canto) e deslocados só no topo (24px = raio do card),
-   pra não ficar em cima da curva. */
+/* Destaques: deslocados do canto superior esquerdo (24px nos dois eixos = raio do
+   card), pra não ficar em cima da curva. Cada um pode trazer o próprio ícone. */
 .v2-links-highlights {
   position: absolute;
   top: 24px;
-  left: 0;
-  right: 56px;
+  left: 24px;
+  right: 24px;
   z-index: 2;
   display: flex;
   flex-direction: column;
@@ -355,10 +357,13 @@ const slide = (direction: number) => {
   gap: 6px;
 }
 .v2-links-highlight {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   max-width: 100%;
   padding: 6px 14px;
   overflow: hidden;
-  border-radius: 0 8px 8px 0;
+  border-radius: 8px;
   box-shadow: 0 4px 10px -4px rgba(6, 12, 9, 0.5);
   font-size: 11.5px;
   font-weight: 800;
@@ -367,25 +372,9 @@ const slide = (direction: number) => {
   text-transform: uppercase;
   white-space: nowrap;
 }
-/* Ícone: selo arredondado, levemente inclinado, flutuando no canto superior direito. */
-.v2-links-icon-badge {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 13px;
-  box-shadow: 0 6px 16px -4px rgba(6, 12, 9, 0.55);
-  transform: rotate(12deg);
-}
-.v2-links-icon-emoji {
-  font-size: 20px;
+.v2-links-highlight-emoji {
+  font-size: 13px;
   line-height: 1;
-  transform: rotate(-12deg);
 }
 .v2-links-body {
   flex: 1;
