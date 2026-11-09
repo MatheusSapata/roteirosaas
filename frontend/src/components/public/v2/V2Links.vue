@@ -21,11 +21,14 @@
                 v-for="highlight in item.highlights"
                 :key="highlight.key"
                 class="v2-links-highlight"
+                :class="`v2-links-highlight--icon-${highlight.iconPosition}`"
                 :style="{ background: highlight.color, color: highlight.textColor }"
               >
-                <TravelIcon v-if="highlight.iconIsLibrary" :name="highlight.icon" :size="13" />
-                <span v-else-if="highlight.icon" class="v2-links-highlight-emoji">{{ highlight.icon }}</span>
-                {{ highlight.text }}
+                <template v-if="highlight.icon">
+                  <TravelIcon v-if="highlight.iconIsLibrary" :name="highlight.icon" :size="13" />
+                  <span v-else class="v2-links-highlight-emoji">{{ highlight.icon }}</span>
+                </template>
+                <span>{{ highlight.text }}</span>
               </span>
             </span>
           </span>
@@ -141,7 +144,8 @@ const items = computed(() =>
             color: highlight.color || "#F59E0B",
             textColor: readableText(highlight.color),
             icon: highlight.icon || "",
-            iconIsLibrary: !!iconValueName(highlight.icon)
+            iconIsLibrary: !!iconValueName(highlight.icon),
+            iconPosition: highlight.iconPosition === "right" ? "right" : "left"
           }))
           .filter(highlight => highlight.text)
       };
@@ -371,6 +375,9 @@ const slide = (direction: number) => {
   text-overflow: ellipsis;
   text-transform: uppercase;
   white-space: nowrap;
+}
+.v2-links-highlight--icon-right {
+  flex-direction: row-reverse;
 }
 .v2-links-highlight-emoji {
   font-size: 13px;

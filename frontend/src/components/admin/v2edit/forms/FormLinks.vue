@@ -167,6 +167,16 @@
                         @input="updateHighlight({ icon: ($event.target as HTMLInputElement).value })"
                       />
                     </div>
+                    <EdSeg
+                      v-if="highlight.icon"
+                      :model-value="highlight.iconPosition === 'right' ? 'right' : 'left'"
+                      label="Lado do ícone"
+                      :options="[
+                        { value: 'left', label: 'Esquerda' },
+                        { value: 'right', label: 'Direita' }
+                      ]"
+                      @update:model-value="updateHighlight({ iconPosition: $event })"
+                    />
                   </div>
                 </template>
               </EdList>

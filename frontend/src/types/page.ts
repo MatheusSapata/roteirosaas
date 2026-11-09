@@ -542,6 +542,8 @@ export interface LinkHighlight {
   color: string;
   /** Ícone de turismo ("icon:<chave>") ou emoji livre, opcional, dentro da própria faixa. */
   icon?: string;
+  /** Lado do ícone em relação ao texto. Padrão: esquerda. */
+  iconPosition?: "left" | "right";
 }
 
 export interface LinkCardItem {
