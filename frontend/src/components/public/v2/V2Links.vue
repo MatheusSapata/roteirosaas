@@ -25,7 +25,7 @@
               >{{ highlight.text }}</span>
             </span>
             <span v-if="item.icon" class="v2-links-icon-badge" :style="{ background: item.iconColor, color: item.iconTextColor }">
-              <TravelIcon :name="item.icon" :size="18" />
+              <TravelIcon :name="item.icon" :size="22" />
             </span>
           </span>
           <span class="v2-links-body">
@@ -337,23 +337,23 @@ const slide = (direction: number) => {
   height: 100%;
   object-fit: cover;
 }
-/* Destaques: faixas sobre a foto, uma embaixo da outra (ex: "LOTADO"). */
+/* Destaques: faixas coladas na borda esquerda da foto, uma embaixo da outra (ex: "LOTADO"). */
 .v2-links-highlights {
   position: absolute;
-  top: 12px;
-  left: 12px;
+  top: 0;
+  left: 0;
   right: 56px;
   z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 5px;
+  gap: 4px;
 }
 .v2-links-highlight {
   max-width: 100%;
-  padding: 5px 12px;
+  padding: 6px 14px;
   overflow: hidden;
-  border-radius: 5px;
+  border-radius: 0 0 6px 0;
   box-shadow: 0 4px 10px -4px rgba(6, 12, 9, 0.5);
   font-size: 11.5px;
   font-weight: 800;
@@ -362,19 +362,20 @@ const slide = (direction: number) => {
   text-transform: uppercase;
   white-space: nowrap;
 }
-/* Ícone: ribbon na diagonal, cortado pelo canto da foto. */
+/* Ícone: ribbon na diagonal, encostada no canto superior direito da foto. */
 .v2-links-icon-badge {
+  --ic-rb: 96px;
   position: absolute;
-  top: 16px;
-  right: -36px;
+  top: calc(var(--ic-rb) / 2);
+  right: calc(var(--ic-rb) / 2);
   z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 112px;
-  padding: 7px 0;
+  width: calc(var(--ic-rb) * 1.6);
+  padding: 10px 0;
   box-shadow: 0 4px 10px -4px rgba(6, 12, 9, 0.5);
-  transform: rotate(45deg);
+  transform: translate(50%, -50%) rotate(45deg);
 }
 .v2-links-body {
   flex: 1;
