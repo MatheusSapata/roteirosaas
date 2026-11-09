@@ -25,7 +25,8 @@
               >{{ highlight.text }}</span>
             </span>
             <span v-if="item.icon" class="v2-links-icon-badge" :style="{ background: item.iconColor, color: item.iconTextColor }">
-              <TravelIcon :name="item.icon" :size="22" />
+              <TravelIcon v-if="item.iconIsLibrary" :name="item.icon" :size="22" />
+              <span v-else class="v2-links-icon-emoji">{{ item.icon }}</span>
             </span>
           </span>
           <span class="v2-links-body">
@@ -76,6 +77,7 @@ import { STATIC_RENDER_KEY } from "./useEntrance";
 import type { LinksSection } from "../../../types/page";
 import { resolveMediaUrl } from "../../../utils/media";
 import TravelIcon from "../../shared/TravelIcon.vue";
+import { iconValueName } from "../../../utils/travelIcons";
 import V2Section from "./V2Section.vue";
 import V2Img from "./V2Img.vue";
 import V2Head from "./V2Head.vue";
@@ -136,6 +138,7 @@ const items = computed(() =>
           .map((highlight, hIdx) => ({ key: highlight.id || `${idx}-${hIdx}`, text: text(highlight.text), color: highlight.color || "#F59E0B", textColor: readableText(highlight.color) }))
           .filter(highlight => highlight.text),
         icon: item.icon || "",
+        iconIsLibrary: !!iconValueName(item.icon),
         iconColor: item.iconColor || "#F59E0B",
         iconTextColor: readableText(item.iconColor)
       };
@@ -337,11 +340,13 @@ const slide = (direction: number) => {
   height: 100%;
   object-fit: cover;
 }
-/* Destaques: faixas coladas na borda esquerda da foto, uma embaixo da outra (ex: "LOTADO"). */
+/* Destaques: faixas no canto superior esquerdo da foto, uma embaixo da outra (ex: "LOTADO").
+   Começam depois do arredondamento do card (24px), para a borda reta da faixa não ficar
+   cortada pela curva do canto. */
 .v2-links-highlights {
   position: absolute;
   top: 0;
-  left: 0;
+  left: 24px;
   right: 56px;
   z-index: 2;
   display: flex;
@@ -353,7 +358,7 @@ const slide = (direction: number) => {
   max-width: 100%;
   padding: 6px 14px;
   overflow: hidden;
-  border-radius: 0 0 6px 0;
+  border-radius: 0 0 6px 6px;
   box-shadow: 0 4px 10px -4px rgba(6, 12, 9, 0.5);
   font-size: 11.5px;
   font-weight: 800;
@@ -362,20 +367,25 @@ const slide = (direction: number) => {
   text-transform: uppercase;
   white-space: nowrap;
 }
-/* Ícone: ribbon na diagonal, encostada no canto superior direito da foto. */
+/* Ícone: selo arredondado, levemente inclinado, flutuando no canto superior direito. */
 .v2-links-icon-badge {
-  --ic-rb: 96px;
   position: absolute;
-  top: calc(var(--ic-rb) / 2);
-  right: calc(var(--ic-rb) / 2);
+  top: 12px;
+  right: 12px;
   z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: calc(var(--ic-rb) * 1.6);
-  padding: 10px 0;
-  box-shadow: 0 4px 10px -4px rgba(6, 12, 9, 0.5);
-  transform: translate(50%, -50%) rotate(45deg);
+  width: 44px;
+  height: 44px;
+  border-radius: 13px;
+  box-shadow: 0 6px 16px -4px rgba(6, 12, 9, 0.55);
+  transform: rotate(12deg);
+}
+.v2-links-icon-emoji {
+  font-size: 20px;
+  line-height: 1;
+  transform: rotate(-12deg);
 }
 .v2-links-body {
   flex: 1;

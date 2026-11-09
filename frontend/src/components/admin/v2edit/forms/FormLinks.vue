@@ -158,9 +158,17 @@
             </div>
             <div class="ved-field">
               <span class="ved-label">Ícone do card</span>
-              <span class="ved-hint">Aparece no canto do card, na diagonal.</span>
+              <span class="ved-hint">Escolha da lista de turismo, ou cole um emoji (ex: com o atalho de emoji do sistema — Windows "Win + ." ou Mac "Cmd + Ctrl + Espaço").</span>
               <div class="fl-icon-row">
-                <TravelIconPicker :model-value="item.icon || ''" @update:model-value="update({ icon: $event })" />
+                <TravelIconPicker :model-value="isLibraryIcon(item.icon) ? item.icon || '' : ''" @update:model-value="update({ icon: $event })" />
+                <input
+                  class="ved-input fl-icon-emoji"
+                  type="text"
+                  maxlength="8"
+                  placeholder="ou emoji"
+                  :value="isLibraryIcon(item.icon) ? '' : item.icon || ''"
+                  @input="update({ icon: ($event.target as HTMLInputElement).value })"
+                />
                 <EdColor v-if="item.icon" :model-value="item.iconColor" label="Cor de fundo do ícone" @update:model-value="update({ iconColor: $event })" />
               </div>
             </div>
@@ -196,6 +204,7 @@ import { errorDetail, usePageTags } from "../../../../composables/usePageTags";
 import { useAgencyStore } from "../../../../store/useAgencyStore";
 import { tagStyle } from "../../../../types/pageTag";
 import { pageCardPrefillFields } from "../../../../utils/pageCardPrefill";
+import { iconValueName } from "../../../../utils/travelIcons";
 import type { LinkCardItem, LinkHighlight, LinksSection } from "../../../../types/page";
 import ImageUploadField from "../../inputs/ImageUploadField.vue";
 import TravelIconPicker from "../../inputs/TravelIconPicker.vue";
@@ -235,6 +244,8 @@ const newItem = (): LinkCardItem => ({
   iconColor: "#F59E0B"
 });
 const newHighlight = (): LinkHighlight => ({ id: `hl-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, text: "", color: "#F59E0B" });
+// Ícone da lista de turismo ("icon:<chave>") ou emoji livre (qualquer outro texto).
+const isLibraryIcon = (icon?: string) => !!iconValueName(icon);
 
 const { pages, loading: loadingPages, load: loadPages, pageUrl } = useAgencyPages();
 onMounted(loadPages);
@@ -384,6 +395,11 @@ const setLayout = (layout: string) => {
   flex-wrap: wrap;
   align-items: center;
   gap: 14px;
+}
+.fl-icon-emoji {
+  width: 100px;
+  text-align: center;
+  font-size: 18px;
 }
 .fl-chips {
   display: flex;
