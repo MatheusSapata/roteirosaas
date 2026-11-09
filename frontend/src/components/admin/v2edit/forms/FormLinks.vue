@@ -140,7 +140,7 @@
             <EdToggle v-if="item.source === 'external'" :model-value="item.openInNewTab !== false" label="Abrir em nova aba" @update:model-value="update({ openInNewTab: $event })" />
             <div class="ved-field">
               <span class="ved-label">Destaques</span>
-              <span class="ved-hint">Faixas sobre a foto, tipo "LOTADO". Até 3 por card.</span>
+              <span class="ved-hint">Faixas sobre a foto, tipo "LOTADO". Até 3 por card, cada uma com texto e, se quiser, um ícone.</span>
               <EdList
                 :items="item.highlights || []"
                 :item-title="h => readText(h.text)"
@@ -153,24 +153,23 @@
                 <template #default="{ item: highlight, update: updateHighlight }">
                   <EdText :model-value="readText(highlight.text)" label="Texto" placeholder="LOTADO" @update:model-value="updateHighlight({ text: writeText(highlight.text, $event) })" />
                   <EdColor :model-value="highlight.color" label="Cor de fundo" @update:model-value="updateHighlight({ color: $event })" />
+                  <div class="ved-field">
+                    <span class="ved-label">Ícone (opcional)</span>
+                    <span class="ved-hint">Escolha da lista de turismo, ou cole um emoji (ex: com o atalho de emoji do sistema — Windows "Win + ." ou Mac "Cmd + Ctrl + Espaço").</span>
+                    <div class="fl-icon-row">
+                      <TravelIconPicker :model-value="isLibraryIcon(highlight.icon) ? highlight.icon || '' : ''" @update:model-value="updateHighlight({ icon: $event })" />
+                      <input
+                        class="ved-input fl-icon-emoji"
+                        type="text"
+                        maxlength="8"
+                        placeholder="ou emoji"
+                        :value="isLibraryIcon(highlight.icon) ? '' : highlight.icon || ''"
+                        @input="updateHighlight({ icon: ($event.target as HTMLInputElement).value })"
+                      />
+                    </div>
+                  </div>
                 </template>
               </EdList>
-            </div>
-            <div class="ved-field">
-              <span class="ved-label">Ícone do card</span>
-              <span class="ved-hint">Escolha da lista de turismo, ou cole um emoji (ex: com o atalho de emoji do sistema — Windows "Win + ." ou Mac "Cmd + Ctrl + Espaço").</span>
-              <div class="fl-icon-row">
-                <TravelIconPicker :model-value="isLibraryIcon(item.icon) ? item.icon || '' : ''" @update:model-value="update({ icon: $event })" />
-                <input
-                  class="ved-input fl-icon-emoji"
-                  type="text"
-                  maxlength="8"
-                  placeholder="ou emoji"
-                  :value="isLibraryIcon(item.icon) ? '' : item.icon || ''"
-                  @input="update({ icon: ($event.target as HTMLInputElement).value })"
-                />
-                <EdColor v-if="item.icon" :model-value="item.iconColor" label="Cor de fundo do ícone" @update:model-value="update({ iconColor: $event })" />
-              </div>
             </div>
           </template>
         </EdList>
@@ -239,11 +238,9 @@ const newItem = (): LinkCardItem => ({
   openInNewTab: false,
   showDates: false,
   showPrice: false,
-  highlights: [],
-  icon: "",
-  iconColor: "#F59E0B"
+  highlights: []
 });
-const newHighlight = (): LinkHighlight => ({ id: `hl-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, text: "", color: "#F59E0B" });
+const newHighlight = (): LinkHighlight => ({ id: `hl-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, text: "", color: "#F59E0B", icon: "" });
 // Ícone da lista de turismo ("icon:<chave>") ou emoji livre (qualquer outro texto).
 const isLibraryIcon = (icon?: string) => !!iconValueName(icon);
 
