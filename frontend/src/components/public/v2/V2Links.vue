@@ -340,25 +340,24 @@ const slide = (direction: number) => {
   height: 100%;
   object-fit: cover;
 }
-/* Destaques: faixas no canto superior esquerdo da foto, uma embaixo da outra (ex: "LOTADO").
-   Começam depois do arredondamento do card (24px), para a borda reta da faixa não ficar
-   cortada pela curva do canto. */
+/* Destaques: chips flutuando com respiro do canto superior esquerdo da foto (ex: "LOTADO"),
+   longe o bastante da quina para nunca ficar em cima do arredondamento do card. */
 .v2-links-highlights {
   position: absolute;
-  top: 0;
-  left: 24px;
+  top: 12px;
+  left: 12px;
   right: 56px;
   z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 4px;
+  gap: 6px;
 }
 .v2-links-highlight {
   max-width: 100%;
   padding: 6px 14px;
   overflow: hidden;
-  border-radius: 0 0 6px 6px;
+  border-radius: 8px;
   box-shadow: 0 4px 10px -4px rgba(6, 12, 9, 0.5);
   font-size: 11.5px;
   font-weight: 800;
