@@ -340,11 +340,11 @@ const slide = (direction: number) => {
   height: 100%;
   object-fit: cover;
 }
-/* Destaques: colados no topo da foto (sem vão), deslocados da esquerda só o
-   suficiente (24px = raio do card) para não ficar em cima da curva do canto. */
+/* Destaques: colados no canto superior esquerdo, deslocados só o raio do
+   arredondamento do card (24px) nos dois eixos, para não ficar em cima da curva. */
 .v2-links-highlights {
   position: absolute;
-  top: 0;
+  top: 24px;
   left: 24px;
   right: 56px;
   z-index: 2;
@@ -357,7 +357,7 @@ const slide = (direction: number) => {
   max-width: 100%;
   padding: 6px 14px;
   overflow: hidden;
-  border-radius: 0 8px 8px 8px;
+  border-radius: 8px;
   box-shadow: 0 4px 10px -4px rgba(6, 12, 9, 0.5);
   font-size: 11.5px;
   font-weight: 800;
