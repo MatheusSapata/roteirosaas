@@ -1,6 +1,8 @@
-// Gera as imagens do Perfil da Empresa no Google da Viaje On (catálogo, fotos, capa e destaques).
-// As telas (telas/eNN.jpg) são a demonstração do Sistema Viaje On da página viajeon.com/sistema
-// (agência fictícia "Serra Turismo"), capturadas sem a barra de progresso.
+// Gera as imagens do Perfil da Empresa no Google da Viaje On (catálogo, fotos e destaques).
+// Tudo é feito com telas REAIS do Sistema Viaje On, recortadas para real/ a partir do
+// repositório do sistema (oi-charm-glow): public/apresentacao/telas e public/help/shots,
+// com a agência fictícia "Serra Turismo". O logo é o oficial (public/brand).
+// A capa tem gerador próprio: gerar-capa.cjs.
 //
 //   node gerar.cjs            todas as peças
 //   node gerar.cjs p01 f03    só as pedidas (pelo prefixo do nome)
@@ -11,7 +13,8 @@ const fs = require('fs');
 const path = require('path');
 
 const AQUI = __dirname;
-const TELA = n => 'file://' + path.join(AQUI, 'telas', n + '.jpg');
+const REAL = n => 'file://' + path.join(AQUI, 'real', n);
+const TELA = n => REAL(n + '.jpg');
 const MARCA = n => 'file://' + path.join(AQUI, 'marca', n + '.png');
 
 const ico = (nome, cls = '') => `<i data-lucide="${nome}" class="${cls}"></i>`;
@@ -25,11 +28,12 @@ const janela = (src, w, url = 'app.viajeon.com') => `
     <div class="jn-bar"><span></span><span></span><span></span><div class="jn-url">${ico('lock')}${url}</div></div>
     <img src="${src}">
   </div>`;
+const flut = (arq, w) => `<div class="flut" style="width:${w}px"><img src="${REAL(arq)}"></div>`;
+const papel = (arq, w) => `<div class="papel" style="width:${w}px"><img src="${REAL(arq)}"></div>`;
 const selo = (txt, i = 'sparkles') => `<span class="selo">${ico(i)}${txt}</span>`;
 const lista = itens => `<ul class="lista">${itens.map(t => `<li>${ico('circle-check')}<span>${t}</span></li>`).join('')}</ul>`;
-// Logo: avião + "Viajeon" (versão para fundo escuro). Em fundo claro, vai dentro de uma pílula escura.
-const logo = (h = 46) => `<span class="vlogo" style="height:${h}px"><img src="${MARCA('viajeon-aviao')}" style="height:${Math.round(h * .86)}px"><img src="${MARCA('viajeon-texto-escuro')}" style="height:${h}px"></span>`;
-const rodape = (txt = 'viajeon.com/sistema') => `<div class="rodape">${ico('globe')}${txt}</div>`;
+// Logo oficial (public/brand/viajeon-logo-dark.png). Em fundo claro, vai numa pílula escura.
+const logo = (h = 46) => `<span class="vlogo"><img src="${REAL('viajeon-logo-dark.png')}" style="height:${h}px"></span>`;
 
 // ---------- estilos ----------
 const CSS = `
@@ -65,11 +69,13 @@ h1{font-size:76px} h2{font-size:58px} h3{font-size:30px;font-weight:700}
 .laptop .lp-screen img{display:block;width:100%;border-radius:6px}
 .laptop .lp-base{height:20px;margin:0 -7%;background:linear-gradient(#d7ddd9,#9aa39e);border-radius:0 0 22px 22px;position:relative;box-shadow:0 30px 50px -18px rgba(0,0,0,.6)}
 .laptop .lp-base::before{content:"";position:absolute;left:50%;top:0;width:16%;height:8px;transform:translateX(-50%);background:#b6beb9;border-radius:0 0 10px 10px}
-.janela{border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 0 0 1px rgba(0,0,0,.08),0 40px 90px -25px rgba(0,0,0,.55)}
-.janela .jn-bar{height:46px;display:flex;align-items:center;gap:9px;padding:0 18px;background:#F4F7F5;border-bottom:1px solid #E1E8E4}
+.janela{border-radius:18px;overflow:hidden;background:#0B100D;box-shadow:0 0 0 1px rgba(0,0,0,.08),0 40px 90px -25px rgba(0,0,0,.55)}
+.janela .jn-bar{height:46px;display:flex;align-items:center;gap:9px;padding:0 18px;background:#141B17;border-bottom:1px solid #222B26}
 .janela .jn-bar>span{width:13px;height:13px;border-radius:50%;background:#E5484D}.janela .jn-bar>span:nth-child(2){background:#F5B83D}.janela .jn-bar>span:nth-child(3){background:#3CC66B}
-.janela .jn-url{margin-left:18px;flex:1;max-width:520px;height:28px;border-radius:999px;background:#fff;border:1px solid #E1E8E4;display:flex;align-items:center;gap:8px;padding:0 14px;font-size:15px;color:#55665E;font-weight:500}
-.janela .jn-url svg{width:14px;height:14px;color:var(--trilha)}
+.janela .jn-url{margin-left:18px;flex:1;max-width:520px;height:28px;border-radius:999px;background:#0B100D;border:1px solid #26302B;display:flex;align-items:center;gap:8px;padding:0 14px;font-size:15px;color:#9FB0A7;font-weight:500}
+.janela .jn-url svg{width:14px;height:14px;color:var(--on)}
+.flut{border-radius:20px;overflow:hidden;box-shadow:0 0 0 1px rgba(144,238,143,.22),0 40px 80px -20px rgba(0,0,0,.8)}.flut img{display:block;width:100%}
+.papel{background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 40px 80px -20px rgba(0,0,0,.7)}.papel img{display:block;width:100%}
 .janela img{display:block;width:100%}
 .celular{background:#0b0f0d;border-radius:15%/7%;padding:3.2%;box-shadow:0 0 0 2px #2c3430,0 0 0 5px #0b0f0d,0 50px 90px -25px rgba(0,0,0,.65)}
 .cl-tela{position:relative;width:100%;aspect-ratio:390/844;border-radius:12.5%/5.8%;overflow:hidden;background:#fff}
@@ -104,7 +110,7 @@ const F = [1200, 900];    // foto/destaque 4:3
 const PECAS = [];
 const peca = (arquivo, [w, h], corpo) => PECAS.push({ arquivo, w, h, corpo });
 
-// Produto com uma tela do sistema embaixo do título.
+// Produto com uma tela real embaixo do título e, opcionalmente, um recorte flutuando.
 const prodTela = (arquivo, tema, [seloTxt, seloIco], titulo, sub, tela, url, extra = '') => peca(arquivo, Q, `
 <div class="pc ${tema} grade">
   <div class="abs" style="left:72px;top:76px;width:1056px">
@@ -112,18 +118,17 @@ const prodTela = (arquivo, tema, [seloTxt, seloIco], titulo, sub, tela, url, ext
     <h2 style="margin-top:24px">${titulo}</h2>
     <p class="sub" style="margin-top:18px;width:960px">${sub}</p>
   </div>
-  <div class="abs" style="left:72px;top:480px">${janela(TELA(tela), 1056, url)}</div>
+  <div class="abs" style="left:72px;top:470px">${janela(TELA(tela), 1056, url)}</div>
   ${extra}
 </div>`);
 
-// Foto 4:3 com uma tela do sistema.
-const fotoTela = (arquivo, tema, [seloTxt, seloIco], titulo, tela, url) => peca(arquivo, F, `
+const fotoTela = (arquivo, tema, [seloTxt, seloIco], titulo, tela, url, extra = '') => peca(arquivo, F, `
 <div class="pc ${tema} grade">
   <div class="abs" style="left:64px;top:56px">${selo(seloTxt, seloIco)}<h2 style="margin-top:18px;font-size:50px">${titulo}</h2></div>
   <div class="abs" style="left:64px;top:310px">${janela(TELA(tela), 1072, url)}</div>
+  ${extra}
 </div>`);
 
-// Plano: só texto (os valores mudam nas promoções, por isso não vão na imagem).
 const plano = (arquivo, tema, nome, publico, itens, destaque = '') => peca(arquivo, Q, `
 <div class="pc ${tema} grade">
   <div class="abs" style="left:72px;top:72px">${logo(48)}</div>
@@ -132,64 +137,64 @@ const plano = (arquivo, tema, nome, publico, itens, destaque = '') => peca(arqui
     <h1 style="margin-top:24px;font-size:96px">Plano <span class="dest">${nome}</span></h1>
     <p class="sub" style="margin-top:16px">${publico}</p>
   </div>
-  <div class="abs" style="left:72px;top:560px;width:1056px"><div class="cartao" style="padding:44px;--fs:27px">${lista(itens)}</div></div>
+  <div class="abs" style="left:72px;top:540px;width:1056px"><div class="cartao" style="padding:44px;--fs:27px">${lista(itens)}</div></div>
   <div class="abs" style="left:72px;bottom:64px;display:flex;gap:12px"><span class="chip">${ico('shield-check')}7 dias de garantia</span><span class="chip">${ico('zap')}Acesso imediato</span><span class="chip">${ico('circle-off')}Sem taxa de adesão</span></div>
 </div>`);
 
 // ===== PRODUTOS (catálogo) =====
 peca('produtos/p01-sistema-viaje-on', Q, `
 <div class="pc escuro grade">
-  <div class="abs" style="left:72px;top:72px">${logo(54)}</div>
+  <div class="abs" style="left:72px;top:72px">${logo(56)}</div>
   <div class="abs" style="left:72px;top:190px;width:1056px">
     ${selo('Backoffice completo para agências', 'layout-dashboard')}
     <h1 style="margin-top:26px;font-size:80px">A operação da sua agência <span class="dest">em um só lugar</span></h1>
     <p class="sub" style="margin-top:22px;width:940px">Vendas online, passageiros, poltronas, contratos, rooming list e financeiro no mesmo sistema.</p>
   </div>
-  <div class="abs" style="left:150px;top:640px">${laptop(TELA('e01'), 900)}</div>
+  <div class="abs" style="left:120px;top:640px">${laptop(TELA('painel'), 960)}</div>
+  <div class="abs" style="left:830px;top:590px">${flut('kpi-valor-vendido.png', 300)}</div>
 </div>`);
 
-prodTela('produtos/p02-venda-online-por-link', 'claro', ['Vendas online', 'shopping-cart'],
+prodTela('produtos/p02-venda-online-por-link', 'escuro', ['Vendas online', 'shopping-cart'],
   'O cliente <span class="dest">compra sozinho</span> pelo link',
-  'Mande o link no WhatsApp, Instagram ou anúncio. O passageiro preenche os dados, escolhe a poltrona e paga.',
-  'e03', 'app.viajeon.com/vendas',
-  `<div class="abs" style="right:52px;top:430px"><span class="chip escuro" style="font-size:22px">${ico('link')}<span>checkout.<b style="color:var(--on)">suaagencia</b>.com.br</span></span></div>`);
+  'Copie o link do checkout e mande no WhatsApp, Instagram ou anúncio. O passageiro preenche os dados, escolhe a poltrona e paga.',
+  'op-checkout', 'app.viajeon.com/operacoes');
 
-prodTela('produtos/p03-mapa-de-poltronas', 'escuro', ['Mapa de poltronas', 'armchair'],
+prodTela('produtos/p03-mapa-de-poltronas', 'verde', ['Mapa de poltronas', 'armchair'],
   'Cada venda ocupa a poltrona, <span class="dest">sem controle manual</span>',
-  'O passageiro escolhe o assento no checkout e você vê ocupadas, livres e pendentes em tempo real.',
-  'e07', 'app.viajeon.com/operacoes');
+  'O passageiro escolhe o assento no checkout e você vê ocupadas, livres e pendentes de cada ônibus.',
+  'assento-op', 'app.viajeon.com/operacoes');
 
-prodTela('produtos/p04-contrato-automatico', 'verde', ['Contrato automático', 'file-signature'],
+prodTela('produtos/p04-contrato-automatico', 'escuro', ['Contrato automático', 'file-signature'],
   'Contrato gerado e <span class="dest">assinado online</span>',
-  'Sai com os dados da viagem e do passageiro e é assinado pelo celular, com data, hora e IP. Sem editar um por um.',
-  'e06', 'app.viajeon.com/contratos');
+  'Escolha o modelo uma vez por operação. Cada venda gera o contrato com os dados do passageiro, para assinar pelo celular.',
+  'ctr-op', 'app.viajeon.com/operacoes');
 
-prodTela('produtos/p05-financeiro-e-lucro-por-viagem', 'escuro', ['Custos e financeiro', 'chart-line'],
+prodTela('produtos/p05-financeiro-e-lucro-por-viagem', 'verde', ['Custos e financeiro', 'chart-line'],
   'Saiba o lucro de cada viagem <span class="dest">antes do embarque</span>',
-  'Custos por categoria e fornecedor, parcelas dos passageiros, contas a pagar e fluxo de caixa.',
-  'e08', 'app.viajeon.com/financeiro');
+  'Recebimentos, pagamentos e saldo da operação, custos por fornecedor e o caixa da agência.',
+  'op-custos', 'app.viajeon.com/operacoes',
+  `<div class="abs" style="left:150px;top:900px">${flut('kpis-financeiro-op.png', 900)}</div>`);
 
-prodTela('produtos/p06-pdv-venda-presencial', 'claro', ['PDV', 'store'],
+prodTela('produtos/p06-pdv-venda-presencial', 'escuro', ['PDV', 'store'],
   'Venda no balcão <span class="dest">em segundos</span>',
-  'Pacotes e opcionais no pedido, cadastro rápido do passageiro e mais de uma forma de pagamento.',
-  'e04', 'app.viajeon.com/pdv');
+  'Cliente, operação e pacotes no mesmo pedido, com desconto, vendedor e mais de uma forma de pagamento.',
+  'pdv-pedido', 'app.viajeon.com/pdv');
 
-prodTela('produtos/p07-check-in-com-qr-code', 'verde', ['Área do guia', 'qr-code'],
-  'Embarque com <span class="dest">QR code</span> no celular do guia',
-  'O guia confere cada passageiro no ponto de embarque, com a poltrona de cada um na tela.',
-  'e11', 'app.viajeon.com/check-in');
+prodTela('produtos/p07-embarque-e-rooming-list', 'verde', ['Embarque e rooming list', 'clipboard-list'],
+  'Lista de embarque e rooming list <span class="dest">prontas</span>',
+  'Passageiros por ponto de embarque, quartos montados e relatórios em PDF para o guia e o hotel.',
+  'op-hospedagem', 'app.viajeon.com/operacoes',
+  `<div class="abs" style="right:40px;top:780px;transform:rotate(3deg)">${papel('pdf-rooming.jpg', 500)}</div>`);
 
-prodTela('produtos/p08-whatsapp-e-email-automaticos', 'escuro', ['E-mail e WhatsApp', 'message-circle'],
+prodTela('produtos/p08-whatsapp-e-email-automaticos', 'escuro', ['WhatsApp e e-mail', 'message-circle'],
   'Mensagens automáticas <span class="dest">para o passageiro</span>',
-  'Reserva confirmada, contrato pendente, lembrete de parcela e instruções de embarque, com modelos editáveis.',
-  'e10', 'app.viajeon.com/notificacoes');
+  'Confirmação de reserva, lembrete de parcela e instruções de embarque, com modelos editáveis.',
+  'wa-templates', 'app.viajeon.com/whatsapp');
 
 plano('produtos/p09-plano-basico', 'claro', 'Básico', 'Para começar a vender online e sair da planilha.',
   ['Vendas online por link', '1 usuário', 'Custos, financeiro e PDV', 'Veículos, assentos e rooming list', 'Contratos automáticos']);
-
 plano('produtos/p10-plano-intermediario', 'verde', 'Intermediário', 'Para a agência com equipe e venda todo dia.',
   ['Tudo do plano Básico', '5 usuários', 'Área do cliente e área do guia', 'WhatsApp, afiliados e domínio próprio', 'Taxa menor nos pagamentos com cartão'], 'Mais popular');
-
 plano('produtos/p11-plano-avancado', 'escuro', 'Avançado', 'Para a operação que quer escala, sem limite de equipe.',
   ['Tudo do plano Intermediário', 'Usuários ilimitados', 'Sem taxa nas vendas online', 'Asaas, Mercado Pago e InfinitePay', 'Todas as integrações de pagamento']);
 
@@ -208,57 +213,50 @@ peca('produtos/p12-paav-aceleracao-de-agencias', Q, `
   <div class="abs" style="left:72px;bottom:64px"><span class="chip">${ico('calendar-check')}Conversa gratuita de 30 minutos</span></div>
 </div>`);
 
-// ===== FOTOS (capa, logo e telas) =====
-peca('fotos/f01-capa', [1920, 1080], `
-<div class="pc escuro grade">
-  <div class="abs" style="left:110px;top:110px">${logo(70)}</div>
-  <div class="abs" style="left:110px;top:270px;width:800px">
-    <h1 style="font-size:84px">Você sabe se a próxima excursão <span class="dest">vai dar lucro?</span></h1>
-    <p class="sub" style="margin-top:28px;font-size:29px">Vendas, contratos, poltronas, rooming list e financeiro no mesmo sistema.</p>
-    <div style="margin-top:40px;display:flex;gap:14px;flex-wrap:wrap">${selo('Vendas online', 'shopping-cart')}${selo('Contrato automático', 'file-signature')}${selo('7 dias de garantia', 'shield-check')}</div>
-  </div>
-  <div class="abs" style="left:940px;top:270px">${laptop(TELA('e01'), 900)}</div>
-  <div class="rodape" style="left:110px;bottom:80px;font-size:26px">${ico('globe')}viajeon.com</div>
-</div>`);
-
+// ===== FOTOS =====
 peca('fotos/f02-logo', [720, 720], `
 <div class="pc" style="background:#0A110E;display:grid;place-items:center"><img src="${MARCA('viajeon-aviao')}" style="width:380px;margin:0 30px 20px 0"></div>`);
 
-peca('fotos/f03-logo-horizontal', [1200, 900], `
+peca('fotos/f03-logo-horizontal', F, `
 <div class="pc escuro grade" style="display:grid;place-items:center"><div style="text-align:center">${logo(150)}<p class="sub" style="margin-top:40px;font-size:30px">Sistema e educação para agências de viagens</p></div></div>`);
 
 fotoTela('fotos/f04-painel', 'escuro', ['Dashboard', 'layout-dashboard'],
-  'Vendas, ocupação e próximo<br>embarque <span class="dest">logo ao entrar</span>', 'e01', 'app.viajeon.com');
-fotoTela('fotos/f05-monte-a-operacao', 'claro', ['Operações', 'bus'],
-  'Embarques, veículo, hotel, pacotes<br>e contrato <span class="dest">numa tela só</span>', 'e02', 'app.viajeon.com/operacoes');
-fotoTela('fotos/f06-checkout-do-passageiro', 'verde', ['Checkout', 'smartphone'],
-  'Dados, poltrona e pagamento<br><span class="dest">pelo celular</span>', 'e05', 'checkout.suaagencia.com.br');
-fotoTela('fotos/f07-mapa-de-poltronas', 'claro', ['Mapa de poltronas', 'armchair'],
-  'O ônibus inteiro <span class="dest">num relance</span>', 'e07', 'app.viajeon.com/operacoes');
+  'Vendas, ocupação e próximo<br>embarque <span class="dest">logo ao entrar</span>', 'painel', 'app.viajeon.com');
+fotoTela('fotos/f05-operacao', 'verde', ['Operações', 'bus'],
+  'Cada viagem com ocupação,<br>vendas e saldo <span class="dest">numa tela só</span>', 'op-geral', 'app.viajeon.com/operacoes');
+fotoTela('fotos/f06-vendas-da-operacao', 'escuro', ['Vendas', 'shopping-cart'],
+  'Quem comprou, quanto pagou<br>e <span class="dest">quem ainda deve</span>', 'op-vendas', 'app.viajeon.com/operacoes');
+fotoTela('fotos/f07-editor-de-veiculo', 'claro', ['Veículos', 'bus-front'],
+  'Monte o mapa do ônibus<br><span class="dest">do jeito que ele é</span>', 'veiculo-editor', 'app.viajeon.com/veiculos');
 fotoTela('fotos/f08-financeiro', 'escuro', ['Financeiro', 'wallet'],
-  'Recebido, a receber e a pagar,<br>com <span class="dest">previsão de caixa</span>', 'e09', 'app.viajeon.com/financeiro');
-fotoTela('fotos/f09-custos-da-operacao', 'verde', ['Custos', 'chart-pie'],
-  'Receita, custos e lucro<br><span class="dest">de cada viagem</span>', 'e08', 'app.viajeon.com/financeiro');
-fotoTela('fotos/f10-contratos', 'claro', ['Contratos', 'file-signature'],
-  'Gerado, enviado e <span class="dest">assinado</span><br>sem sair do sistema', 'e06', 'app.viajeon.com/contratos');
-fotoTela('fotos/f11-check-in', 'escuro', ['Check-in', 'qr-code'],
-  'Embarque conferido<br><span class="dest">com QR code</span>', 'e11', 'app.viajeon.com/check-in');
+  'Entradas, saídas e previsão<br><span class="dest">do caixa da agência</span>', 'financeiro', 'app.viajeon.com/financeiro');
+fotoTela('fotos/f09-pdv-pagamento', 'verde', ['PDV', 'credit-card'],
+  'Pix, cartão e parcelamento<br><span class="dest">no mesmo pedido</span>', 'pdv-pagamento', 'app.viajeon.com/pdv');
+fotoTela('fotos/f10-rooming-list', 'escuro', ['Hospedagem', 'bed-double'],
+  'Rooming list montada<br><span class="dest">sem planilha</span>', 'op-hospedagem', 'app.viajeon.com/operacoes');
+fotoTela('fotos/f11-insights', 'claro', ['Insights', 'chart-column'],
+  'Destinos, clientes e temporadas<br>que <span class="dest">mais vendem</span>', 'insights', 'app.viajeon.com/insights');
+
+peca('fotos/f12-relatorios-em-pdf', F, `
+<div class="pc verde grade">
+  <div class="abs" style="left:64px;top:56px">${selo('Relatórios', 'file-text')}<h2 style="margin-top:18px;font-size:50px">Lista de embarque e rooming list<br><span class="dest">em PDF, num clique</span></h2></div>
+  <div class="abs" style="left:60px;top:320px;transform:rotate(-3deg)">${papel('pdf-embarque.jpg', 620)}</div>
+  <div class="abs" style="left:540px;top:380px;transform:rotate(3deg)">${papel('pdf-rooming.jpg', 620)}</div>
+</div>`);
 
 // ===== DESTAQUES =====
 const bolha = (txt, hora, eu = false) => `<div style="align-self:${eu ? 'flex-end' : 'flex-start'};max-width:84%;background:${eu ? '#D9FDD3' : '#fff'};color:#111;border-radius:14px;padding:12px 16px;font-size:19px;line-height:1.35;box-shadow:0 2px 4px rgba(0,0,0,.08)">${txt}<div style="text-align:right;font-size:13px;color:#667;margin-top:4px">${hora}</div></div>`;
 peca('destaques/d01-whatsapp-x-sistema', F, `
 <div class="pc claro grade">
   <div class="abs" style="left:64px;top:56px;width:1072px"><h2 style="font-size:52px">O problema não são as vendas.<br>É <span class="dest">não saber</span> no que elas viraram.</h2></div>
-  <div class="abs" style="left:64px;top:290px;width:520px;height:480px;border-radius:28px;background:#E9DFC9;padding:28px;display:flex;flex-direction:column;gap:12px">
+  <div class="abs" style="left:64px;top:290px;width:470px;height:500px;border-radius:28px;background:#E9DFC9;padding:28px;display:flex;flex-direction:column;gap:12px">
     <div style="font-weight:700;font-size:20px;color:#6b5f45;margin-bottom:4px">Como é hoje, no WhatsApp</div>
-    ${bolha('Oi! Vi a excursão pra Foz, ainda tem vaga?', '09:14')}
+    ${bolha('Oi! Vi a excursão pra Gramado, ainda tem vaga?', '09:14')}
     ${bolha('Tem sim! Deixa eu te passar os dados pra reservar', '09:22', true)}
     ${bolha('Oi, só pra avisar: acabei fechando com outra agência, foi mais rápido.', '3 dias depois')}
   </div>
-  <div class="abs" style="right:64px;top:290px;width:520px;height:480px;border-radius:28px;background:#0A110E;color:#fff;padding:34px;--fs:22px">
-    <div style="font-weight:800;font-size:22px;color:var(--on);margin-bottom:22px">Com o Sistema Viaje On</div>
-    <ul class="lista" style="gap:18px">${['Cliente compra sozinho pelo link', 'Escolhe a poltrona e paga no mesmo checkout', 'Contrato gerado e assinado na hora', 'Você vê quem pagou e quem deve', 'Rooming list organizada sozinha', 'Fluxo de caixa por excursão'].map(t => `<li>${ico('circle-check')}<span>${t}</span></li>`).join('')}</ul>
-  </div>
+  <div class="abs" style="left:570px;top:290px">${flut('card-operacao.png', 570)}</div>
+  <div class="abs" style="left:570px;top:420px;width:570px;display:grid;gap:14px;--fs:21px">${lista(['Cliente compra sozinho pelo link', 'Escolhe a poltrona e paga no checkout', 'Contrato gerado na hora', 'Você vê quem pagou e quem deve'])}</div>
 </div>`);
 
 peca('destaques/d02-como-funciona', F, `
@@ -297,13 +295,9 @@ peca('destaques/d04-tempo-e-dinheiro', F, `
 
 peca('destaques/d05-lucro-em-tempo-real', F, `
 <div class="pc verde grade">
-  <div class="abs" style="left:64px;top:56px;width:1072px">${selo('Sem visibilidade financeira', 'eye-off')}<h2 style="margin-top:18px;font-size:52px">Quem opera só na planilha <span class="dest">opera no escuro</span></h2></div>
-  <div class="abs" style="left:64px;right:64px;top:300px;display:grid;grid-template-columns:1fr 1fr;gap:24px">
-    ${[['Sem sistema', ['?', '?', '???'], '#FF8A8D', 'rgba(6,30,20,.6)'], ['Com Sistema Viaje On', ['R$ 59.340', 'R$ 37.300', 'R$ 22.040'], 'var(--on)', 'rgba(6,40,28,.75)']]
-      .map(([t, v, c, bg]) => `<div class="cartao" style="background:${bg};padding:34px"><div style="font-weight:800;font-size:24px;color:${c};margin-bottom:8px">${t}</div><p style="font-size:18px;margin-bottom:22px">Excursão Foz do Iguaçu · 42 passageiros</p>
-        ${['Receita', 'Custos', 'Lucro'].map((l, k) => `<div style="display:flex;justify-content:space-between;align-items:baseline;padding:14px 0;border-top:1px solid rgba(255,255,255,.1)"><span style="font-size:22px;color:rgba(255,255,255,.75)">${l}</span><b style="font-size:${k == 2 ? 40 : 30}px;color:${k == 2 ? c : '#fff'}">${v[k]}</b></div>`).join('')}</div>`).join('')}
-  </div>
-  <p class="abs" style="left:64px;bottom:40px;font-size:16px;color:rgba(255,255,255,.6)">Exemplo ilustrativo de uma excursão dentro do painel.</p>
+  <div class="abs" style="left:64px;top:56px;width:1072px">${selo('Visibilidade financeira', 'eye')}<h2 style="margin-top:18px;font-size:52px">Pare de descobrir o lucro<br><span class="dest">depois que a viagem acaba</span></h2></div>
+  <div class="abs" style="left:64px;top:380px">${flut('card-operacao.png', 1072)}</div>
+  <div class="abs" style="left:64px;top:620px">${flut('kpis-financeiro-op.png', 1072)}</div>
 </div>`);
 
 peca('destaques/d06-garantia-e-onboarding', F, `
