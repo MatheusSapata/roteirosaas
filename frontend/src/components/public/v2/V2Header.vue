@@ -1,6 +1,6 @@
 <template>
   <div v-if="showSpacer" class="v2-hd-spacer" aria-hidden="true"></div>
-  <header class="v2-hd" :class="[`is-${mode}`, { 'is-preview': previewDevice, 'is-stuck': isStuck }]" :style="vars">
+  <header class="v2-hd" :class="[`is-${mode}`, { 'is-preview': previewDevice, 'is-stuck': isStuck, 'is-fixed': isFixed }]" :style="[vars, stuckStyle]">
     <div v-if="previewBannerImage && mode !== 'solid'" class="v2-hd-preview-bg" :style="{ backgroundImage: `url(&quot;${previewBannerImage}&quot;)` }" aria-hidden="true"></div>
     <div class="v2-hd-inner">
       <a
@@ -80,7 +80,23 @@ const menuOpen = ref(false);
 const isStuck = ref(false);
 // "blurred" segue como transparente: ao rolar, os dois ganham fundo branco.
 const mode = computed(() => (props.section.mode === "transparent" || props.section.mode === "blurred" ? "transparent" : "solid"));
-const showSpacer = computed(() => isStuck.value && mode.value === "solid" && !props.previewDevice);
+// Quando o menu fica fixo, ele é "fixed" desde o início (nunca troca de posição ao rolar): trocar
+// de posição/ocupar espaço ao passar de 4px mexia na altura da página e, no Safari, fazia a tela
+// puxar e voltar como elástico. Só as cores mudam ao rolar.
+const isFixed = computed(() => props.section.stickyEnabled !== false && !props.previewDevice);
+const showSpacer = computed(() => isFixed.value && mode.value === "solid");
+// Cor do menu depois de rolar (modos transparente e desfoque). Vazio = branco.
+const stuckColor = computed(() => (/^#[0-9a-f]{6}$/i.test(props.section.stuckBackgroundColor || "") ? (props.section.stuckBackgroundColor as string) : "#FFFFFF"));
+const blurPx = computed(() => Math.min(30, Math.max(0, props.section.blurAmount ?? 14)));
+const hexToRgba = (hex: string, alpha: number) => `rgba(${parseInt(hex.slice(1, 3), 16)},${parseInt(hex.slice(3, 5), 16)},${parseInt(hex.slice(5, 7), 16)},${alpha})`;
+const stuckStyle = computed(() => {
+  if (mode.value === "solid" || !isStuck.value) return {};
+  if (props.section.mode === "blurred") {
+    const filter = `blur(${blurPx.value}px) saturate(1.2)`;
+    return { background: hexToRgba(stuckColor.value, 0.72), backdropFilter: filter, WebkitBackdropFilter: filter };
+  }
+  return { background: stuckColor.value };
+});
 const logo = computed(() => resolveMediaUrl(props.logoUrl) || "");
 // Os cantos vêm do logo do Banner Inicial (é a mesma imagem); o tamanho é o do menu.
 const logoStyle = computed(() => ({
@@ -88,7 +104,7 @@ const logoStyle = computed(() => ({
   borderRadius: `${Math.max(0, props.logoRadius || 0)}px`
 }));
 const previewBannerImage = computed(() => (props.previewDevice ? resolveMediaUrl(props.previewBackgroundImage) || "" : ""));
-const surface = computed(() => (mode.value === "transparent" && !isStuck.value ? "#0B1410" : isStuck.value ? "#FFFFFF" : props.section.backgroundColor || "#FFFFFF"));
+const surface = computed(() => (mode.value === "transparent" && !isStuck.value ? "#0B1410" : isStuck.value ? stuckColor.value : props.section.backgroundColor || "#FFFFFF"));
 const vars = computed(() => toneVars(computeSectionTone(surface.value, design.value.accent)));
 
 const normalizeUrl = (value: string) => (!value || value === "#" ? "#" : /^(https?:\/\/|mailto:|tel:)/i.test(value) ? value : `https://${value}`);
@@ -172,14 +188,24 @@ onUnmounted(() => window.removeEventListener("scroll", updateStuck));
   color: var(--v2-ink);
   font-family: Figtree, system-ui, sans-serif;
   transition: background-color 0.25s ease, box-shadow 0.25s ease;
+  /* Evita que o desfoque do Safari pisque ao rolar. */
+  -webkit-backface-visibility: hidden;
 }
 .v2-hd.is-transparent:not(.is-stuck) {
   background: transparent;
 }
-.v2-hd.is-transparent:not(.is-preview):not(.is-stuck) {
+.v2-hd.is-transparent:not(.is-preview) {
   position: absolute;
   top: 0;
   left: 0;
+}
+.v2-hd.is-fixed {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 100;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
 }
 .v2-hd.is-transparent:not(.is-stuck)::before {
   content: "";
@@ -189,10 +215,6 @@ onUnmounted(() => window.removeEventListener("scroll", updateStuck));
   pointer-events: none;
 }
 .v2-hd.is-stuck:not(.is-preview) {
-  position: fixed;
-  top: 0;
-  left: 0;
-  z-index: 100;
   box-shadow: 0 10px 30px -14px rgba(15, 23, 19, 0.35);
 }
 .v2-hd-preview-bg {
