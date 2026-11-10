@@ -382,6 +382,7 @@ export interface HeaderSection extends SectionBase {
   mode: "solid" | "transparent" | "blurred";
   backgroundColor?: string;
   blurAmount?: number;
+  stuckBackgroundColor?: string;
   textColor?: string;
   linkTextColor?: string;
   linkFontSize?: number;

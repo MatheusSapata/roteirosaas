@@ -113,6 +113,25 @@
           fallback="#FFFFFF"
           @change="setBackground"
         />
+        <template v-else>
+          <EdBackground
+            :value="{ stuckBackgroundColor: modelValue.stuckBackgroundColor || '#FFFFFF' }"
+            field="stuckBackgroundColor"
+            fallback="#FFFFFF"
+            @change="patch($event)"
+          />
+          <p class="ved-hint">Cor do menu depois que a pessoa rola a página (fica fixo no topo). Escolha uma cor que combine com o logo.</p>
+          <EdRange
+            v-if="modelValue.mode === 'blurred'"
+            :model-value="modelValue.blurAmount ?? 14"
+            label="Intensidade do desfoque"
+            :min="0"
+            :max="30"
+            :step="1"
+            unit="px"
+            @update:model-value="patch({ blurAmount: $event })"
+          />
+        </template>
       </EdGroup>
       <EdGroup title="Comportamento">
         <EdToggle :model-value="modelValue.stickyEnabled !== false" label="Fixar no topo ao rolar" @update:model-value="patch({ stickyEnabled: $event })" />
