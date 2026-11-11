@@ -12,6 +12,8 @@ RUN apt-get update \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 RUN python -c "from rembg import new_session; new_session('u2netp')"
+# Chromium para a raspagem de páginas externas (import-url do assistente de IA).
+RUN playwright install --with-deps chromium
 
 COPY . .
 

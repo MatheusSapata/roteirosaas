@@ -23,3 +23,6 @@ azure-storage-blob
 dnspython
 publicsuffix2
 pypdf
+playwright==1.47.0
+beautifulsoup4
+trafilatura

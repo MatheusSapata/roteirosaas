@@ -55,6 +55,7 @@ from app.services.ai_assistant_usage import (
     increment_ai_assistant_message_usage,
 )
 from app.services.construtor_prompt import get_active_gpt_model
+from app.services.url_import import UrlImportError, import_page
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -121,6 +122,29 @@ def _pending_history_messages(
     return [last_user_message] if last_user_message else []
 
 
+async def _import_url_attachments(import_url: str | None) -> tuple[list[ChatAttachment], str]:
+    """Raspa o link colado (navegador headless) e devolve as fotos já no formato de anexo do
+    chat, mais o texto extraído pronto para entrar no contexto da IA. Erro de raspagem vira
+    HTTPException 422/502 (mostrado direto ao usuário), não derruba o resto da conversa."""
+    if not import_url:
+        return [], ""
+    try:
+        imported, attachments = await import_page(import_url)
+    except UrlImportError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:  # pragma: no cover - falha de rede/navegador
+        logger.exception("ai_assistant_import_url_failed url=%s", import_url)
+        raise HTTPException(
+            status_code=502, detail="Não consegui acessar essa página. Tente novamente em instantes."
+        ) from exc
+    context_block = (
+        f"CONTEÚDO EXTRAÍDO DO LINK ENVIADO ({import_url}). Use estas informações (título, texto, preço, "
+        'itinerário etc.) para montar a página, como se o usuário tivesse descrito a viagem:\n'
+        f"Título da página: {imported.title}\n\n{imported.text}"
+    )
+    return attachments, context_block
+
+
 async def _prepare_chat(
     db: Session,
     current_user: User,
@@ -129,6 +153,7 @@ async def _prepare_chat(
     attachments: list[UploadFile] | None,
     page_sections: str = "",
     include_images: bool = True,
+    import_url: str | None = None,
 ) -> tuple[Page, list[AiAssistantConversationMessage], AiAssistantUsage, int | None, list[ChatAttachment], str, str]:
     """Valida a conversa e a permissão, confere o limite do plano e grava as mensagens novas do usuário.
     O último item é o aviso do sistema para mostrar junto da resposta ("" quando não há)."""
@@ -175,6 +200,8 @@ async def _prepare_chat(
         )
         if attachment is not None:
             attachment_payload.append(attachment)
+    url_attachments, url_context_block = await _import_url_attachments(import_url)
+    attachment_payload.extend(url_attachments)
     sent_photos = await _save_chat_photos(db, page.agency_id, attachment_payload)
     # Fotos de dentro de um PDF (folheto, roteiro da operadora). Com "Inserir imagens" desligado,
     # a IA não põe fotos novas na página: nada é extraído.
@@ -188,6 +215,8 @@ async def _prepare_chat(
     else:
         sections_payload = [item for item in sections_payload if isinstance(item, dict)][:80]
     context = build_agency_context(db, page, sections_payload, include_images=include_images)
+    if url_context_block:
+        context = f"{context}\n{url_context_block}"
     if sent_photos:
         # A resposta é aplicada depois (sem os anexos): a IA escreve o endereço da foto na seção.
         lines = [
@@ -357,12 +386,13 @@ async def chat_with_assistant(
     attachments: list[UploadFile] | None = File(default=None),
     page_sections: str = Form(""),
     include_images: bool = Form(True),
+    import_url: str | None = Form(None),
     response: Response = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> AiAssistantChatResponse:
     page, parsed_conversation, usage_record, usage_limit, attachment_payload, context, notice = await _prepare_chat(
-        db, current_user, page_id, conversation, attachments, page_sections, include_images
+        db, current_user, page_id, conversation, attachments, page_sections, include_images, import_url
     )
     reply = await anyio.to_thread.run_sync(
         partial(
@@ -388,13 +418,14 @@ async def chat_with_assistant_stream(
     attachments: list[UploadFile] | None = File(default=None),
     page_sections: str = Form(""),
     include_images: bool = Form(True),
+    import_url: str | None = Form(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> StreamingResponse:
     """Mesma conversa do /chat, em linhas JSON (NDJSON) enviadas enquanto a IA escreve:
     etapas, trechos do texto e, no fim, a resposta completa com o uso do mês."""
     page, parsed_conversation, usage_record, usage_limit, attachment_payload, context, notice = await _prepare_chat(
-        db, current_user, page_id, conversation, attachments, page_sections, include_images
+        db, current_user, page_id, conversation, attachments, page_sections, include_images, import_url
     )
     model = get_active_gpt_model(db, create_if_missing=True)
     page_id_value, user_id, period_key = page.id, current_user.id, usage_record.period_key
