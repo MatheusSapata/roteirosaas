@@ -1581,7 +1581,8 @@
                   <ol class="ai-live-steps">
                     <li :class="aiLiveStepState('reading')">
                       <i aria-hidden="true"></i>
-                      <span>Lendo sua mensagem{{ aiLive.attachments ? ` e ${aiLive.attachments} ${aiLive.attachments === 1 ? "anexo" : "anexos"}` : "" }}</span>
+                      <span v-if="aiLive.importingUrl">Lendo a página do link (pode levar um pouco mais)</span>
+                      <span v-else>Lendo sua mensagem{{ aiLive.attachments ? ` e ${aiLive.attachments} ${aiLive.attachments === 1 ? "anexo" : "anexos"}` : "" }}</span>
                     </li>
                     <li :class="aiLiveStepState('thinking')">
                       <i aria-hidden="true"></i>
@@ -1644,7 +1645,38 @@
                   </span>
                 </span>
               </div>
-              <div class="editor-ai-sidebar-composer-row">
+              <div v-if="aiImportUrlOpen" class="editor-ai-sidebar-composer-row ai-import-url-row">
+                <input
+                  ref="aiImportUrlInputRef"
+                  v-model="aiImportUrlDraft"
+                  type="url"
+                  class="editor-ai-sidebar-input"
+                  placeholder="Cole o link da página (ex.: https://suaagencia.com.br/pacote-gramado)"
+                  :disabled="aiAssistantLoading"
+                  @keydown.enter.prevent="confirmAiImportUrl"
+                  @keydown.esc.prevent="cancelAiImportUrl"
+                />
+                <button
+                  type="button"
+                  class="editor-ai-sidebar-icon-button"
+                  :disabled="aiAssistantLoading || !aiImportUrlDraft.trim()"
+                  aria-label="Importar o link"
+                  title="Importar o link"
+                  @click="confirmAiImportUrl"
+                >
+                  <CheckIcon class="h-4 w-4" aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  class="editor-ai-sidebar-icon-button"
+                  aria-label="Cancelar"
+                  title="Cancelar"
+                  @click="cancelAiImportUrl"
+                >
+                  <XIcon class="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
+              <div v-else class="editor-ai-sidebar-composer-row">
                 <button
                   type="button"
                   class="editor-ai-sidebar-icon-button editor-ai-sidebar-attach"
@@ -1658,6 +1690,17 @@
                 <span class="editor-ai-sidebar-attach-count" v-if="aiAssistantAttachments.length">
                   {{ aiAssistantAttachments.length }}
                 </span>
+
+                <button
+                  type="button"
+                  class="editor-ai-sidebar-icon-button"
+                  @click="aiImportUrlOpen = true"
+                  :disabled="aiAssistantLoading || aiAssistantLimitReached"
+                  aria-label="Importar de um link"
+                  title="Importar de um link"
+                >
+                  <LinkIcon class="h-4 w-4" aria-hidden="true" />
+                </button>
 
                 <div v-if="aiRecording || aiTranscribing" class="ai-rec" role="status" aria-live="polite">
                   <template v-if="aiRecording">
@@ -3647,6 +3690,11 @@ const aiAssistantChatLogRef = ref<HTMLElement | null>(null);
 const aiAssistantFileInputRef = ref<HTMLInputElement | null>(null);
 const aiAssistantDraft = ref("");
 const aiAssistantAttachments = ref<File[]>([]);
+// Importar de um link: cola o endereço de uma página externa e a IA usa o texto e as fotos de
+// lá (raspados no servidor) para montar as seções, como se a pessoa tivesse descrito a viagem.
+const aiImportUrlOpen = ref(false);
+const aiImportUrlDraft = ref("");
+const aiImportUrlInputRef = ref<HTMLInputElement | null>(null);
 const aiAssistantUsage = ref<AiAssistantUsageResponse | null>(null);
 const aiAssistantHistoryLoaded = ref(false);
 const aiAssistantSidebarWidth = ref(464);
@@ -3878,9 +3926,23 @@ const handleAiAssistantFileChange = (event: Event) => {
   const input = event.target as HTMLInputElement | null;
   aiAssistantAttachments.value = input?.files ? Array.from(input.files) : [];
 };
+watch(aiImportUrlOpen, open => {
+  if (open) nextTick(() => aiImportUrlInputRef.value?.focus());
+});
+const cancelAiImportUrl = () => {
+  aiImportUrlOpen.value = false;
+  aiImportUrlDraft.value = "";
+};
+const confirmAiImportUrl = () => {
+  const url = aiImportUrlDraft.value.trim();
+  if (!url || aiAssistantLoading.value) return;
+  aiImportUrlOpen.value = false;
+  aiImportUrlDraft.value = "";
+  sendAiAssistantMessage(url);
+};
 // Andamento da resposta que está chegando: etapa atual, segundos e o texto até aqui.
 const AI_LIVE_STEPS: AiAssistantStreamStep[] = ["reading", "thinking", "writing", "fixing"];
-const aiLive = reactive({ step: "reading" as AiAssistantStreamStep, attachments: 0, seconds: 0, content: "" });
+const aiLive = reactive({ step: "reading" as AiAssistantStreamStep, attachments: 0, seconds: 0, content: "", importingUrl: "" });
 let aiLiveTimer: number | null = null;
 const aiLiveStepState = (step: AiAssistantStreamStep) => {
   const current = AI_LIVE_STEPS.indexOf(aiLive.step);
@@ -3901,12 +3963,12 @@ const aiAssistantErrorText = (error: unknown) => {
     return "O serviço de IA está sem uma dependência necessária. Instale as dependências do backend e reinicie o serviço.";
   }
   if (status === 401) return "Sua sessão expirou. Entre novamente para consultar a IA.";
-  if ([403, 413, 422, 429].includes(status) && typeof detail === "string" && detail) return detail;
+  if ([403, 413, 422, 429, 502].includes(status) && typeof detail === "string" && detail) return detail;
   return "Não consegui consultar a IA agora. Tente novamente em alguns instantes.";
 };
-const sendAiAssistantMessage = async () => {
+const sendAiAssistantMessage = async (importUrl?: string) => {
   const trimmedMessage = aiAssistantDraft.value.trim();
-  if ((!trimmedMessage && aiAssistantAttachments.value.length === 0) || aiAssistantLoading.value) {
+  if ((!trimmedMessage && aiAssistantAttachments.value.length === 0 && !importUrl) || aiAssistantLoading.value) {
     return;
   }
 
@@ -3942,7 +4004,7 @@ const sendAiAssistantMessage = async () => {
         : {})
     };
   });
-  const userText = trimmedMessage || "Mensagem com arquivos";
+  const userText = trimmedMessage || (importUrl ? `Importar informações de: ${importUrl}` : "Mensagem com arquivos");
   const conversationSnapshot: AiAssistantChatMessage[] = [
     ...aiAssistantMessages.value.map(message => ({ role: message.role, content: message.content })),
     { role: "user", content: userText }
@@ -3960,7 +4022,7 @@ const sendAiAssistantMessage = async () => {
     aiAssistantFileInputRef.value.value = "";
   }
 
-  Object.assign(aiLive, { step: "reading", attachments: attachmentsSnapshot.length, seconds: 0, content: "" });
+  Object.assign(aiLive, { step: "reading", attachments: attachmentsSnapshot.length, seconds: 0, content: "", importingUrl: importUrl || "" });
   const startedAt = Date.now();
   aiLiveTimer = window.setInterval(() => {
     aiLive.seconds = Math.round((Date.now() - startedAt) / 1000);
@@ -3983,15 +4045,17 @@ const sendAiAssistantMessage = async () => {
         else if (event.type === "notice") aiAssistantMessages.value[assistantIndex].notice = event.text;
         else if (event.type === "delta") setContent(aiLive.content + event.text);
         else if (event.type === "replace") setContent(event.text);
-      }, pageSectionsSnapshot, aiIncludeImages.value);
+      }, pageSectionsSnapshot, aiIncludeImages.value, importUrl);
     } catch (error) {
       // Sem a resposta em tempo real (sessão para renovar, proxy, servidor antigo): usa a
       // conversa normal, que renova o login. Erros de limite e de permissão não repetem.
       const reqError = error instanceof AiAssistantRequestError ? error : null;
-      if (reqError && (reqError.started || [400, 403, 413, 429].includes(reqError.status))) throw error;
+      // 422/502: o link falhou de verdade (inválido ou raspagem deu erro) — repetir no /chat só
+      // raspa a mesma página de novo e falha igual, dobrando a espera à toa.
+      if (reqError && (reqError.started || [400, 403, 413, 422, 429, 502].includes(reqError.status))) throw error;
       aiLive.step = "thinking";
       setContent("");
-      result = await sendAiAssistantConversation(pageId, conversationSnapshot, attachmentsSnapshot, pageSectionsSnapshot, aiIncludeImages.value);
+      result = await sendAiAssistantConversation(pageId, conversationSnapshot, attachmentsSnapshot, pageSectionsSnapshot, aiIncludeImages.value, importUrl);
       if (result.notice) aiAssistantMessages.value[assistantIndex].notice = result.notice;
     }
     if (result.usage) {

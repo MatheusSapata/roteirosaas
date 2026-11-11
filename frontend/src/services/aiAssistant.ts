@@ -56,13 +56,15 @@ export const sendAiAssistantConversation = async (
   conversation: AiAssistantChatMessage[],
   attachments: File[] = [],
   pageSections: AiPageSectionSummary[] = [],
-  includeImages = true
+  includeImages = true,
+  importUrl?: string
 ): Promise<{ reply: string; usage?: AiAssistantUsageResponse; notice?: string }> => {
   const form = new FormData();
   form.append("page_id", String(pageId));
   form.append("conversation", JSON.stringify(conversation));
   form.append("page_sections", JSON.stringify(pageSections));
   form.append("include_images", includeImages ? "true" : "false");
+  if (importUrl) form.append("import_url", importUrl);
 
   for (const file of attachments) {
     form.append("attachments", file, file.name);
@@ -169,13 +171,15 @@ export const streamAiAssistantConversation = async (
   attachments: File[],
   onEvent: (event: AiAssistantStreamEvent) => void,
   pageSections: AiPageSectionSummary[] = [],
-  includeImages = true
+  includeImages = true,
+  importUrl?: string
 ): Promise<{ reply: string; usage?: AiAssistantUsageResponse }> => {
   const form = new FormData();
   form.append("page_id", String(pageId));
   form.append("conversation", JSON.stringify(conversation));
   form.append("page_sections", JSON.stringify(pageSections));
   form.append("include_images", includeImages ? "true" : "false");
+  if (importUrl) form.append("import_url", importUrl);
   for (const file of attachments) form.append("attachments", file, file.name);
 
   const authorization = api.defaults.headers.common?.Authorization;
