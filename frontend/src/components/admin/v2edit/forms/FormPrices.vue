@@ -22,6 +22,7 @@
                 </select>
               </label>
             </div>
+            <EdText :model-value="readText(item.priceLabel)" label="Prefixo do preço" placeholder="Por pessoa" hint="Aparece em cima do valor. Ex.: Por pessoa · A partir de · Por casal." @update:model-value="update({ priceLabel: writeText(item.priceLabel, $event) })" />
             <EdText :model-value="readText(item.description)" label="Complemento" placeholder="por pessoa · 10x sem juros" @update:model-value="update({ description: writeText(item.description, $event) })" />
             <EdText :model-value="readText(item.badge)" label="Selo" hint="Opcional. Ex.: Mais escolhido." @update:model-value="update({ badge: writeText(item.badge, $event) })" />
             <EdToggle :model-value="!!item.highlight" label="Destacar esta oferta" @update:model-value="update({ highlight: $event })" />
