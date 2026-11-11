@@ -774,6 +774,16 @@ function setupCtaTracking(pixels: { type: string; value: string }[]) {
   overflow-x: hidden;
 }
 
+/* "hidden" em um eixo faz o outro virar "auto": a página vira uma área de rolagem própria.
+   Com o zoom do conteúdo, no Safari essa área ganha sobra de rolagem: o dedo arrasta a caixa
+   (a página acompanha) e ela volta ao soltar. "clip" corta o lado sem criar área de rolagem. */
+@supports (overflow: clip) {
+  .public-page {
+    overflow-x: clip;
+    overflow-y: visible;
+  }
+}
+
 .public-page-scale {
   position: relative;
   zoom: 0.9;

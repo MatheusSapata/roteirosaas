@@ -272,6 +272,19 @@ const slide = (direction: number) => {
 .is-carousel .v2-links-card:last-child {
   margin-right: auto;
 }
+/* No celular o carrossel sai até a borda da tela: antes os cards eram cortados secos na margem
+   da página (uns 20px antes da borda). A margem negativa leva a lista até a borda e o padding
+   devolve o mesmo recuo ao primeiro card, então a largura dos cards não muda. */
+@container (max-width: 700px) {
+  .is-carousel .v2-links-track {
+    --v2-links-bleed: clamp(20px, 5cqi, 40px);
+    margin-left: calc(-1 * var(--v2-links-bleed));
+    margin-right: calc(-1 * var(--v2-links-bleed));
+    padding-left: var(--v2-links-bleed);
+    padding-right: var(--v2-links-bleed);
+    scroll-padding-left: var(--v2-links-bleed);
+  }
+}
 .is-grid .v2-links-track {
   flex-wrap: wrap;
   justify-content: center;
