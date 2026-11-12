@@ -807,6 +807,7 @@
       <span class="ml-0 max-w-0 overflow-hidden whitespace-nowrap text-sm font-semibold opacity-0 transition-all duration-200 group-hover:ml-3 group-hover:max-w-[140px] group-hover:opacity-100">{{ viewCopy.support.prompt }}</span>
     </a>
     <StockUploadIndicator />
+    <SiteImportToast />
   </div>
 </template>
 
@@ -845,6 +846,8 @@ import {
 } from "lucide-vue-next";
 import AdminMasterNav from "../components/admin/master/AdminMasterNav.vue";
 import StockUploadIndicator from "../components/admin/StockUploadIndicator.vue";
+import SiteImportToast from "../components/admin/SiteImportToast.vue";
+import { startSiteImportPolling, stopSiteImportPolling } from "../services/siteImportStatus";
 import { usePlatformBranding } from "../composables/usePlatformBranding";
 import BrandSwitcher from "../components/shared/BrandSwitcher.vue";
 import ImageUploadField from "../components/admin/inputs/ImageUploadField.vue";
@@ -2590,6 +2593,7 @@ onMounted(async () => {
   await loadInboxAccess();
   void pollInboxFloatingNotifications();
   connectInboxWs();
+  startSiteImportPolling(() => agencyStore.currentAgencyId);
   inboxFloatingPollTimer = setInterval(() => {
     if (!inboxWs) void pollInboxFloatingNotifications();
   }, 8000);
@@ -2614,6 +2618,7 @@ onBeforeUnmount(() => {
     inboxFloatingPollTimer = null;
   }
   disconnectInboxWs();
+  stopSiteImportPolling();
   if (inboxWsReconnectTimer) {
     clearTimeout(inboxWsReconnectTimer);
     inboxWsReconnectTimer = null;

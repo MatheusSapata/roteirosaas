@@ -8,7 +8,7 @@ import anyio
 from functools import partial
 import logging
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy.orm import Session
@@ -26,6 +26,7 @@ from app.api.v1.endpoints.pages import (
 from app.models.page import Page
 from app.db.session import SessionLocal
 from app.models.ai_assistant_message import AiAssistantMessage
+from app.models.agency_user import AgencyUser
 from app.models.ai_assistant_usage import AiAssistantUsage
 from app.models.user import User
 from app.schemas.page import PageOut
@@ -55,7 +56,8 @@ from app.services.ai_assistant_usage import (
     increment_ai_assistant_message_usage,
 )
 from app.services.construtor_prompt import get_active_gpt_model
-from app.services.url_import import UrlImportError, import_page
+from app.services import site_import
+from app.services.url_import import ImportedPage, UrlImportError, build_url_context_block, download_page_images, scrape_page
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -99,6 +101,49 @@ class AiAssistantCreatePageBaseResponse(BaseModel):
     page: PageOut
 
 
+class SiteImportItemOut(BaseModel):
+    url: str
+    # Nome da página criada (ou o título do card, enquanto a página ainda não existe).
+    title: str
+    # waiting | scraping | generating | done | error
+    stage: str
+    page_id: int | None = None
+    slug: str | None = None
+    error: str | None = None
+
+
+class SiteImportHomeOut(BaseModel):
+    page_id: int | None = None
+    slug: str | None = None
+    title: str | None = None
+    stage: str
+
+
+class SiteImportJobOut(BaseModel):
+    id: int
+    agency_id: int
+    # running | completed | failed
+    status: str
+    # Etapa do job em andamento: "pages" ou "home" (vazio quando terminou).
+    stage: str | None = None
+    source_url: str
+    source_title: str | None = None
+    total_found: int
+    total: int
+    done: int
+    failed: int
+    items: list[SiteImportItemOut]
+    home: SiteImportHomeOut
+    error: str | None = None
+    created_at: datetime | None = None
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+
+
+class SiteImportActiveResponse(BaseModel):
+    job: SiteImportJobOut | None = None
+
+
 class AiAssistantUsageResponse(BaseModel):
     period_key: str
     used: int
@@ -122,14 +167,11 @@ def _pending_history_messages(
     return [last_user_message] if last_user_message else []
 
 
-async def _import_url_attachments(import_url: str | None) -> tuple[list[ChatAttachment], str]:
-    """Raspa o link colado (navegador headless) e devolve as fotos já no formato de anexo do
-    chat, mais o texto extraído pronto para entrar no contexto da IA. Erro de raspagem vira
-    HTTPException 422/502 (mostrado direto ao usuário), não derruba o resto da conversa."""
-    if not import_url:
-        return [], ""
+async def _scrape_import_url(import_url: str) -> ImportedPage:
+    """Raspa o link colado (navegador headless), já com a classificação (viagem específica ou
+    página central). Erro de raspagem vira HTTPException 422/502 (mostrado direto ao usuário)."""
     try:
-        imported, attachments = await import_page(import_url)
+        return await scrape_page(import_url)
     except UrlImportError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:  # pragma: no cover - falha de rede/navegador
@@ -137,12 +179,46 @@ async def _import_url_attachments(import_url: str | None) -> tuple[list[ChatAtta
         raise HTTPException(
             status_code=502, detail="Não consegui acessar essa página. Tente novamente em instantes."
         ) from exc
-    context_block = (
-        f"CONTEÚDO EXTRAÍDO DO LINK ENVIADO ({import_url}). Use estas informações (título, texto, preço, "
-        'itinerário etc.) para montar a página, como se o usuário tivesse descrito a viagem:\n'
-        f"Título da página: {imported.title}\n\n{imported.text}"
-    )
-    return attachments, context_block
+
+
+async def _import_url_attachments(import_url: str, imported: ImportedPage) -> tuple[list[ChatAttachment], str]:
+    """Fotos da página raspada já no formato de anexo do chat, mais o texto extraído pronto para
+    entrar no contexto da IA."""
+    attachments = await download_page_images(imported)
+    return attachments, build_url_context_block(import_url, imported)
+
+
+async def _site_import_direct_reply(
+    db: Session,
+    current_user: User,
+    page: Page,
+    parsed_conversation: list[AiAssistantConversationMessage],
+    last_assistant_message: str | None,
+    import_url: str | None,
+    imported: ImportedPage | None,
+    include_images: bool,
+) -> str | None:
+    """Resposta do assistente sem chamar a IA, para a importação do site inteiro:
+    - link de uma página central (home com várias viagens): pergunta se monta o site inteiro;
+    - "completo" logo depois dessa pergunta: dispara a importação em segundo plano.
+    None quando a conversa segue o caminho normal (IA)."""
+    if import_url and imported is not None:
+        if not imported.is_central:
+            return None
+        # Depois da pergunta, a pessoa colou o mesmo link de novo: era só aquela página mesmo.
+        if site_import.is_repeat_of_pending_central(db, page.id, current_user.id, last_assistant_message, import_url):
+            return None
+        job = site_import.create_pending_job(db, page, current_user.id, import_url, imported)
+        return site_import.central_question(int(job.total_found or 0))
+    if import_url:
+        return None
+    last_user = next((item for item in reversed(parsed_conversation) if item.role == "user"), None)
+    if last_user is None:
+        return None
+    job = site_import.pending_confirmation_job(db, page.id, current_user.id, last_assistant_message, last_user.content)
+    if job is None:
+        return None
+    return site_import.start_job(db, job, include_images)
 
 
 async def _prepare_chat(
@@ -154,9 +230,11 @@ async def _prepare_chat(
     page_sections: str = "",
     include_images: bool = True,
     import_url: str | None = None,
-) -> tuple[Page, list[AiAssistantConversationMessage], AiAssistantUsage, int | None, list[ChatAttachment], str, str]:
+) -> tuple[Page, list[AiAssistantConversationMessage], AiAssistantUsage, int | None, list[ChatAttachment], str, str, str | None]:
     """Valida a conversa e a permissão, confere o limite do plano e grava as mensagens novas do usuário.
-    O último item é o aviso do sistema para mostrar junto da resposta ("" quando não há)."""
+    O penúltimo item é o aviso do sistema para mostrar junto da resposta ("" quando não há). O último
+    é a resposta direta do assistente, sem IA (importação do site inteiro: pergunta ou confirmação),
+    já gravada no histórico; com ela, quem chamou não consulta a IA nem conta no limite do mês."""
     try:
         conversation_payload = json.loads(conversation or "[]")
         if not isinstance(conversation_payload, list):
@@ -185,12 +263,22 @@ async def _prepare_chat(
         .order_by(AiAssistantMessage.id.asc())
         .all()
     )
+    last_assistant_message = next((item.content for item in reversed(existing_messages) if item.role == "assistant"), None)
     for item in _pending_history_messages(existing_messages, parsed_conversation):
         content = item.content.strip()
         if not content:
             continue
         db.add(AiAssistantMessage(page_id=page.id, user_id=current_user.id, role=item.role, content=content))
     db.commit()
+
+    imported = await _scrape_import_url(import_url) if import_url else None
+    direct_reply = await _site_import_direct_reply(
+        db, current_user, page, parsed_conversation, last_assistant_message, import_url, imported, include_images
+    )
+    if direct_reply is not None:
+        db.add(AiAssistantMessage(page_id=page.id, user_id=current_user.id, role="assistant", content=direct_reply))
+        db.commit()
+        return page, parsed_conversation, usage_record, usage_limit, [], "", "", direct_reply
 
     attachment_payload: list[ChatAttachment] = []
     for upload in attachments or []:
@@ -200,7 +288,9 @@ async def _prepare_chat(
         )
         if attachment is not None:
             attachment_payload.append(attachment)
-    url_attachments, url_context_block = await _import_url_attachments(import_url)
+    url_attachments, url_context_block = (
+        await _import_url_attachments(import_url, imported) if import_url and imported is not None else ([], "")
+    )
     attachment_payload.extend(url_attachments)
     sent_photos = await _save_chat_photos(db, page.agency_id, attachment_payload)
     # Fotos de dentro de um PDF (folheto, roteiro da operadora). Com "Inserir imagens" desligado,
@@ -234,7 +324,7 @@ async def _prepare_chat(
         ]
         lines.extend(f"- {name}: {url}" for name, url in pdf_photos)
         context = f"{context}\n" + "\n".join(lines)
-    return page, parsed_conversation, usage_record, usage_limit, attachment_payload, context, notice
+    return page, parsed_conversation, usage_record, usage_limit, attachment_payload, context, notice, None
 
 
 def _photo_days_for_itinerary_swaps(sections: list[dict], itinerary_days: dict[str, int]) -> None:
@@ -391,9 +481,14 @@ async def chat_with_assistant(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> AiAssistantChatResponse:
-    page, parsed_conversation, usage_record, usage_limit, attachment_payload, context, notice = await _prepare_chat(
+    page, parsed_conversation, usage_record, usage_limit, attachment_payload, context, notice, direct_reply = await _prepare_chat(
         db, current_user, page_id, conversation, attachments, page_sections, include_images, import_url
     )
+    if direct_reply is not None:
+        # Importação do site inteiro: resposta sem IA, fora do limite de mensagens do mês.
+        for key, value in _usage_headers(usage_record, usage_limit).items():
+            response.headers[key] = value
+        return AiAssistantChatResponse(reply=direct_reply)
     reply = await anyio.to_thread.run_sync(
         partial(
             generate_ai_assistant_reply,
@@ -424,9 +519,21 @@ async def chat_with_assistant_stream(
 ) -> StreamingResponse:
     """Mesma conversa do /chat, em linhas JSON (NDJSON) enviadas enquanto a IA escreve:
     etapas, trechos do texto e, no fim, a resposta completa com o uso do mês."""
-    page, parsed_conversation, usage_record, usage_limit, attachment_payload, context, notice = await _prepare_chat(
+    page, parsed_conversation, usage_record, usage_limit, attachment_payload, context, notice, direct_reply = await _prepare_chat(
         db, current_user, page_id, conversation, attachments, page_sections, include_images, import_url
     )
+    if direct_reply is not None:
+        # Importação do site inteiro: resposta sem IA, fora do limite de mensagens do mês.
+        usage = _usage_payload(usage_record, usage_limit)
+
+        def direct_events():
+            yield (json.dumps({"type": "done", "reply": direct_reply, "usage": usage}, ensure_ascii=False, default=str) + "\n").encode("utf-8")
+
+        return StreamingResponse(
+            direct_events(),
+            media_type="application/x-ndjson",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
     model = get_active_gpt_model(db, create_if_missing=True)
     page_id_value, user_id, period_key = page.id, current_user.id, usage_record.period_key
     messages = [ChatMessage(role=item.role, content=item.content) for item in parsed_conversation]
@@ -523,6 +630,26 @@ def get_page_assistant_history(
         )
         for row in rows
     ]
+
+
+@router.get("/import-jobs/active", response_model=SiteImportActiveResponse)
+def get_active_site_import(
+    agency_id: int | None = Query(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> SiteImportActiveResponse:
+    """Importação do site inteiro em andamento (ou concluída há pouco) da agência, para o aviso
+    global do painel consultar de tempos em tempos. Sem agency_id, olha as agências do usuário."""
+    if agency_id is not None:
+        ensure_agency_member(db, agency_id, current_user)
+        agency_ids = [agency_id]
+    else:
+        agency_ids = [row.agency_id for row in db.query(AgencyUser).filter(AgencyUser.user_id == current_user.id).all()]
+    job = site_import.active_job_for_agencies(db, agency_ids)
+    if job is None:
+        return SiteImportActiveResponse(job=None)
+    home = db.query(Page).filter(Page.id == job.page_id).first() if job.page_id else None
+    return SiteImportActiveResponse(job=SiteImportJobOut.model_validate(site_import.describe_job(job, home)))
 
 
 @router.get("/usage", response_model=AiAssistantUsageResponse)
