@@ -28,6 +28,7 @@ from .flight_lookup_cache import FlightLookupCache
 from .flight_section import FlightSectionJourney, FlightSectionSegment
 from .ai_prompt_config import AiPromptConfig, AiPromptConfigVersion
 from .ai_assistant_usage import AiAssistantUsage
+from .site_import_job import SiteImportJob
 from .system_banner import SystemBanner, BannerEvent, BannerDismissal
 from .team_invite import TeamInvite
 from .whatsapp import WhatsAppConnection, WhatsAppConversation, WhatsAppMessage, WhatsAppInboxPermission

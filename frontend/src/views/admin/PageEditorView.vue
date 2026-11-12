@@ -1204,7 +1204,26 @@
           <div ref="previewCanvasRef" class="ed-screen">
           <div :style="desktopPreviewStyle">
             <div class="space-y-0 preview-light">
-              <template v-if="sections.length === 0">
+              <template v-if="sections.length === 0 && siteImportState">
+                <!-- Página criada pela importação do site inteiro: as seções ainda estão sendo geradas. -->
+                <div class="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 px-4 py-12 text-center text-sm text-slate-500">
+                  <p v-if="siteImportState.status === 'error'">
+                    Não consegui montar esta página na importação do site{{ siteImportState.error ? `: ${siteImportState.error}` : "." }}
+                    Cole o link da viagem no assistente para tentar de novo, ou adicione as seções à mão.
+                  </p>
+                  <p v-else>Esta página está sendo montada pela importação do site. Isso leva alguns minutos.</p>
+                  <div class="mt-6 flex justify-center">
+                    <button
+                      type="button"
+                      class="inline-flex items-center gap-2 rounded-full border border-emerald-400 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-100"
+                      @click="siteImportState.status === 'error' ? openSectionPicker(null) : fetchPage()"
+                    >
+                      {{ siteImportState.status === "error" ? viewCopy.preview.emptyAction : "Atualizar" }}
+                    </button>
+                  </div>
+                </div>
+              </template>
+              <template v-else-if="sections.length === 0">
                 <div class="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 px-4 py-12 text-center text-sm text-slate-500">
                   <p>{{ viewCopy.preview.emptyState }}</p>
                   <div class="mt-6 flex justify-center">
@@ -2057,6 +2076,14 @@ onBeforeRouteLeave((to, _from, next) => {
 });
 
 const page = ref<Page | null>(null);
+// Página criada pela importação do site inteiro (config_json.siteImport): enquanto não tem seções,
+// o editor mostra que ela ainda está sendo montada (ou que falhou) no lugar da tela vazia.
+const siteImportState = computed<{ status: string; error?: string } | null>(() => {
+  const raw = page.value?.config_json;
+  const config = typeof raw === "string" ? (() => { try { return JSON.parse(raw); } catch { return null; } })() : raw;
+  const marker = (config as Record<string, any> | null | undefined)?.siteImport;
+  return marker && typeof marker === "object" && typeof marker.status === "string" ? marker : null;
+});
 
 // Tags da página: salvas na hora (não dependem do botão Salvar), na aba "Tags" do menu lateral.
 const { tags: agencyTags, load: loadAgencyTags, setPageTags } = usePageTags();
