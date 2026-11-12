@@ -311,6 +311,19 @@ def describe_job(job: SiteImportJob, home: Page | None = None) -> dict[str, Any]
     }
 
 
+def get_job(db: Session, job_id: int) -> SiteImportJob | None:
+    return db.query(SiteImportJob).filter(SiteImportJob.id == job_id).first()
+
+
+def completed_page_ids(job: SiteImportJob) -> list[int]:
+    """Páginas prontas desta importação (viagens concluídas + a principal), para publicar em
+    lote. Viagem com erro fica de fora (nunca ganhou página)."""
+    ids = [item["page_id"] for item in (job.items or []) if item.get("stage") == STAGE_DONE and item.get("page_id")]
+    if job.page_id:
+        ids.append(job.page_id)
+    return ids
+
+
 def active_job_for_agencies(db: Session, agency_ids: Iterable[int]) -> SiteImportJob | None:
     """Job em andamento ou concluído há pouco (RECENT_FINISHED_WINDOW) das agências informadas."""
     ids = list(dict.fromkeys(agency_ids))

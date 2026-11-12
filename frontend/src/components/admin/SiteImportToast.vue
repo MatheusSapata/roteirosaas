@@ -27,9 +27,20 @@
         <span class="sit-item-stage">{{ stageLabel(job!.home.stage) }}</span>
       </div>
       <p v-if="job!.error" class="sit-error">{{ job!.error }}</p>
-      <div v-if="job!.status !== 'running'" class="sit-panel-footer">
-        <button type="button" class="sit-close-btn" @click="close">Fechar</button>
+      <div v-if="job!.status === 'completed' && publishState === 'idle'" class="sit-publish-ask">
+        <p class="sit-hint sit-hint-tight">Importação concluída. Quer publicar todas as páginas agora?</p>
+        <div class="sit-publish-actions">
+          <button type="button" class="sit-publish-btn" @click="publishAll">Publicar todas</button>
+          <button type="button" class="sit-close-btn" @click="skipPublish">Deixar como rascunho</button>
+        </div>
       </div>
+      <p v-else-if="publishState === 'publishing'" class="sit-hint sit-hint-tight">Publicando as páginas...</p>
+      <template v-else>
+        <p v-if="publishSummary" class="sit-hint sit-hint-tight">{{ publishSummary }}</p>
+        <div v-if="job!.status !== 'running'" class="sit-panel-footer">
+          <button type="button" class="sit-close-btn" @click="close">Fechar</button>
+        </div>
+      </template>
     </div>
     <button type="button" class="sit-chip" :class="chipClass" @click="expanded = !expanded">
       <span v-if="job!.status === 'running'" class="sit-spinner" aria-hidden="true"></span>
@@ -44,7 +55,7 @@
  * admin (a pessoa pode seguir trabalhando enquanto o site inteiro é montado em segundo plano). */
 import { computed, ref, watch } from "vue";
 import { dismissSiteImportJob, siteImportState } from "../../services/siteImportStatus";
-import type { SiteImportStage } from "../../services/siteImportJobs";
+import { publishAllSiteImportPages, type SiteImportPublishResult, type SiteImportStage } from "../../services/siteImportJobs";
 
 const expanded = ref(false);
 
@@ -52,11 +63,26 @@ const job = computed(() => siteImportState.job);
 
 const visible = computed(() => !!job.value && job.value.id !== siteImportState.dismissedJobId);
 
-// Importação nova (id diferente da última fechada): abre sozinho na primeira vez que aparece.
+const publishState = ref<"idle" | "publishing" | "done">("idle");
+const publishResult = ref<SiteImportPublishResult | null>(null);
+
+// Importação nova (id diferente da última fechada): abre sozinho e esquece a resposta anterior.
 watch(
   () => job.value?.id,
   (id, previous) => {
     if (id && id !== previous && id !== siteImportState.dismissedJobId) expanded.value = true;
+    publishState.value = "idle";
+    publishResult.value = null;
+  }
+);
+
+// Terminou agora (ainda com o mesmo job): abre sozinho para mostrar a pergunta de publicar.
+watch(
+  () => job.value?.status,
+  (status, previous) => {
+    if (status === "completed" && previous && previous !== "completed" && job.value?.id !== siteImportState.dismissedJobId) {
+      expanded.value = true;
+    }
   }
 );
 
@@ -64,6 +90,35 @@ const close = () => {
   if (job.value) dismissSiteImportJob(job.value.id);
   expanded.value = false;
 };
+
+const publishAll = async () => {
+  if (!job.value) return;
+  publishState.value = "publishing";
+  try {
+    publishResult.value = await publishAllSiteImportPages(job.value.id);
+  } catch {
+    publishResult.value = null;
+  } finally {
+    publishState.value = "done";
+  }
+};
+
+const skipPublish = () => {
+  publishState.value = "done";
+  publishResult.value = null;
+};
+
+const publishSummary = computed(() => {
+  const result = publishResult.value;
+  if (!result) return "";
+  const parts: string[] = [];
+  if (result.published) parts.push(`${result.published} página${result.published === 1 ? "" : "s"} publicada${result.published === 1 ? "" : "s"}`);
+  if (result.already_published) parts.push(`${result.already_published} já estava${result.already_published === 1 ? "" : "m"} publicada${result.already_published === 1 ? "" : "s"}`);
+  if (!parts.length) parts.push("Nenhuma página publicada");
+  let text = `${parts.join(", ")}.`;
+  if (result.blocked) text += ` ${result.blocked} não publicou${result.blocked_reason ? `: ${result.blocked_reason}` : "."}`;
+  return text;
+});
 
 const chipClass = computed(() => (job.value?.status === "completed" ? "is-done" : job.value?.status === "failed" ? "is-error" : ""));
 
@@ -235,6 +290,32 @@ const iconClass = (stage: SiteImportStage) => (stage === "done" ? "is-done" : st
   margin: 10px 0 0;
   font-size: 12px;
   color: var(--status-danger, #b3261e);
+}
+.sit-hint-tight {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border, #e5e5e5);
+}
+.sit-publish-ask {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border, #e5e5e5);
+}
+.sit-publish-actions {
+  margin-top: 8px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.sit-publish-btn {
+  border: none;
+  background: var(--primary, #0f7a4f);
+  color: var(--primary-foreground, #fff);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
 }
 .sit-panel-footer {
   margin-top: 12px;

@@ -667,6 +667,57 @@ def get_active_site_import(
     return SiteImportActiveResponse(job=SiteImportJobOut.model_validate(site_import.describe_job(job, home)))
 
 
+class SiteImportPublishResponse(BaseModel):
+    published: int
+    already_published: int
+    blocked: int
+    blocked_reason: str | None = None
+
+
+@router.post("/import-jobs/{job_id}/publish-all", response_model=SiteImportPublishResponse)
+def publish_site_import_pages(
+    job_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> SiteImportPublishResponse:
+    """Publica de uma vez as páginas de viagem prontas e a página principal de uma importação
+    completa (pergunta do aviso global, depois que o job termina). Página que já estava publicada
+    não conta de novo; página barrada pelo limite de páginas do plano fica como estava, sem parar
+    as outras."""
+    job = site_import.get_job(db, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Importação não encontrada.")
+    ensure_agency_member(db, job.agency_id, current_user)
+    ensure_pages_editor_permission(db, job.agency_id, current_user)
+    if job.status != "completed":
+        raise HTTPException(status_code=409, detail="Essa importação ainda não terminou.")
+
+    plan = resolve_agency_plan(db, job.agency_id)
+    published = already_published = blocked = 0
+    blocked_reason: str | None = None
+    for page_id in site_import.completed_page_ids(job):
+        page = db.query(Page).filter(Page.id == page_id, Page.agency_id == job.agency_id).first()
+        if not page:
+            continue
+        if page.status == "published":
+            already_published += 1
+            continue
+        try:
+            page.config_json = enforce_page_limits(db, page, True, page.config_json, plan=plan)
+        except HTTPException as exc:
+            blocked += 1
+            blocked_reason = blocked_reason or (exc.detail if isinstance(exc.detail, str) else str(exc.detail))
+            continue
+        page.status = "published"
+        page.published_at = datetime.utcnow()
+        db.add(page)
+        published += 1
+    db.commit()
+    return SiteImportPublishResponse(
+        published=published, already_published=already_published, blocked=blocked, blocked_reason=blocked_reason
+    )
+
+
 @router.get("/usage", response_model=AiAssistantUsageResponse)
 def get_usage(
     db: Session = Depends(get_db),

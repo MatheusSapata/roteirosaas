@@ -46,3 +46,17 @@ export const fetchActiveSiteImportJob = async (agencyId?: number | null): Promis
   });
   return data.job;
 };
+
+export interface SiteImportPublishResult {
+  published: number;
+  already_published: number;
+  blocked: number;
+  blocked_reason: string | null;
+}
+
+/** Publica de uma vez as páginas de viagem prontas e a página principal de uma importação
+ * completa (pergunta do aviso global, depois que o job termina). */
+export const publishAllSiteImportPages = async (jobId: number): Promise<SiteImportPublishResult> => {
+  const { data } = await api.post<SiteImportPublishResult>(`/ai-assistant/import-jobs/${jobId}/publish-all`);
+  return data;
+};
