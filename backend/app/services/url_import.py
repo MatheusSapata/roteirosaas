@@ -61,7 +61,10 @@ CARD_CLIMB_LEVELS = 6
 CARD_TEXT_CHARS = 300
 
 # Preço em real (e as moedas mais comuns em pacote internacional): "R$ 999,99", "R$1.290", "US$ 850".
-PRICE_RE = re.compile(r"(?:R\$|US\$|U\$|USD|EUR|€|£)\s?\d{1,3}(?:[.\s]?\d{3})*(?:,\d{1,2})?", re.IGNORECASE)
+# "\s*" (e não só um espaço) é de propósito: o preço de verdade de muitos sites vem quebrado em
+# várias linhas no HTML ("R$\n   \n  680,00"), lado a lado na tela mas separado por quebras de
+# linha e tabulação no código-fonte.
+PRICE_RE = re.compile(r"(?:R\$|US\$|U\$|USD|EUR|€|£)\s*\d{1,3}(?:[.\s]?\d{3})*(?:,\d{1,2})?", re.IGNORECASE)
 # Botão típico de card de viagem.
 CTA_RE = re.compile(
     r"\b(saiba mais|ver mais|veja mais|ver detalhes|mais detalhes|detalhes|ver roteiro|ver pacote|ver viagem|"
@@ -222,7 +225,7 @@ def _classify_soup(soup: BeautifulSoup, url: str) -> PageClassification:
         cards[key] = TripLink(
             url=link,
             title=_card_title(card, link),
-            price=price_match.group(0).strip() if price_match else "",
+            price=_clean(price_match.group(0)) if price_match else "",
             text=text[:CARD_TEXT_CHARS],
         )
         containers.append(card)

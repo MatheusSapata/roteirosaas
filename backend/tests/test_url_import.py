@@ -193,3 +193,34 @@ def test_normalize_url_ignores_scheme_www_fragment_and_trailing_slash():
         "http://agencia.com.br/viagens/gramado"
     )
     assert normalize_url("https://a.com/p?id=1") != normalize_url("https://a.com/p?id=2")
+
+
+def test_classify_detects_price_broken_across_lines_in_html():
+    # Caso real (jujuturismo.tripcart.io): o preço aparece junto na tela, mas no código-fonte o
+    # "R$" e o valor ficam em linhas e tabulações diferentes dentro do mesmo elemento, sem nenhum
+    # botão "Saiba mais" dentro de um <a> (o botão real da página também não é um link). Sem o
+    # "\\s*" na PRICE_RE (em vez de "\\s?"), esses cards não eram contados.
+    def card_with_broken_price(slug: str, title: str, value: str) -> str:
+        return f"""
+        <a href="/{slug}">
+          <div class="block-trips">
+            <img src="/img/{slug}.jpg" width="600" />
+            <h4>{title}</h4>
+            <h5>
+                R$
+
+                {value}
+            </h5>
+            <div class="see-more"><p>Ver mais</p></div>
+          </div>
+        </a>
+        """
+
+    html = "<html><body>" + "".join(
+        card_with_broken_price(f"trip/v{n}", f"Viagem {n}", f"{n}9,99") for n in range(1, 6)
+    ) + "</body></html>"
+    result = classify_page(html, "https://agencia.com.br/")
+    assert result.kind == "central"
+    assert len(result.trip_links) == 5
+    # O preço capturado não deve carregar as quebras de linha/tabulação do HTML.
+    assert result.trip_links[0].price == "R$ 19,99"
