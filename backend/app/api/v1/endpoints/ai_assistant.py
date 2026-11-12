@@ -215,10 +215,25 @@ async def _site_import_direct_reply(
     last_user = next((item for item in reversed(parsed_conversation) if item.role == "user"), None)
     if last_user is None:
         return None
-    job = site_import.pending_confirmation_job(db, page.id, current_user.id, last_assistant_message, last_user.content)
+    return _site_import_answer_reply(db, page, current_user, last_assistant_message, last_user.content, include_images)
+
+
+def _site_import_answer_reply(
+    db: Session, page: Page, current_user: User, last_assistant_message: str | None, user_text: str, include_images: bool
+) -> str | None:
+    """Resposta a uma das perguntas da importação do site inteiro, sem IA:
+    - "completo" logo depois da pergunta de central/específica: com categorias na home, faz a
+      pergunta das categorias; sem, dispara a importação;
+    - "manter"/"juntar" logo depois da pergunta das categorias: dispara a importação com a decisão.
+    None quando o texto não responde nenhuma das duas (a conversa segue com a IA)."""
+    answer = site_import.pending_categories_job(db, page.id, current_user.id, last_assistant_message, user_text)
+    if answer is not None:
+        job, preserve = answer
+        return site_import.start_job(db, job, include_images, preserve_categories=preserve)
+    job = site_import.pending_confirmation_job(db, page.id, current_user.id, last_assistant_message, user_text)
     if job is None:
         return None
-    return site_import.start_job(db, job, include_images)
+    return site_import.confirm_full_import(db, job, include_images)
 
 
 async def _prepare_chat(
@@ -274,14 +289,14 @@ async def _prepare_chat(
     # Depois da pergunta de site completo/específico, a pessoa respondeu "completo" colando na
     # caixa de link em vez de digitar na conversa (confusão natural: acabou de usar aquela caixa).
     # Confere a confirmação antes de tratar o texto como link, senão "completo" vira erro de "link
-    # inválido" em vez de disparar a importação.
-    confirm_job = (
-        site_import.pending_confirmation_job(db, page.id, current_user.id, last_assistant_message, import_url)
+    # inválido" em vez de disparar a importação. Vale também para "manter"/"juntar" na pergunta das
+    # categorias.
+    direct_reply = (
+        _site_import_answer_reply(db, page, current_user, last_assistant_message, import_url, include_images)
         if import_url
         else None
     )
-    if confirm_job is not None:
-        direct_reply = site_import.start_job(db, confirm_job, include_images)
+    if direct_reply is not None:
         db.add(AiAssistantMessage(page_id=page.id, user_id=current_user.id, role="assistant", content=direct_reply))
         db.commit()
         return page, parsed_conversation, usage_record, usage_limit, [], "", "", direct_reply

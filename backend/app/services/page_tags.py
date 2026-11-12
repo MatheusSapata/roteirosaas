@@ -37,6 +37,35 @@ def clean_tag_name(value: str) -> str:
     return re.sub(r"\s+", " ", (value or "").strip())[:TAG_NAME_MAX]
 
 
+def get_or_create_tag(db: Session, agency_id: int, name: str, color: Optional[str] = None) -> Optional[PageTag]:
+    """Tag da agência com esse nome (comparada pelo slug: "europa" acha "Europa"); se não existe,
+    cria com a próxima cor livre. Grava no banco. None quando o nome não tem letra nem número.
+    É a regra do POST /page-tags, usada também pela importação do site (categoria vira tag)."""
+    from sqlalchemy.exc import IntegrityError
+
+    name = clean_tag_name(name)
+    slug = slugify_tag(name)
+    if not slug:
+        return None
+    existing = db.query(PageTag).filter(PageTag.agency_id == agency_id, PageTag.slug == slug).first()
+    if existing:
+        return existing
+    if not color:
+        used = {row[0] for row in db.query(PageTag.color).filter(PageTag.agency_id == agency_id).all()}
+        count = db.query(PageTag).filter(PageTag.agency_id == agency_id).count()
+        color = next((c for c in TAG_COLORS if c not in used), TAG_COLORS[count % len(TAG_COLORS)])
+    tag = PageTag(agency_id=agency_id, name=name, slug=slug, color=color)
+    db.add(tag)
+    try:
+        db.commit()
+    except IntegrityError:
+        # Criada ao mesmo tempo por outra requisição (índice único agência + slug): usa a que ficou.
+        db.rollback()
+        return db.query(PageTag).filter(PageTag.agency_id == agency_id, PageTag.slug == slug).first()
+    db.refresh(tag)
+    return tag
+
+
 def is_tag_section(section: Any) -> bool:
     return isinstance(section, dict) and section.get("type") == "links" and section.get("mode") == "tag"
 

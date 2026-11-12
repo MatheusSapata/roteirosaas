@@ -21,8 +21,8 @@ from app.schemas.page_tag import (
     TagSectionUse,
 )
 from app.services.page_tags import (
-    TAG_COLORS,
     clean_tag_name,
+    get_or_create_tag,
     replace_tag_in_sections,
     resolve_tag_section,
     sections_using_tags,
@@ -101,23 +101,10 @@ def create_tag(
 ) -> PageTagOut:
     ensure_agency_member(db, payload.agency_id, current_user)
     ensure_pages_editor_permission(db, payload.agency_id, current_user)
-    name = clean_tag_name(payload.name)
-    slug = slugify_tag(name)
-    if not slug:
-        raise HTTPException(status_code=422, detail="Use letras ou números no nome da tag.")
     # Criar uma tag que já existe devolve a existente: no editor, digitar "europa" escolhe "Europa".
-    existing = db.query(PageTag).filter(PageTag.agency_id == payload.agency_id, PageTag.slug == slug).first()
-    if existing:
-        return _tags_out(db, payload.agency_id, [existing])[0]
-    color = payload.color
-    if not color:
-        used = {row[0] for row in db.query(PageTag.color).filter(PageTag.agency_id == payload.agency_id).all()}
-        count = db.query(PageTag).filter(PageTag.agency_id == payload.agency_id).count()
-        color = next((c for c in TAG_COLORS if c not in used), TAG_COLORS[count % len(TAG_COLORS)])
-    tag = PageTag(agency_id=payload.agency_id, name=name, slug=slug, color=color)
-    db.add(tag)
-    db.commit()
-    db.refresh(tag)
+    tag = get_or_create_tag(db, payload.agency_id, payload.name, payload.color)
+    if tag is None:
+        raise HTTPException(status_code=422, detail="Use letras ou números no nome da tag.")
     return _tags_out(db, payload.agency_id, [tag])[0]
 
 
