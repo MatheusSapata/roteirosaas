@@ -72,6 +72,8 @@ if engine.dialect.name == "postgresql":
         connection.execute(text("ALTER TABLE media_assets ADD COLUMN IF NOT EXISTS keywords TEXT"))
         connection.execute(text("ALTER TABLE media_assets ADD COLUMN IF NOT EXISTS source VARCHAR(30)"))
         connection.execute(text("ALTER TABLE webhook_notification_rules ADD COLUMN IF NOT EXISTS pushover_sound VARCHAR(40)"))
+        # Importação do site inteiro: resposta à pergunta de manter as categorias do site.
+        connection.execute(text("ALTER TABLE site_import_jobs ADD COLUMN IF NOT EXISTS preserve_categories BOOLEAN"))
         # Vídeo da capa da página de vendas (player próprio no lugar do Panda).
         connection.execute(text("ALTER TABLE checkout_settings ADD COLUMN IF NOT EXISTS sales_video_json JSONB"))
         # Passos que rodam uma vez só (fica registrado o nome de cada um).

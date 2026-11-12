@@ -11,6 +11,7 @@ from app.models.agency_user import AgencyUser
 from app.models.ai_assistant_message import AiAssistantMessage
 from app.models.ai_assistant_usage import AiAssistantUsage
 from app.models.page import Page
+from app.models.page_tag import PageTag
 from app.models.site_import_job import SiteImportJob
 from app.models.user import User
 from app.services import site_import
@@ -141,10 +142,28 @@ def _central_page() -> ImportedPage:
     return ImportedPage(title="Agência Exemplo | Viagens", text="As melhores viagens em grupo.", image_urls=[], kind="central", trip_links=links)
 
 
+NOV = "Bate e Volta NOVEMBRO DE 2026"
+ESP = "Passeios Especiais"
+CATEGORIES_URL = "https://agencia.com.br/categorias"
+
+
+def _central_page_with_categories() -> ImportedPage:
+    # Fora da ordem do site de propósito: a ordem das categorias e dos cards vem de "position".
+    links = [
+        TripLink(url="https://agencia.com.br/viagens/foz", title="Foz do Iguaçu", price="R$ 1.290", text="Foz", category=ESP, position=2),
+        TripLink(url="https://agencia.com.br/viagens/gramado", title="Gramado", price="R$ 1.990", text="Gramado", category=NOV, position=0),
+        TripLink(url="https://agencia.com.br/viagens/gramado-2", title="Gramado", price="R$ 2.390", text="Destino: Canela", category=NOV, position=1),
+        TripLink(url="https://agencia.com.br/viagens/quebra", title="Quebra", price="", text="Quebra", category=ESP, position=3),
+        TripLink(url="https://agencia.com.br/viagens/praia", title="Praia", price="", text="Praia", category=None, position=4),
+    ]
+    return ImportedPage(title="Agência Exemplo | Viagens", text="As melhores viagens.", image_urls=[], kind="central", trip_links=links)
+
+
 TRIP_PAGES = {
     "https://agencia.com.br/viagens/gramado": ImportedPage(title="Gramado | Agência Exemplo", text="Destino: Gramado. 5 dias.", image_urls=[]),
     "https://agencia.com.br/viagens/gramado-2": ImportedPage(title="Gramado | Agência Exemplo", text="Destino: Canela. 3 dias.", image_urls=[]),
     "https://agencia.com.br/viagens/foz": ImportedPage(title="Foz do Iguaçu", text="Cataratas.", image_urls=[]),
+    "https://agencia.com.br/viagens/praia": ImportedPage(title="Praia do Forte", text="Bahia.", image_urls=[]),
 }
 
 
@@ -167,6 +186,8 @@ def fake_pipeline(monkeypatch):
     async def fake_scrape(url):
         if url.rstrip("/") == "https://agencia.com.br":
             return _central_page()
+        if url.rstrip("/") == CATEGORIES_URL:
+            return _central_page_with_categories()
         if url in TRIP_PAGES:
             return TRIP_PAGES[url]
         raise url_import.UrlImportError("Não encontrei conteúdo nessa página.")
@@ -419,3 +440,219 @@ def test_same_link_again_after_question_goes_to_single_page_flow(client, db_sess
     assert res.status_code == 200, res.text
     assert res.json()["reply"] == "Certo! Vou montar a página."
     assert calls and "CONTEÚDO EXTRAÍDO DO LINK ENVIADO" in calls[0]
+
+
+# --- Categorias do site: segunda pergunta, tags e home com uma seção por categoria ---
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["manter", "Manter!", "sim", "pode manter", "mantém as categorias", "separar", "quero separado por categoria", "não junta não"],
+)
+def test_categories_answer_keep(text):
+    assert site_import.categories_answer(text) is True
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["juntar", "Junta tudo", "não", "tudo junto", "uma lista só", "pode juntar", "não precisa separar", "sem categoria"],
+)
+def test_categories_answer_join(text):
+    assert site_import.categories_answer(text) is False
+
+
+@pytest.mark.parametrize("text", ["", "manter separado mas juntar", "Quero mudar a cor do banner para azul e trocar a foto"])
+def test_categories_answer_unknown(text):
+    assert site_import.categories_answer(text) is None
+
+
+def test_categories_question_lists_examples_in_site_order():
+    question = site_import.categories_question(["A", "B", "C", "D", "E"])
+    assert question.startswith(site_import.CATEGORIES_QUESTION_PREFIX)
+    assert '"A", "B", "C" e mais 2 categorias' in question
+    assert "'manter'" in question and "'juntar'" in question
+
+
+def test_job_categories_follow_position_not_list_order(db_session):
+    _agency_, user, home = _agency(db_session)
+    job = site_import.create_pending_job(db_session, home, user.id, CATEGORIES_URL, _central_page_with_categories())
+    assert site_import.job_categories(job) == [NOV, ESP]
+    assert job.items[0]["category"] == ESP and job.items[0]["position"] == 2
+
+
+def test_group_created_by_category_puts_loose_trips_last():
+    created = [
+        {"page_id": 3, "title": "Foz", "category": ESP, "position": 2},
+        {"page_id": 9, "title": "Praia", "category": None, "position": 0},
+        {"page_id": 2, "title": "Canela", "category": NOV, "position": 1},
+        {"page_id": 1, "title": "Gramado", "category": NOV, "position": 0},
+    ]
+    groups = site_import.group_created_by_category(created)
+    assert [(name, [item["page_id"] for item in items]) for name, items in groups] == [
+        (NOV, [1, 2]),
+        (ESP, [3]),
+        (site_import.UNCATEGORIZED_TITLE, [9]),
+    ]
+    # Nenhuma página com categoria: nada a agrupar (a home segue com a vitrine única).
+    assert site_import.group_created_by_category([{"page_id": 1, "title": "x", "category": None}]) == []
+
+
+def test_place_category_sections_replaces_showcase_in_place():
+    ai_card = {"source": "page", "pageId": 1, "url": "/a/gramado", "title": "Gramado", "description": "Da IA", "priceValue": "R$ 1"}
+    sections = [
+        {"type": "hero", "anchorId": "banner-1"},
+        {"type": "links", "anchorId": "viagens-2", "title": "Nossas viagens", "items": [ai_card]},
+        {"type": "story", "anchorId": "sobre-3"},
+        {"type": "agency_footer"},
+    ]
+    groups = [
+        (NOV, [{"page_id": 1, "url": "/a/gramado", "title": "Gramado"}, {"page_id": 2, "url": "/a/canela", "title": "Canela", "price": "R$ 2"}]),
+        (ESP, [{"page_id": 3, "url": "/a/foz", "title": "Foz"}]),
+    ]
+    site_import.place_category_sections(sections, groups)
+    assert [section["type"] for section in sections] == ["hero", "links", "links", "story", "agency_footer"]
+    nov, esp = sections[1], sections[2]
+    assert (nov["title"], nov["mode"], nov["anchorId"]) == (NOV, "manual", "bate-e-volta-novembro-de-2026")
+    assert nov["items"][0]["description"] == "Da IA"  # card da IA reaproveitado
+    assert (nov["items"][1]["pageId"], nov["items"][1]["source"], nov["items"][1]["priceValue"]) == (2, "page", "R$ 2")
+    assert esp["title"] == ESP and [card["pageId"] for card in esp["items"]] == [3]
+
+    # Sem vitrine da IA: entram antes do rodapé.
+    sections = [{"type": "hero"}, {"type": "agency_footer"}]
+    site_import.place_category_sections(sections, groups)
+    assert [section.get("title") for section in sections] == [None, NOV, ESP, None]
+
+
+def _run_categories_job(db_session, preserve, plan="infinity"):
+    agency, user, home = _agency(db_session)
+    user.plan = plan
+    db_session.add(PageTag(agency_id=agency.id, name="Passeios especiais", slug="passeios-especiais", color="rose"))
+    db_session.commit()
+    job = site_import.create_pending_job(db_session, home, user.id, CATEGORIES_URL, _central_page_with_categories())
+    reply = site_import.start_job(db_session, job, preserve_categories=preserve)
+    asyncio.run(site_import._run(job.id))
+    db_session.expire_all()
+    return agency, db_session.get(SiteImportJob, job.id), db_session.get(Page, home.id), reply
+
+
+def test_full_job_keeping_categories_tags_pages_and_builds_one_section_per_category(db_session, fake_pipeline):
+    agency, job, home, reply = _run_categories_job(db_session, True)
+    assert "uma seção por categoria" in reply
+    assert job.status == "completed" and job.preserve_categories is True
+    pages = {page.title: page for page in db_session.query(Page).filter(Page.agency_id == agency.id).all()}
+
+    # Tag nova com o nome exato do site; a que já existia (mesmo slug) é reaproveitada, sem duplicar.
+    tags = {tag.slug: tag for tag in db_session.query(PageTag).filter(PageTag.agency_id == agency.id).all()}
+    assert set(tags) == {"bate-e-volta-novembro-de-2026", "passeios-especiais"}
+    assert tags["bate-e-volta-novembro-de-2026"].name == NOV
+    assert [tag.name for tag in pages["Gramado"].tags] == [NOV]
+    assert [tag.name for tag in pages["Gramado — Canela"].tags] == [NOV]
+    assert [tag.name for tag in pages["Foz do Iguaçu"].tags] == ["Passeios especiais"]
+    assert pages["Praia do Forte"].tags == []
+
+    links = [section for section in home.config_json["sections"] if section["type"] == "links"]
+    assert [section["title"] for section in links] == [NOV, ESP, site_import.UNCATEGORIZED_TITLE]
+    assert [card["pageId"] for card in links[0]["items"]] == [pages["Gramado"].id, pages["Gramado — Canela"].id]
+    assert [card["pageId"] for card in links[1]["items"]] == [pages["Foz do Iguaçu"].id]  # "Quebra" deu erro
+    assert [card["pageId"] for card in links[2]["items"]] == [pages["Praia do Forte"].id]
+    assert all(card["source"] == "page" and "pageSlug" not in card for section in links for card in section["items"])
+    # As seções entram onde a vitrine da IA estava (logo depois do banner).
+    types = [section["type"] for section in home.config_json["sections"]]
+    assert types.index("links") == 1
+
+
+def test_full_job_joining_categories_keeps_single_showcase_and_no_tags(db_session, fake_pipeline):
+    agency, job, home, _reply = _run_categories_job(db_session, False)
+    assert job.status == "completed" and job.preserve_categories is False
+    assert db_session.query(PageTag).filter(PageTag.agency_id == agency.id).count() == 1  # só a que já existia
+    links = [section for section in home.config_json["sections"] if section["type"] == "links"]
+    assert [section["title"] for section in links] == ["Nossas viagens"]
+
+
+def test_categories_fall_back_to_single_showcase_when_plan_section_limit_is_hit(db_session, fake_pipeline, monkeypatch):
+    # O plano limita as seções por página (free: 4). Se banner + uma seção por categoria não cabe,
+    # a home fica com a vitrine única de sempre em vez de falhar. Limite de 2 para forçar o caso.
+    monkeypatch.setattr("app.services.plans.plan_limits", lambda _plan: (None, 2))
+    agency, job, home, _reply = _run_categories_job(db_session, True)
+    assert job.status == "completed"
+    links = [section for section in home.config_json["sections"] if section["type"] == "links"]
+    assert [section["title"] for section in links] == ["Nossas viagens"]
+    # A tag continua ligada às páginas (independe de caber na home).
+    assert db_session.query(PageTag).filter(PageTag.agency_id == agency.id).count() == 2
+
+
+def _chat(client, headers, page_id, conversation, import_url=None):
+    data = {"page_id": page_id, "conversation": json.dumps(conversation)}
+    if import_url:
+        data["import_url"] = import_url
+    res = client.post("/api/v1/ai-assistant/chat", data=data, headers=headers)
+    assert res.status_code == 200, res.text
+    return res.json()["reply"]
+
+
+@pytest.mark.parametrize(("answer", "preserve"), [("manter", True), ("juntar", False)])
+def test_chat_asks_categories_after_full_confirmation(client, db_session, fake_pipeline, monkeypatch, answer, preserve):
+    from app.api.v1.endpoints import ai_assistant as endpoint
+
+    monkeypatch.setattr(endpoint, "scrape_page", fake_pipeline)
+
+    def no_ai(*_args, **_kwargs):
+        raise AssertionError("a IA não pode ser chamada nesse fluxo")
+
+    monkeypatch.setattr(endpoint, "generate_ai_assistant_reply", no_ai)
+    started: list[int] = []
+    monkeypatch.setattr(site_import, "start_job_thread", started.append)
+    headers, _agency, page = _auth(client, db_session)
+
+    conversation = [{"role": "user", "content": f"Importar informações de: {CATEGORIES_URL}"}]
+    question = _chat(client, headers, page["id"], conversation, CATEGORIES_URL)
+    # A primeira pergunta continua sendo só a de site completo/específico.
+    assert question.startswith(site_import.CENTRAL_QUESTION_PREFIX) and "categoria" not in question
+
+    conversation += [{"role": "assistant", "content": question}, {"role": "user", "content": "completo"}]
+    second = _chat(client, headers, page["id"], conversation)
+    assert second.startswith(site_import.CATEGORIES_QUESTION_PREFIX)
+    assert f'"{NOV}", "{ESP}"' in second  # na ordem do site
+    job = db_session.query(SiteImportJob).one()
+    assert job.status == "awaiting_categories" and started == []
+
+    conversation += [{"role": "assistant", "content": second}, {"role": "user", "content": answer}]
+    third = _chat(client, headers, page["id"], conversation)
+    assert "Comecei a montar o site inteiro" in third
+    db_session.expire_all()
+    job = db_session.query(SiteImportJob).one()
+    assert job.status == "running" and job.preserve_categories is preserve and started == [job.id]
+    # Nenhuma das três respostas contou no limite de mensagens do mês.
+    assert all(int(row.message_count or 0) == 0 for row in db_session.query(AiAssistantUsage).all())
+
+
+def test_categories_answer_sent_as_import_url_still_starts_job(client, db_session, fake_pipeline, monkeypatch):
+    from app.api.v1.endpoints import ai_assistant as endpoint
+
+    monkeypatch.setattr(endpoint, "scrape_page", fake_pipeline)
+    monkeypatch.setattr(endpoint, "generate_ai_assistant_reply", lambda *_a, **_k: (_ for _ in ()).throw(AssertionError()))
+    started: list[int] = []
+    monkeypatch.setattr(site_import, "start_job_thread", started.append)
+    headers, _agency, page = _auth(client, db_session)
+
+    conversation = [{"role": "user", "content": f"Importar informações de: {CATEGORIES_URL}"}]
+    question = _chat(client, headers, page["id"], conversation, CATEGORIES_URL)
+    conversation += [{"role": "assistant", "content": question}, {"role": "user", "content": "Importar informações de: completo"}]
+    second = _chat(client, headers, page["id"], conversation, "completo")
+    assert second.startswith(site_import.CATEGORIES_QUESTION_PREFIX)
+    conversation += [{"role": "assistant", "content": second}, {"role": "user", "content": "Importar informações de: manter"}]
+    assert "Comecei a montar o site inteiro" in _chat(client, headers, page["id"], conversation, "manter")
+    db_session.expire_all()
+    assert db_session.query(SiteImportJob).one().preserve_categories is True
+
+
+def test_single_category_does_not_ask(db_session, fake_pipeline):
+    # Um título só em cima de todos os cards ("Próximas saídas") não é separação: segue direto.
+    _agency_, user, home = _agency(db_session)
+    imported = _central_page()
+    for link in imported.trip_links:
+        link.category = "Próximas saídas"
+    job = site_import.create_pending_job(db_session, home, user.id, "https://agencia.com.br/", imported)
+    reply = site_import.confirm_full_import(db_session, job)
+    assert "Comecei a montar o site inteiro" in reply
+    assert job.status == "running" and job.preserve_categories is None

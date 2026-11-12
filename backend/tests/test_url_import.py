@@ -224,3 +224,127 @@ def test_classify_detects_price_broken_across_lines_in_html():
     assert len(result.trip_links) == 5
     # O preço capturado não deve carregar as quebras de linha/tabulação do HTML.
     assert result.trip_links[0].price == "R$ 19,99"
+
+
+# --- Categoria de cada viagem (título da seção antes do grupo de cards) ---
+
+
+def _tripcart_category(category_id: int, title: str, slugs: list[str]) -> str:
+    # Mesma estrutura da home real do jujuturismo.tripcart.io: o título da categoria (<h2> dentro de
+    # um link "search?category=...") fica num bloco ANTES do carrossel, não em volta dos cards.
+    items = "".join(
+        f"""
+        <div class="item mb-2"><a href="https://agencia.tripcart.io/trip/{slug}">
+          <div class="block-trips"><img src="/img/{slug}.jpg" width="600" /><h4>Viagem {slug}</h4>
+            <h5>
+                R$
+
+                1{n}9,90
+            </h5><div class="see-more"><p>Ver mais</p></div></div></a></div>
+        """
+        for n, slug in enumerate(slugs)
+    )
+    return f"""
+    <div class="container category-trips">
+      <div class="mb-4 text-center flex-container flex-align-center">
+        <a href="search?category={category_id}"><h2 class="mb-1">{title} </h2></a>
+        <div class="category-divisor global-color"></div>
+        <a href="search?category={category_id}"><p data-i18n="seeAll">Ver todas</p></a>
+      </div>
+      <div class="theme-carousel"><div id="swiper-next"></div><div id="swiper-prev"></div>
+        <div class="owl-carousel owl-theme">{items}</div>
+      </div>
+    </div>
+    """
+
+
+def test_categories_from_heading_before_each_carousel():
+    html = (
+        "<html><body><div class='swiper-slide'><h1>O mundo é cheio de lugares incríveis</h1></div>"
+        "<h2>Como fazer uma reserva?</h2><p>Escolha a viagem, preencha os dados e pague pelo site.</p>"
+        + _tripcart_category(1, "Bate e Volta NOVEMBRO DE 2026", ["bonito", "maragogi", "calhetas"])
+        + _tripcart_category(2, "Finais de Semana e Pacotes", ["pipa"])
+        + _tripcart_category(3, "Passeios Especiais", ["confra", "morango"])
+        + "<h2>Entre em contato</h2></body></html>"
+    )
+    result = classify_page(html, "https://agencia.tripcart.io/")
+    assert result.kind == "central"
+    by_slug = {link.url.rsplit("/", 1)[-1]: link for link in result.trip_links}
+    assert {slug: link.category for slug, link in by_slug.items()} == {
+        "bonito": "Bate e Volta NOVEMBRO DE 2026",
+        "maragogi": "Bate e Volta NOVEMBRO DE 2026",
+        "calhetas": "Bate e Volta NOVEMBRO DE 2026",
+        # Categoria com um card só também vale; o nome fica como no site (só sem o espaço do fim).
+        "pipa": "Finais de Semana e Pacotes",
+        "confra": "Passeios Especiais",
+        "morango": "Passeios Especiais",
+    }
+    assert [by_slug[slug].position for slug in ("bonito", "maragogi", "calhetas", "pipa", "confra", "morango")] == list(range(6))
+
+
+def test_categories_from_section_headings_in_simple_markup():
+    # Outra estrutura comum: <section> com <h2> e uma grade de cards logo abaixo.
+    def section(title: str, slugs: list[str]) -> str:
+        cards = "".join(_card(f"viagens/{slug}", slug.title()) for slug in slugs)
+        return f"<section><h2>{title}</h2><p>Saídas confirmadas.</p><div class='grid'>{cards}</div></section>"
+
+    html = f"<html><body><main>{section('Nacionais', ['gramado', 'bonito'])}{section('Internacionais', ['paris', 'roma', 'lisboa'])}</main></body></html>"
+    result = classify_page(html, "https://agencia.com.br/")
+    assert [(link.title, link.category) for link in result.trip_links] == [
+        ("Gramado", "Nacionais"),
+        ("Bonito", "Nacionais"),
+        ("Paris", "Internacionais"),
+        ("Roma", "Internacionais"),
+        ("Lisboa", "Internacionais"),
+    ]
+
+
+def test_group_without_heading_does_not_inherit_previous_category():
+    # O segundo carrossel não tem título: não pode herdar "Nacionais" do grupo de cima.
+    first = "".join(_card(f"viagens/n{n}", f"Nacional {n}") for n in range(1, 4))
+    second = "".join(_card(f"viagens/s{n}", f"Sem título {n}") for n in range(1, 4))
+    html = f"""
+    <html><body><main>
+      <section><h2>Nacionais</h2><div class="grid">{first}</div></section>
+      <section><div class="grid">{second}</div></section>
+    </main></body></html>
+    """
+    result = classify_page(html, "https://agencia.com.br/")
+    categories = {link.title: link.category for link in result.trip_links}
+    assert all(categories[f"Nacional {n}"] == "Nacionais" for n in range(1, 4))
+    assert all(categories[f"Sem título {n}"] is None for n in range(1, 4))
+
+
+def test_no_heading_before_cards_means_no_category():
+    cards = "".join(_card(f"viagens/v{n}", f"Viagem {n}") for n in range(1, 6))
+    result = classify_page(f"<html><body><div class='grid'>{cards}</div></body></html>", "https://a.com/")
+    assert result.kind == "central"
+    assert all(link.category is None for link in result.trip_links)
+
+
+def test_heading_followed_by_long_text_is_not_a_category():
+    # Título de uma seção de texto ("Sobre nós") seguido de vários parágrafos antes dos cards.
+    cards = "".join(_card(f"viagens/v{n}", f"Viagem {n}") for n in range(1, 6))
+    about = "<p>" + "Somos uma agência com mais de vinte anos de estrada levando grupos pelo Brasil. " * 5 + "</p>"
+    html = f"<html><body><section><h2>Sobre nós</h2>{about}<div class='grid'>{cards}</div></section></body></html>"
+    result = classify_page(html, "https://a.com/")
+    assert all(link.category is None for link in result.trip_links)
+
+
+def test_card_titles_outside_card_block_are_not_categories():
+    # O título de cada card fica fora do bloco achado (só foto e preço dentro do link). Cada card
+    # "teria" a própria categoria, todas com um card só: são títulos de card, não seções.
+    cards = "".join(
+        f'<div class="t"><h3>Destino {n}</h3><a href="/v/{n}"><img src="/i{n}.jpg"/><span>R$ {n}90,00</span></a></div>'
+        for n in range(1, 6)
+    )
+    result = classify_page(f"<html><body><div class='grid'>{cards}</div></body></html>", "https://a.com/")
+    assert result.kind == "central"
+    assert all(link.category is None for link in result.trip_links)
+
+
+def test_heading_inside_menu_or_footer_is_ignored():
+    cards = "".join(_card(f"viagens/v{n}", f"Viagem {n}") for n in range(1, 6))
+    html = f"<html><body><nav><h2>Menu</h2></nav><div class='grid'>{cards}</div></body></html>"
+    result = classify_page(html, "https://a.com/")
+    assert all(link.category is None for link in result.trip_links)

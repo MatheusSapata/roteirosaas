@@ -11,13 +11,14 @@ import logging
 import re
 import socket
 import threading
+from bisect import bisect_left, bisect_right
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Any, Literal
 from urllib.parse import urljoin, urlparse
 
 import httpx
 import trafilatura
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Comment, NavigableString
 
 from app.services.ai_assistant import ChatAttachment, normalize_chat_attachment
 
@@ -82,14 +83,32 @@ _IGNORED_LINK_SCHEMES = ("mailto:", "tel:", "javascript:", "whatsapp:", "sms:", 
 _FILE_EXTENSIONS = (".pdf", ".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg", ".zip", ".mp4")
 
 
+# Categoria da viagem: o título de seção (h1–h6) logo antes do grupo de cards ("Bate e Volta
+# NOVEMBRO", "Passeios Especiais"). Título mais longo que isso é texto, não rótulo de seção.
+MAX_CATEGORY_CHARS = 80
+# Quantos níveis acima do card pode estar o ancestral comum entre ele e o título da categoria.
+# No caso real (tripcart) são 4: card → item → carrossel → bloco do carrossel → bloco da categoria.
+CATEGORY_CLIMB_LEVELS = 8
+# Texto permitido (fora dos cards) entre o título e o primeiro card do grupo: um "Ver todas", um
+# subtítulo curto. Mais que isso, o título é de outra coisa (seção "Como reservar", "Sobre nós").
+CATEGORY_GAP_CHARS = 200
+_HEADING_TAGS = ("h1", "h2", "h3", "h4", "h5", "h6")
+
+
 @dataclass(slots=True)
 class TripLink:
-    """Um card de viagem achado numa página central: link absoluto e o texto do card."""
+    """Um card de viagem achado numa página central: link absoluto e o texto do card.
+
+    ``category`` é o título da seção onde o card aparece no site (None quando não há um título
+    claro antes do grupo de cards) e ``position`` é a ordem do card na página (0 = o primeiro), para
+    montar as categorias e os cards na mesma ordem do site original."""
 
     url: str
     title: str
     price: str
     text: str
+    category: str | None = None
+    position: int = 0
 
 
 @dataclass(slots=True)
@@ -192,6 +211,119 @@ def _card_title(card, link: str) -> str:
     return _clean(re.sub(r"[-_]+", " ", slug)).capitalize()[:160]
 
 
+def _ancestor_chain(element) -> list:
+    """O próprio elemento e todos os ancestrais, do mais perto ao mais longe."""
+    return [element, *element.parents]
+
+
+def _assign_categories(soup: BeautifulSoup, found: list[tuple[TripLink, Any]]) -> None:
+    """Preenche ``position`` e ``category`` de cada card (no próprio TripLink).
+
+    Sinais estruturais, sem depender de plataforma: a categoria de um card é o título (h1–h6 ou
+    role="heading", curto, fora de qualquer card, fora de menu e rodapé) mais próximo ANTES dele no
+    documento, desde que:
+    1. o ancestral comum entre o título e o card esteja no máximo CATEGORY_CLIMB_LEVELS acima do
+       card (o título é do bloco onde o grupo de cards está, não de outra parte da página);
+    2. todos os cards entre o título e este tenham o MESMO ancestral comum com o título que este
+       tem: é o "grupo". Um carrossel sem título logo depois de outro com título fica com
+       ancestral comum mais alto que o do primeiro grupo, então não herda o título do vizinho;
+    3. entre o título e o primeiro card do grupo haja pouco texto (CATEGORY_GAP_CHARS): um "Ver
+       todas" ou subtítulo curto, não uma seção inteira de outra coisa;
+    4. o título não seja o nome do próprio card (título do card que ficou fora do bloco achado).
+    Sem título que passe nessas regras, a categoria fica None: nunca é inventada.
+
+    Se todas as categorias achadas tiverem um card só (e forem 3 ou mais), o que foi achado são os
+    títulos dos próprios cards, não seções: descarta tudo."""
+    if not found:
+        return
+    order: dict[int, int] = {}
+    text_marks: list[tuple[int, int]] = []  # (posição, tamanho) de cada texto visível
+    for index, node in enumerate(soup.descendants):
+        order[id(node)] = index
+        if isinstance(node, NavigableString) and not isinstance(node, Comment):
+            parent = node.parent
+            if parent is not None and parent.name not in ("script", "style", "noscript", "template"):
+                size = len(_clean(str(node)))
+                if size:
+                    text_marks.append((index, size))
+
+    def span(element) -> tuple[int, int]:
+        start = order.get(id(element), -1)
+        return start, start + sum(1 for _ in element.descendants)
+
+    cards = sorted(((link, element, *span(element)) for link, element in found), key=lambda entry: entry[2])
+    for position, (link, _element, _start, _end) in enumerate(cards):
+        link.position = position
+    card_spans = [(start, end) for _link, _element, start, end in cards]
+
+    def inside_card(position: int) -> bool:
+        return any(start <= position <= end for start, end in card_spans)
+
+    # Texto fora dos cards, com soma acumulada, para medir o texto entre um título e um card.
+    outside_marks = [(position, size) for position, size in text_marks if not inside_card(position)]
+    outside_positions = [position for position, _size in outside_marks]
+    outside_totals = [0]
+    for _position, size in outside_marks:
+        outside_totals.append(outside_totals[-1] + size)
+
+    def outside_text(after: int, before: int) -> int:
+        return outside_totals[bisect_left(outside_positions, before)] - outside_totals[bisect_right(outside_positions, after)]
+
+    headings = []
+    for heading in soup.find_all(list(_HEADING_TAGS)) + soup.find_all(attrs={"role": "heading"}):
+        text = _clean(heading.get_text(" "))
+        if not text or len(text) > MAX_CATEGORY_CHARS:
+            continue
+        start, end = span(heading)
+        if start < 0 or inside_card(start):
+            continue
+        if any(ancestor.name in ("nav", "footer", "script", "template") for ancestor in heading.parents):
+            continue
+        headings.append((start, end, heading, text))
+    headings.sort(key=lambda entry: entry[0])
+    if not headings:
+        return
+
+    chains = [_ancestor_chain(element) for _link, element, _start, _end in cards]
+
+    def common_ancestor(heading, card_index: int):
+        """(ancestral comum, quantos níveis acima do card) entre o título e o card."""
+        heading_ids = {id(node) for node in _ancestor_chain(heading)}
+        for level, node in enumerate(chains[card_index]):
+            if id(node) in heading_ids:
+                return node, level
+        return None, None
+
+    for index, (link, _element, start, _end) in enumerate(cards):
+        previous = [entry for entry in headings if entry[1] < start]
+        if not previous:
+            continue
+        h_start, h_end, heading, text = previous[-1]
+        ancestor, level = common_ancestor(heading, index)
+        if ancestor is None or level > CATEGORY_CLIMB_LEVELS or ancestor.name in ("html", "[document]"):
+            continue
+        group = [other for other, (_l, _e, other_start, _x) in enumerate(cards) if h_end < other_start <= start]
+        if any(common_ancestor(heading, other)[0] is not ancestor for other in group):
+            continue
+        if outside_text(h_end, cards[group[0]][2]) > CATEGORY_GAP_CHARS:
+            continue
+        if _plain_text(text) == _plain_text(link.title):
+            continue
+        link.category = text
+
+    counts: dict[str, int] = {}
+    for link, *_rest in cards:
+        if link.category:
+            counts[link.category] = counts.get(link.category, 0) + 1
+    if len(counts) >= 3 and all(count == 1 for count in counts.values()):
+        for link, *_rest in cards:
+            link.category = None
+
+
+def _plain_text(value: str) -> str:
+    return _clean(value).casefold()
+
+
 def _classify_soup(soup: BeautifulSoup, url: str) -> PageClassification:
     page_key = normalize_url(url)
     starts: list = []
@@ -235,6 +367,7 @@ def _classify_soup(soup: BeautifulSoup, url: str) -> PageClassification:
     trip_links = list(cards.values())
     if len(trip_links) < MIN_TRIP_CARDS:
         return PageClassification(kind="specific", trip_links=[])
+    _assign_categories(soup, list(zip(trip_links, containers)))
 
     # Página de uma viagem com carrossel de "outras viagens": tem o próprio roteiro dia a dia
     # (Dia 1, Dia 2 e Dia 3) fora dos cards. Continua sendo "specific".

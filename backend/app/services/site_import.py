@@ -9,11 +9,17 @@ Fluxo:
    mensagem do assistente na conversa é a pergunta (começa por CENTRAL_QUESTION_PREFIX) e há um
    job aguardando confirmação para a mesma página e pessoa. O job passa para "running" e roda
    numa thread própria (mesmo padrão de hub_black.start_generation_thread).
+   Se a home organiza as viagens em 2 ou mais categorias (url_import detecta o título da seção de
+   cada card), antes de rodar vem uma segunda pergunta (categories_question, prefixo
+   CATEGORIES_QUESTION_PREFIX, job "awaiting_categories"): manter as categorias ou juntar tudo.
+   A resposta fica em job.preserve_categories e só então o job passa para "running".
 3. A thread raspa uma viagem por vez: decide o nome (pick_unique_title), cria a página já com o
-   nome e o endereço definitivos (rascunho, marcada com config_json["siteImport"]), gera as
-   seções com a IA e marca o item como feito ou com erro, sem parar os outros.
+   nome e o endereço definitivos (rascunho, marcada com config_json["siteImport"]), liga a tag da
+   categoria (quando preserve_categories), gera as seções com a IA e marca o item como feito ou
+   com erro, sem parar os outros.
 4. No fim, monta a home na página onde a conversa aconteceu, com os cards ligados às páginas
-   novas (link_cards_to_pages + relink_original_urls + ensure_created_pages_linked).
+   novas (link_cards_to_pages + relink_original_urls + ensure_created_pages_linked). Com
+   preserve_categories, a vitrine única vira uma seção "Links" por categoria (category_sections).
 
 O andamento fica no próprio SiteImportJob e o painel consulta GET /ai-assistant/import-jobs/active.
 """
@@ -59,6 +65,7 @@ PAGE_MARKER = "siteImport"
 MAX_TITLE_CHARS = 200
 
 STATUS_AWAITING = "awaiting_confirmation"
+STATUS_AWAITING_CATEGORIES = "awaiting_categories"
 STATUS_RUNNING = "running"
 STATUS_COMPLETED = "completed"
 STATUS_FAILED = "failed"
@@ -71,6 +78,14 @@ STAGE_DONE = "done"
 STAGE_ERROR = "error"
 
 CENTRAL_QUESTION_PREFIX = "Essa página parece ser a principal de um site"
+CATEGORIES_QUESTION_PREFIX = "Essa página organiza as viagens em categorias"
+# Pergunta das categorias só quando há separação de verdade: com uma categoria só (ex.: um único
+# título "Próximas saídas" em cima de todos os cards) não há o que manter separado.
+MIN_CATEGORIES_TO_ASK = 2
+# Seção da home com as viagens que ficaram sem categoria (quando outras têm).
+UNCATEGORIZED_TITLE = "Outras viagens"
+# Quantas categorias citar de exemplo na pergunta.
+CATEGORIES_EXAMPLES = 3
 
 
 # ---------------------------------------------------------------------------
@@ -159,6 +174,129 @@ def is_repeat_of_pending_central(
     return bool(job) and normalize_url(job.source_url) == normalize_url(url)
 
 
+# ---------------------------------------------------------------------------
+# Segunda pergunta (só quando a home tem categorias): manter ou juntar
+# ---------------------------------------------------------------------------
+
+
+def _item_position(item: dict, fallback: int) -> int:
+    value = item.get("position")
+    return value if isinstance(value, int) else fallback
+
+
+def job_categories(job: SiteImportJob) -> list[str]:
+    """Categorias distintas das viagens do job, na ordem em que aparecem no site original."""
+    first_seen: dict[str, int] = {}
+    for index, item in enumerate(job.items or []):
+        category = item.get("category")
+        if category:
+            position = _item_position(item, index)
+            if category not in first_seen or position < first_seen[category]:
+                first_seen[category] = position
+    return sorted(first_seen, key=lambda name: first_seen[name])
+
+
+def categories_question(categories: list[str]) -> str:
+    examples = categories[:CATEGORIES_EXAMPLES]
+    listed = ", ".join(f'"{name}"' for name in examples)
+    if len(categories) > len(examples):
+        rest = len(categories) - len(examples)
+        listed += f" e mais {rest} {'categoria' if rest == 1 else 'categorias'}"
+    return (
+        f"{CATEGORIES_QUESTION_PREFIX} (ex.: {listed}). Quer manter essa separação? Cada categoria vira uma "
+        "tag nas páginas das viagens, e a página principal fica com uma seção por categoria. Responda 'manter' "
+        "para separar por categoria ou 'juntar' para colocar todas as viagens numa lista só."
+    )
+
+
+def is_categories_question(message: str | None) -> bool:
+    return bool(message) and message.strip().startswith(CATEGORIES_QUESTION_PREFIX)
+
+
+# Manter: "manter", "mantém", "separar", "separado", "por categoria", "cada uma na sua"...
+_KEEP_RE = re.compile(
+    r"\b(mant(?:er|em|enha|enho|ido|ida|idas|idos)?|separ(?:ar|a|e|ado|ada|ados|adas|ando|acao)|"
+    r"por categorias?|com (?:as )?categorias|cada (?:uma|categoria) (?:na|em) (?:sua|seu)|uma secao por categoria|"
+    r"dividid[oa]s?|divid(?:ir|e|a))\b"
+)
+# Juntar: "juntar", "tudo junto", "lista única", "uma lista só", "misturar", "sem categoria"...
+_JOIN_RE = re.compile(
+    r"\b(junt(?:ar|a|e|o|as|os|inho)|unir|une|uni(?:fica|ficar)|mistur(?:ar|a|e|ado|ados)|"
+    r"lista (?:unica|so)|uma lista|uma (?:vitrine|secao) so|uma so lista|sem (?:as )?categorias?|todas juntas|tudo junto)\b"
+)
+# "não" logo antes de uma das opções inverte o sentido ("não precisa separar" = juntar).
+_NEGATION_BEFORE_RE = re.compile(r"\b(?:nao|sem)\s+(?:quero\s+|precisa\s+(?:de\s+)?|vou\s+|e\s+pra\s+|e\s+para\s+)?$")
+_KEEP_SHORT = frozenset(
+    {
+        "sim", "s", "ss", "pode", "pode sim", "sim pode", "quero", "quero sim", "isso", "isso mesmo", "claro", "ok",
+        "okay", "beleza", "fechado", "bora", "pode ser", "sim por favor", "por favor",
+    }
+)
+_JOIN_SHORT = frozenset({"nao", "n", "nao obrigado", "nao obrigada", "nao precisa", "nao quero", "melhor nao"})
+
+
+def categories_answer(text: str) -> bool | None:
+    """Resposta à pergunta das categorias: True = manter, False = juntar, None = não deu para saber
+    (a conversa segue normal, com a IA). "sim"/"manter"/"separar" mantêm; "não"/"juntar"/"tudo junto"
+    juntam; "não" logo antes de uma opção inverte ("não precisa separar" junta)."""
+    key = re.sub(r"[^\w\s]", " ", _plain_key(text))
+    key = re.sub(r"\s+", " ", key).strip()
+    if not key or len(key) > 80:
+        return None
+    if key in _KEEP_SHORT:
+        return True
+    if key in _JOIN_SHORT:
+        return False
+    votes: set[bool] = set()
+    for pattern, meaning in ((_KEEP_RE, True), (_JOIN_RE, False)):
+        for match in pattern.finditer(key):
+            negated = bool(_NEGATION_BEFORE_RE.search(key[: match.start()]))
+            votes.add(meaning != negated)
+    if len(votes) == 1:
+        return votes.pop()
+    if not votes and re.match(r"^(sim|pode|quero)\b", key) and len(key) <= 30:
+        return True
+    if not votes and re.match(r"^nao\b", key) and len(key) <= 30:
+        return False
+    return None
+
+
+def pending_categories_job(
+    db: Session, page_id: int, user_id: int, last_assistant_message: str | None, user_text: str
+) -> tuple[SiteImportJob, bool] | None:
+    """(job, manter?) quando a mensagem do usuário responde a pergunta das categorias que o
+    assistente acabou de fazer. Sem a pergunta como última resposta, "manter" é só conversa."""
+    if not is_categories_question(last_assistant_message):
+        return None
+    decision = categories_answer(user_text)
+    if decision is None:
+        return None
+    job = (
+        db.query(SiteImportJob)
+        .filter(
+            SiteImportJob.page_id == page_id,
+            SiteImportJob.user_id == user_id,
+            SiteImportJob.status == STATUS_AWAITING_CATEGORIES,
+        )
+        .order_by(SiteImportJob.id.desc())
+        .first()
+    )
+    return (job, decision) if job else None
+
+
+def confirm_full_import(db: Session, job: SiteImportJob, include_images: bool = True) -> str:
+    """A pessoa respondeu "completo". Com categorias na home, faz a segunda pergunta (job fica
+    "awaiting_categories"); sem, dispara a importação direto, como sempre."""
+    categories = job_categories(job)
+    if len(categories) < MIN_CATEGORIES_TO_ASK:
+        return start_job(db, job, include_images)
+    if running_job(db, job.agency_id):
+        return ALREADY_RUNNING_MESSAGE
+    job.status = STATUS_AWAITING_CATEGORIES
+    db.commit()
+    return categories_question(categories)
+
+
 def create_pending_job(db: Session, page: Page, user_id: int, url: str, imported: ImportedPage) -> SiteImportJob:
     items = [
         {
@@ -166,6 +304,8 @@ def create_pending_job(db: Session, page: Page, user_id: int, url: str, imported
             "card_title": link.title,
             "price": link.price,
             "card_text": link.text,
+            "category": link.category,
+            "position": link.position,
             "title": None,
             "stage": STAGE_WAITING,
             "page_id": None,
@@ -246,14 +386,16 @@ ALREADY_RUNNING_MESSAGE = (
 )
 
 
-def start_job(db: Session, job: SiteImportJob, include_images: bool = True) -> str:
-    """Confirma o job e dispara a thread. Devolve a resposta do assistente para o chat."""
+def start_job(db: Session, job: SiteImportJob, include_images: bool = True, preserve_categories: bool | None = None) -> str:
+    """Confirma o job e dispara a thread. Devolve a resposta do assistente para o chat.
+    preserve_categories: resposta à pergunta das categorias (None quando não houve pergunta)."""
     if running_job(db, job.agency_id):
         return ALREADY_RUNNING_MESSAGE
     job.status = STATUS_RUNNING
     job.stage = "pages"
     job.home_stage = STAGE_WAITING
     job.include_images = bool(include_images)
+    job.preserve_categories = preserve_categories
     job.started_at = _now()
     try:
         db.commit()
@@ -264,10 +406,15 @@ def start_job(db: Session, job: SiteImportJob, include_images: bool = True) -> s
     start_job_thread(job.id)
     count = len(job.items or [])
     pages = "1 página de viagem" if count == 1 else f"{count} páginas de viagem"
+    categories = (
+        " Cada viagem ganha a tag da categoria dela, e a página principal fica com uma seção por categoria."
+        if preserve_categories
+        else ""
+    )
     return (
         f"Combinado! Comecei a montar o site inteiro: {pages}, uma de cada vez. Cada página já aparece na "
         "lista de páginas com o nome certo assim que começa a ser montada. Por último, monto esta página como "
-        "a página principal, com os cards levando para as páginas novas. Isso leva alguns minutos e você pode "
+        f"a página principal, com os cards levando para as páginas novas.{categories} Isso leva alguns minutos e você pode "
         "fechar o editor. Até terminar, evite salvar esta página para não apagar a página principal que vou "
         "montar; quando acabar, recarregue para ver o resultado."
     )
@@ -610,25 +757,7 @@ def ensure_created_pages_linked(sections: list[dict], created: list[dict[str, An
     antes do rodapé. Devolve True quando acrescentou."""
     if not created or linked_page_ids(sections) & {item["page_id"] for item in created}:
         return False
-    cards = [
-        {
-            "id": f"site-import-{item['page_id']}",
-            "source": "page",
-            "pageId": item["page_id"],
-            "url": item["url"],
-            "image": item.get("image") or "",
-            "title": item["title"],
-            "description": "",
-            "buttonLabel": "Ver roteiro",
-            "openInNewTab": False,
-            "showDates": False,
-            "showPrice": bool(item.get("price")),
-            "pricePrefix": "a partir de" if item.get("price") else "",
-            "priceValue": item.get("price") or "",
-            "priceSuffix": "",
-        }
-        for item in created
-    ]
+    cards = [_showcase_card(item) for item in created]
     section = {
         "type": "links",
         "enabled": True,
@@ -638,10 +767,119 @@ def ensure_created_pages_linked(sections: list[dict], created: list[dict[str, An
         "items": cards,
         "carouselEnabled": len(cards) > 3,
     }
-    footer_types = {"agency_footer", "footer", "free_footer_brand"}
-    position = next((index for index, item in enumerate(sections) if isinstance(item, dict) and item.get("type") in footer_types), len(sections))
-    sections.insert(position, section)
+    sections.insert(_footer_position(sections), section)
     return True
+
+
+_FOOTER_TYPES = {"agency_footer", "footer", "free_footer_brand"}
+
+
+def _footer_position(sections: list[dict]) -> int:
+    """Índice logo antes do rodapé (ou o fim, sem rodapé)."""
+    return next(
+        (index for index, item in enumerate(sections) if isinstance(item, dict) and item.get("type") in _FOOTER_TYPES),
+        len(sections),
+    )
+
+
+def _showcase_card(item: dict[str, Any]) -> dict[str, Any]:
+    """Card de vitrine ligado a uma página criada pela importação (o que a IA não montou)."""
+    return {
+        "id": f"site-import-{item['page_id']}",
+        "source": "page",
+        "pageId": item["page_id"],
+        "url": item["url"],
+        "image": item.get("image") or "",
+        "title": item["title"],
+        "description": "",
+        "buttonLabel": "Ver roteiro",
+        "openInNewTab": False,
+        "showDates": False,
+        "showPrice": bool(item.get("price")),
+        "pricePrefix": "a partir de" if item.get("price") else "",
+        "priceValue": item.get("price") or "",
+        "priceSuffix": "",
+    }
+
+
+def group_created_by_category(created: list[dict[str, Any]]) -> list[tuple[str, list[dict[str, Any]]]]:
+    """Páginas criadas agrupadas pela categoria do site original: categorias na ordem em que
+    apareceram no site, cards na ordem do site dentro de cada uma. As viagens sem categoria (quando
+    outras têm) vão para uma última seção, UNCATEGORIZED_TITLE. Lista vazia quando nenhuma página
+    criada tem categoria (aí a home segue com a vitrine única de sempre)."""
+    ordered = sorted(enumerate(created), key=lambda pair: (_item_position(pair[1], pair[0]), pair[0]))
+    groups: dict[str, list[dict[str, Any]]] = {}
+    loose: list[dict[str, Any]] = []
+    for _index, item in ordered:
+        if item.get("category"):
+            groups.setdefault(item["category"], []).append(item)
+        else:
+            loose.append(item)
+    if not groups:
+        return []
+    result = list(groups.items())
+    if loose:
+        result.append((UNCATEGORIZED_TITLE, loose))
+    return result
+
+
+def place_category_sections(sections: list[dict], groups: list[tuple[str, list[dict[str, Any]]]]) -> None:
+    """Troca a vitrine de viagens da home por uma seção "Links" por categoria, no mesmo lugar.
+
+    A vitrine é a seção Links (ou as seções) com algum card já ligado a uma página criada (depois
+    de link_cards_to_pages e relink_original_urls). Card que a IA já montou para a página (com
+    descrição, datas, preço) é reaproveitado; o que faltar ganha o card padrão (_showcase_card).
+    Sem vitrine da IA, as seções entram antes do rodapé, como em ensure_created_pages_linked."""
+    from app.services.page_tags import slugify_tag
+
+    created_ids = {item["page_id"] for _name, items in groups for item in items}
+    showcase = [
+        index
+        for index, section in enumerate(sections)
+        if isinstance(section, dict) and section.get("type") == "links" and linked_page_ids(section) & created_ids
+    ]
+    ai_cards: dict[int, dict] = {}
+    for index in showcase:
+        for card in sections[index].get("items") or []:
+            if isinstance(card, dict) and card.get("source") == "page" and card.get("pageId") in created_ids:
+                ai_cards.setdefault(card["pageId"], card)
+    position = showcase[0] if showcase else _footer_position(sections)
+    for index in reversed(showcase):
+        sections.pop(index)
+
+    used_anchors = {section.get("anchorId") for section in sections if isinstance(section, dict)}
+    new_sections = []
+    for name, items in groups:
+        anchor = base_anchor = slugify_tag(name) or "viagens"
+        number = 2
+        while anchor in used_anchors:
+            anchor = f"{base_anchor}-{number}"
+            number += 1
+        used_anchors.add(anchor)
+        cards = [deepcopy(ai_cards[item["page_id"]]) if item["page_id"] in ai_cards else _showcase_card(item) for item in items]
+        new_sections.append(
+            {
+                "type": "links",
+                "enabled": True,
+                "anchorId": anchor,
+                "title": name,
+                "subtitle": "",
+                "items": cards,
+                "mode": "manual",
+                "carouselEnabled": len(cards) > 3,
+            }
+        )
+    sections[position:position] = new_sections
+
+
+def _fits_section_limit(db: Session, agency_id: int, sections: list[dict]) -> bool:
+    """O plano da agência comporta essa quantidade de seções? (plano free: 4; rodapé free não conta)."""
+    from app.api.v1.endpoints.pages import resolve_agency_plan
+    from app.services.plans import plan_limits
+
+    _max_pages, max_sections = plan_limits(resolve_agency_plan(db, agency_id))
+    regular = [section for section in sections if not (isinstance(section, dict) and section.get("type") == "free_footer_brand")]
+    return max_sections is None or len(regular) <= max_sections
 
 
 # ---------------------------------------------------------------------------
@@ -747,9 +985,11 @@ def _apply_reply(
     *,
     created: list[dict[str, Any]] | None = None,
     url_map: dict[str, dict[str, Any]] | None = None,
+    category_groups: list[tuple[str, list[dict[str, Any]]]] | None = None,
 ) -> None:
     """Aplica a resposta da IA na página (mesmo caminho do create-page-base), sem trocar o título:
-    o nome da página foi decidido antes e é definitivo."""
+    o nome da página foi decidido antes e é definitivo. Com category_groups (home com as categorias
+    mantidas), a vitrine vira uma seção por categoria (place_category_sections)."""
     from app.api.v1.endpoints.pages import derive_cover_image_from_config, enforce_page_limits, normalize_config, resolve_agency_plan
     from app.services.ai_assistant import build_page_base_config_from_reply
     from app.services.hub_black import distribute_client_photos
@@ -779,7 +1019,14 @@ def _apply_reply(
         by_title.update({_plain_key(item["card_title"]): item for item in created if item.get("card_title")})
         link_cards_to_pages(sections, targets, by_title)
         relink_original_urls(sections, url_map or {})
-        ensure_created_pages_linked(sections, created)
+        by_category = deepcopy(sections) if category_groups else None
+        if by_category is not None:
+            place_category_sections(by_category, category_groups)
+        if by_category is not None and _fits_section_limit(db, page.agency_id, by_category):
+            sections[:] = by_category
+        else:
+            # Sem categorias (ou o plano não comporta uma seção por categoria): vitrine única.
+            ensure_created_pages_linked(sections, created)
     _strip_ai_keys(sections)
     plan = resolve_agency_plan(db, page.agency_id)
     page.config_json = enforce_page_limits(db, page, publish=False, config=config, plan=plan)
@@ -805,6 +1052,25 @@ def _create_trip_page(db: Session, job: SiteImportJob, title: str) -> Page:
     return page
 
 
+def _tag_page_with_category(db: Session, page: Page, category: str) -> None:
+    """Liga à página a tag com o nome da categoria do site original (exatamente como estava lá),
+    criando a tag na agência se ainda não existir. Falha aqui não derruba a viagem: a página
+    segue sem a tag (e entra na seção da categoria na home do mesmo jeito)."""
+    from app.services.page_tags import get_or_create_tag
+
+    try:
+        tag = get_or_create_tag(db, page.agency_id, category)
+        if tag is None:
+            return
+        db.refresh(page)
+        if all(existing.id != tag.id for existing in page.tags):
+            page.tags.append(tag)
+            db.commit()
+    except Exception:
+        db.rollback()
+        logger.exception("site_import_category_tag_failed page=%s category=%s", page.id, category)
+
+
 def _mark_page_error(db: Session, page_id: int, message: str) -> None:
     page = db.query(Page).filter(Page.id == page_id).first()
     if not page or not isinstance(page.config_json, dict) or PAGE_MARKER not in page.config_json:
@@ -828,6 +1094,8 @@ async def _process_item(db: Session, job: SiteImportJob, index: int) -> None:
     nearby_text = "\n".join(part for part in (item.get("card_text"), imported.text) if part)
     title = pick_unique_title(base_title, nearby_text, existing)
     page = _create_trip_page(db, job, title)
+    if job.preserve_categories and item.get("category"):
+        _tag_page_with_category(db, page, item["category"])
     _set_item(db, job, index, stage=STAGE_GENERATING, title=page.title, page_id=page.id, slug=page.slug)
 
     try:
@@ -855,9 +1123,19 @@ async def _generate_home(db: Session, job: SiteImportJob) -> None:
         if item.get("stage") != STAGE_DONE or not item.get("slug") or item["slug"] not in targets:
             continue
         target = targets[item["slug"]]
-        entry = {**target, "title": item.get("title") or target["title"], "card_title": item.get("card_title"), "price": item.get("price")}
+        entry = {
+            **target,
+            "title": item.get("title") or target["title"],
+            "card_title": item.get("card_title"),
+            "price": item.get("price"),
+            "category": item.get("category"),
+            "position": item.get("position"),
+        }
         created.append(entry)
         url_map[normalize_url(item["url"])] = target
+    # Categorias mantidas: uma seção por categoria no lugar da vitrine única (montada em código,
+    # sem depender da IA escrever as seções certas). Sem nenhuma página com categoria, nada muda.
+    category_groups = group_created_by_category(created) if job.preserve_categories else []
 
     imported = await scrape_page(job.source_url)
     attachments = await download_page_images(imported)
@@ -878,7 +1156,9 @@ async def _generate_home(db: Session, job: SiteImportJob) -> None:
         "com as informações do CONTEÚDO EXTRAÍDO DO LINK ENVIADO. Não faça perguntas: deixe de fora o que não foi informado."
     )
     reply = await _ask_ai(db, home, request, attachments, context)
-    _apply_reply(db, home, reply, photo_urls, job.include_images, created=created, url_map=url_map)
+    _apply_reply(
+        db, home, reply, photo_urls, job.include_images, created=created, url_map=url_map, category_groups=category_groups or None
+    )
 
 
 async def _run(job_id: int) -> None:

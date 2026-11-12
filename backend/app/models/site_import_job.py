@@ -13,7 +13,7 @@ class SiteImportJob(Base):
     Os itens (uma viagem cada, no máximo 20) ficam numa coluna JSONB, e não numa tabela à parte:
     são sempre lidos e gravados juntos, só a thread do job escreve neles (uma de cada vez) e
     ninguém consulta um item sozinho. Formato de cada item em ``items``:
-    {"url", "card_title", "price", "title", "stage", "page_id", "slug", "error"}.
+    {"url", "card_title", "price", "category", "position", "title", "stage", "page_id", "slug", "error"}.
     """
 
     __tablename__ = "site_import_jobs"
@@ -37,8 +37,12 @@ class SiteImportJob(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     source_url = Column(String(2000), nullable=False)
     source_title = Column(String(255), nullable=True)
-    # awaiting_confirmation (pergunta feita no chat) | running | completed | failed
+    # awaiting_confirmation (pergunta feita no chat) | awaiting_categories (pergunta das categorias,
+    # depois do "completo") | running | completed | failed
     status = Column(String(30), nullable=False, default="awaiting_confirmation", server_default="awaiting_confirmation")
+    # Resposta à pergunta das categorias: True = cada categoria do site vira uma tag e a home ganha
+    # uma seção por categoria; False = tudo numa vitrine só; None = o site não tinha categorias.
+    preserve_categories = Column(Boolean, nullable=True)
     # Etapa do job em andamento: "pages" (páginas das viagens) ou "home" (página principal).
     stage = Column(String(20), nullable=True)
     home_stage = Column(String(20), nullable=True)
