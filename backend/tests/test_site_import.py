@@ -239,6 +239,47 @@ def test_stale_running_job_is_released(db_session, fake_pipeline):
     assert job.status == "failed" and all(item["stage"] == "error" for item in job.items)
 
 
+def test_publish_all_after_completion(client, db_session, fake_pipeline):
+    # Pergunta do aviso global, depois que o job termina: publica de uma vez as viagens prontas
+    # (a que deu erro fica de fora, nunca virou página) e a página principal.
+    headers, agency, page = _auth(client, db_session)
+    home = db_session.get(Page, page["id"])
+    user = db_session.query(AgencyUser).filter(AgencyUser.agency_id == agency["id"]).first().user
+
+    job = site_import.create_pending_job(db_session, home, user.id, "https://agencia.com.br/", _central_page())
+    site_import.start_job(db_session, job)
+    asyncio.run(site_import._run(job.id))
+    db_session.expire_all()
+    job = db_session.get(SiteImportJob, job.id)
+    assert job.status == "completed"
+    assert [item["stage"] for item in job.items] == ["done", "done", "done", "error"]
+
+    res = client.post(f"/api/v1/ai-assistant/import-jobs/{job.id}/publish-all", headers=headers)
+    assert res.status_code == 200, res.text
+    body = res.json()
+    # As 3 viagens prontas + a home; a que deu erro não ganhou página, não entra na conta.
+    assert body == {"published": 4, "already_published": 0, "blocked": 0, "blocked_reason": None}
+
+    db_session.expire_all()
+    pages = db_session.query(Page).filter(Page.agency_id == agency["id"]).all()
+    assert len(pages) == 4
+    assert all(p.status == "published" and p.published_at is not None for p in pages)
+
+    # Rodar de novo não publica nada a mais (já estavam publicadas).
+    res = client.post(f"/api/v1/ai-assistant/import-jobs/{job.id}/publish-all", headers=headers)
+    assert res.json() == {"published": 0, "already_published": 4, "blocked": 0, "blocked_reason": None}
+
+
+def test_publish_all_rejects_job_not_completed(client, db_session, fake_pipeline):
+    headers, agency, page = _auth(client, db_session)
+    home = db_session.get(Page, page["id"])
+    user = db_session.query(AgencyUser).filter(AgencyUser.agency_id == agency["id"]).first().user
+    job = site_import.create_pending_job(db_session, home, user.id, "https://agencia.com.br/", _central_page())
+
+    res = client.post(f"/api/v1/ai-assistant/import-jobs/{job.id}/publish-all", headers=headers)
+    assert res.status_code == 409
+
+
 # --- Chat: pergunta sem IA e confirmação "completo" ---
 
 
