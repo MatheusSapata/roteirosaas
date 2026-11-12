@@ -311,6 +311,43 @@ def test_chat_asks_before_full_import_and_starts_on_confirmation(client, db_sess
     assert body["home"]["page_id"] == page["id"]
 
 
+def test_confirmation_sent_as_import_url_still_starts_job(client, db_session, fake_pipeline, monkeypatch):
+    # A pessoa respondeu "completo" colando na caixa de link (confusão natural: acabou de usar
+    # aquela caixa para o link da home) em vez de digitar na conversa. Isso não pode virar erro de
+    # "link inválido": tem que disparar a importação igual à confirmação por texto.
+    from app.api.v1.endpoints import ai_assistant as endpoint
+
+    monkeypatch.setattr(endpoint, "scrape_page", fake_pipeline)
+
+    def no_ai(*_args, **_kwargs):
+        raise AssertionError("a IA não pode ser chamada nesse fluxo")
+
+    monkeypatch.setattr(endpoint, "generate_ai_assistant_reply", no_ai)
+    started: list[int] = []
+    monkeypatch.setattr(site_import, "start_job_thread", started.append)
+    headers, _agency, page = _auth(client, db_session)
+
+    first = [{"role": "user", "content": "Importar informações de: https://agencia.com.br/"}]
+    res = client.post(
+        "/api/v1/ai-assistant/chat",
+        data={"page_id": page["id"], "conversation": json.dumps(first), "import_url": "https://agencia.com.br/"},
+        headers=headers,
+    )
+    assert res.status_code == 200, res.text
+    question = res.json()["reply"]
+
+    second = first + [{"role": "assistant", "content": question}, {"role": "user", "content": "Importar informações de: completo"}]
+    res = client.post(
+        "/api/v1/ai-assistant/chat",
+        data={"page_id": page["id"], "conversation": json.dumps(second), "import_url": "completo"},
+        headers=headers,
+    )
+    assert res.status_code == 200, res.text
+    assert "Comecei a montar o site inteiro" in res.json()["reply"]
+    job = db_session.query(SiteImportJob).one()
+    assert job.status == "running" and started == [job.id]
+
+
 def test_same_link_again_after_question_goes_to_single_page_flow(client, db_session, fake_pipeline, monkeypatch):
     from app.api.v1.endpoints import ai_assistant as endpoint
 

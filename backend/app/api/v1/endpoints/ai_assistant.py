@@ -271,6 +271,21 @@ async def _prepare_chat(
         db.add(AiAssistantMessage(page_id=page.id, user_id=current_user.id, role=item.role, content=content))
     db.commit()
 
+    # Depois da pergunta de site completo/específico, a pessoa respondeu "completo" colando na
+    # caixa de link em vez de digitar na conversa (confusão natural: acabou de usar aquela caixa).
+    # Confere a confirmação antes de tratar o texto como link, senão "completo" vira erro de "link
+    # inválido" em vez de disparar a importação.
+    confirm_job = (
+        site_import.pending_confirmation_job(db, page.id, current_user.id, last_assistant_message, import_url)
+        if import_url
+        else None
+    )
+    if confirm_job is not None:
+        direct_reply = site_import.start_job(db, confirm_job, include_images)
+        db.add(AiAssistantMessage(page_id=page.id, user_id=current_user.id, role="assistant", content=direct_reply))
+        db.commit()
+        return page, parsed_conversation, usage_record, usage_limit, [], "", "", direct_reply
+
     imported = await _scrape_import_url(import_url) if import_url else None
     direct_reply = await _site_import_direct_reply(
         db, current_user, page, parsed_conversation, last_assistant_message, import_url, imported, include_images
