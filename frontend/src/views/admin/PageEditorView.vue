@@ -1762,7 +1762,7 @@
                   type="button"
                   class="editor-ai-sidebar-icon-button editor-ai-sidebar-send"
                   :disabled="aiAssistantLoading || aiAssistantLimitReached || aiTranscribing || (!aiAssistantDraft.trim() && aiAssistantAttachments.length === 0)"
-                  @click="sendAiAssistantMessage"
+                  @click="sendAiAssistantMessage()"
                   :aria-label="aiAssistantSendButtonLabel"
                 >
                   <SendIcon class="h-4 w-4" aria-hidden="true" />
