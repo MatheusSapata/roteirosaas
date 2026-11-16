@@ -1,10 +1,13 @@
 <template>
   <V2EditShell>
     <template #content>
-      <EdGroup title="Texto">
-        <EdText :model-value="label" label="Título" placeholder="Restam 6 vagas para junho" @update:model-value="label = $event" />
-        <EdRich :model-value="description" label="Texto" hint="Opcional." @update:model-value="description = $event" />
-      </EdGroup>
+      <EdHeading
+        :value="modelValue"
+        type="cta"
+        :keys="{ label: 'headingLabel', title: 'label', text: 'description' }"
+        title-placeholder="Restam 6 vagas para junho"
+        @patch="patch"
+      />
       <EdButton
         :value="modelValue"
         :keys="{ enabled: 'ctaEnabled', label: 'ctaText', mode: 'ctaMode', link: 'link', section: 'ctaSectionId' }"
@@ -38,16 +41,13 @@ import ImageUploadField from "../../inputs/ImageUploadField.vue";
 import EdBackground from "../EdBackground.vue";
 import EdButton from "../EdButton.vue";
 import EdGroup from "../EdGroup.vue";
+import EdHeading from "../EdHeading.vue";
 import EdLayouts from "../EdLayouts.vue";
-import EdRich from "../EdRich.vue";
-import EdText from "../EdText.vue";
 import V2EditShell from "../V2EditShell.vue";
 import { useDraft } from "../useDraft";
 
 const props = defineProps<{ modelValue: CtaSection }>();
 const emit = defineEmits<{ (e: "update:modelValue", value: CtaSection): void }>();
-const { patch, text } = useDraft(props, emit);
-const label = text("label");
-const description = text("description");
+const { patch } = useDraft(props, emit);
 const isCard = computed(() => props.modelValue.layout === "card" || props.modelValue.layout === "split");
 </script>
