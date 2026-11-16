@@ -172,7 +172,7 @@ def test_accounts_keep_their_notices_when_new_subscription_joins_purchase(db_ses
     assert old.event_keys == ["purchase_approved", "subscription_renewed", "upgrade_realizado"]
     # Quem recebe cobrança vencida passa a receber também "pagamento recebido, conta bloqueada" e
     # "WhatsApp da cobrança desconectado".
-    assert other.event_keys == ["payment_overdue", "paid_but_blocked", "billing_whatsapp_disconnected", "subscription_billing_error"]
+    assert other.event_keys == ["payment_overdue", "paid_but_blocked", "billing_whatsapp_disconnected", "subscription_billing_error", "pix_recurrence_cancelled"]
 
 
 def test_overdue_charge_is_sent_once_per_charge(db_session, pushover_calls):

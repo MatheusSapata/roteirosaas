@@ -562,6 +562,148 @@ def test_renewal_after_end_and_renew_charges_full_price_subscription(monkeypatch
     assert user.subscription.asaas_subscription_id == "sub_novo"
 
 
+def _paid_pix_automatic(db, *, authorization: str = "CANCELLED", valid_in_days: float = 2, status: str = "active"):
+    """Compra paga por PIX Automático: conta com acesso até valid_in_days e autorização no estado dado."""
+    from zoneinfo import ZoneInfo
+
+    session = _new_session(db, MONTHLY)
+    metadata = dict(session.metadata_json)
+    metadata.update(pix_mode="automatic", asaas_pix_automatic_authorization_id="auth_1", asaas_pix_automatic_authorization_status=authorization)
+    session.metadata_json = metadata
+    session.payment_method = "pix"
+    session.status = "paid"
+    session.paid_at = datetime.now(timezone.utc) - timedelta(days=28)
+    user = User(email="pix@example.com", name="Cliente Pix", hashed_password="x", cpf="12345678901", whatsapp="47999999999", address_zipcode="89000000", plan="unico", is_active=True)
+    db.add(user)
+    db.flush()
+    valid_until = datetime.now(timezone.utc) + timedelta(days=valid_in_days)
+    sub = Subscription(
+        user_id=user.id, provider="asaas", status=status, valid_until=valid_until, mrr_amount=Decimal("137.00"),
+        billing_cycle="monthly", asaas_customer_id="cus_1", payment_method_type="pix", external_reference=f"checkout:{session.token}",
+    )
+    db.add(sub)
+    db.flush()
+    user.subscription_id = sub.id
+    session.user_id = user.id
+    db.commit()
+    return session, user, valid_until.astimezone(ZoneInfo("America/Sao_Paulo")).date().isoformat()
+
+
+def test_cancelled_pix_authorization_gets_an_invoice_three_days_before(quiet):
+    db = TestingSessionLocal()
+    fake = FakeAsaas(status="PENDING")
+    session, _, due = _paid_pix_automatic(db)
+
+    assert checkout.create_pix_renewal_charges(db, fake) == 1
+
+    charge = fake.payments[0]
+    assert charge["billingType"] == "PIX"
+    assert charge["value"] == 137.0  # valor do contrato, sem a promoção
+    assert charge["externalReference"] == f"checkout_renewal:{session.token}:{due}"
+    assert charge["dueDate"] == due and charge["customer"] == "cus_1"
+    # Uma fatura por vencimento.
+    assert checkout.create_pix_renewal_charges(db, fake) == 0
+    assert len(fake.payments) == 1
+
+
+def test_pix_invoice_not_created_when_not_needed(quiet):
+    fake = FakeAsaas(status="PENDING")
+    for kwargs in (
+        {"authorization": "ACTIVE"},  # cobrança automática segue valendo
+        {"valid_in_days": 10},  # ainda longe do vencimento
+        {"status": "cancel_at_period_end"},  # o cliente pediu para cancelar o serviço
+        {"status": "cancelled"},
+    ):
+        db = TestingSessionLocal()
+        db.query(Subscription).delete()
+        db.query(User).delete()
+        db.query(CheckoutSession).delete()
+        db.commit()
+        _paid_pix_automatic(db, **kwargs)
+        assert checkout.create_pix_renewal_charges(db, fake) == 0, kwargs
+    assert fake.payments == []
+
+
+def test_pix_invoice_reuses_existing_charge_and_alerts_on_failure(monkeypatch, quiet):
+    db = TestingSessionLocal()
+    _paid_pix_automatic(db)
+    existing = FakeAsaas(status="PENDING", existing=[{"id": "pay_existente", "status": "PENDING"}])
+    assert checkout.create_pix_renewal_charges(db, existing) == 1
+    assert existing.payments == []  # já existia no Asaas: não cria outra
+
+    db.query(Subscription).delete()
+    db.query(User).delete()
+    db.query(CheckoutSession).delete()
+    db.commit()
+    _paid_pix_automatic(db)
+    alerts: list = []
+    monkeypatch.setattr(checkout, "_alert_subscription_problem", lambda *a, **k: alerts.append(a))
+    broken = FakeAsaas(status="PENDING")
+    monkeypatch.setattr(broken, "create_payment", lambda payload: (_ for _ in ()).throw(RuntimeError("Asaas fora")))
+    assert checkout.create_pix_renewal_charges(db, broken) == 0
+    assert alerts
+    # Tenta de novo na próxima rodada.
+    assert checkout.create_pix_renewal_charges(db, FakeAsaas(status="PENDING")) == 1
+
+
+def test_paying_the_pix_invoice_extends_access_and_keeps_purchase_paid(quiet):
+    db = TestingSessionLocal()
+    fake = FakeAsaas(status="PENDING")
+    session, user, due = _paid_pix_automatic(db)
+    before = user.subscription.valid_until
+    checkout.create_pix_renewal_charges(db, fake)
+    reference = fake.payments[0]["externalReference"]
+
+    created = {"event": "PAYMENT_CREATED", "payment": {"id": "pay_1", "status": "PENDING", "externalReference": reference, "dueDate": due}}
+    assert checkout.handle_asaas_checkout_webhook(db, created)
+    db.expire_all()
+    assert db.get(CheckoutSession, session.id).status == "paid"  # fatura nova não "despaga" a compra
+
+    received = {"event": "PAYMENT_RECEIVED", "payment": {"id": "pay_1", "status": "RECEIVED", "externalReference": reference, "dueDate": due}}
+    assert checkout.handle_asaas_checkout_webhook(db, received)
+    assert checkout.handle_asaas_checkout_webhook(db, received)  # aviso repetido: não estende duas vezes
+    db.expire_all()
+    renewed = db.get(User, user.id).subscription
+    assert renewed.status == "active"
+    after = _aware(renewed.valid_until)
+    assert after > _aware(before) + timedelta(days=20)
+    assert after < _aware(before) + timedelta(days=40)
+    assert db.get(CheckoutSession, session.id).status == "paid"
+
+
+def test_cancelled_pix_recurrence_alerts_the_team_once_per_authorization(monkeypatch, quiet):
+    db = TestingSessionLocal()
+    session, _, _ = _paid_pix_automatic(db, authorization="ACTIVE")
+    sent: list[dict] = []
+    monkeypatch.setattr(checkout, "notify_safely", lambda **kwargs: sent.append(kwargs))
+    payload = {
+        "event": "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_CANCELLED",
+        "authorization": {"id": "auth_1", "status": "CANCELLED", "contractId": f"co:{session.token}", "cancellationReason": "REQUESTED_BY_PAYER_USER"},
+    }
+    assert checkout.handle_asaas_checkout_webhook(db, payload)
+
+    assert len(sent) == 1
+    assert sent[0]["event_key"] == "pix_recurrence_cancelled"
+    assert "cancelada pelo cliente no app do banco" in sent[0]["context"]["problem"]
+    assert sent[0]["dedupe_key"] == "auth_1"
+    db.expire_all()
+    assert db.get(CheckoutSession, session.id).status == "paid"
+    assert db.get(CheckoutSession, session.id).metadata_json["asaas_pix_automatic_authorization_status"] == "CANCELLED"
+
+
+def test_cancelled_pix_recurrence_does_not_alert_when_service_is_being_cancelled(monkeypatch, quiet):
+    db = TestingSessionLocal()
+    session, _, _ = _paid_pix_automatic(db, authorization="ACTIVE", status="cancel_at_period_end")
+    sent: list[dict] = []
+    monkeypatch.setattr(checkout, "notify_safely", lambda **kwargs: sent.append(kwargs))
+    payload = {
+        "event": "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_CANCELLED",
+        "authorization": {"id": "auth_1", "status": "CANCELLED", "contractId": f"co:{session.token}"},
+    }
+    assert checkout.handle_asaas_checkout_webhook(db, payload)
+    assert sent == []
+
+
 def test_stuck_promo_waits_while_a_charge_is_due_today(monkeypatch, quiet):
     db = TestingSessionLocal()
     fake = FakeAsaas()

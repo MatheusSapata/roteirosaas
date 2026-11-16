@@ -171,6 +171,18 @@ DEFAULT_WEBHOOK_RULES: list[dict[str, Any]] = [
         "is_builtin": True,
     },
     {
+        "event_key": "pix_recurrence_cancelled",
+        "display_name": "Recorrência do PIX cancelada",
+        "description": "O cliente (ou o banco dele) cancelou a recorrência do PIX Automático, mas o serviço segue ativo. A fatura sai 3 dias antes do vencimento: vale falar com o cliente.",
+        "enabled": True,
+        "title_template": "PIX Automático cancelado - {{user_name}}",
+        "body_template": "{{problem}} | acesso até {{due_date}} | {{customer_email}} | {{customer_phone}}",
+        "icon_tag": "warning",
+        "priority": 3,
+        "sort_order": 58,
+        "is_builtin": True,
+    },
+    {
         "event_key": "subscription_cancelled",
         "display_name": "Assinatura cancelada",
         "description": "Dispara quando a assinatura é cancelada.",
@@ -287,7 +299,7 @@ def ensure_default_rules(db: Session) -> None:
                 db.add(WebhookNotificationRule(**row))
         except IntegrityError:
             pass  # outra requisição criou o mesmo evento ao mesmo tempo
-    for new_key in ("paid_but_blocked", "billing_whatsapp_disconnected", "subscription_billing_error"):
+    for new_key in ("paid_but_blocked", "billing_whatsapp_disconnected", "subscription_billing_error", "pix_recurrence_cancelled"):
         if any(row["event_key"] == new_key for row in missing):
             # Quem já recebe "Cobrança vencida" passa a receber também este aviso (mesma equipe de cobrança).
             for account in db.query(PushoverAccount).all():
