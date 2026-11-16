@@ -127,6 +127,11 @@ class AsaasClient:
     def get_payment(self, payment_id: str) -> dict[str, Any]:
         return self._request("GET", f"/payments/{payment_id}")
 
+    def update_payment(self, payment_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        if not payment_id:
+            raise ValueError("Payment id is required")
+        return self._request("PUT", f"/payments/{payment_id}", json=payload)
+
     def get_payment_status(self, payment_id: str) -> dict[str, Any]:
         return self._request("GET", f"/payments/{payment_id}/status")
 

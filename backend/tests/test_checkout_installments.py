@@ -47,8 +47,11 @@ def _aware(value: datetime) -> datetime:
 
 
 class FakeAsaas:
-    def __init__(self, *, status: str = "CONFIRMED", token: str | None = "tok_card", existing: list | None = None, fail_update: bool = False):
+    def __init__(self, *, status: str = "CONFIRMED", token: str | None = "tok_card", existing: list | None = None, fail_update: bool = False, next_payment: dict | None = None):
         self.status = status
+        # O Asaas já gera a mensalidade seguinte junto com a assinatura (no valor dela).
+        self.next_payment = next_payment
+        self.payment_updates: list[tuple[str, dict]] = []
         self.token = token
         self.existing = existing or []
         self.fail_update = fail_update
@@ -75,7 +78,16 @@ class FakeAsaas:
         return {"id": "sub_novo"}
 
     def list_subscription_payments(self, _subscription_id: str) -> dict:
-        return {"data": [{"id": "pay_sub_1", "status": self.status, "dueDate": "2026-10-14"}]}
+        rows = [{"id": "pay_sub_1", "status": self.status, "dueDate": "2026-10-14", "value": 67.0, "billingType": "CREDIT_CARD"}]
+        if self.next_payment:
+            rows.append(dict(self.next_payment))
+        return {"data": rows}
+
+    def update_payment(self, payment_id: str, payload: dict) -> dict:
+        self.payment_updates.append((payment_id, payload))
+        if self.next_payment and self.next_payment["id"] == payment_id:
+            self.next_payment["value"] = payload["value"]
+        return {"id": payment_id}
 
     def update_subscription(self, subscription_id: str, payload: dict) -> dict:
         if self.fail_update:
@@ -244,6 +256,52 @@ def test_monthly_promo_update_failure_is_retried_by_the_job(monkeypatch, quiet):
     assert fake.updates == [("sub_novo", {"value": 137.0, "updatePendingPayments": True})]
     db.expire_all()
     assert "pending_subscription_value" not in db.get(CheckoutSession, result.id).metadata_json
+
+
+def _second_month() -> dict:
+    return {"id": "pay_sub_2", "status": "PENDING", "dueDate": "2026-11-14", "value": 67.0, "billingType": "CREDIT_CARD"}
+
+
+def test_second_month_already_generated_by_asaas_goes_to_full_price(monkeypatch, quiet):
+    """Caso Moises Gama: o Asaas gera a 2ª mensalidade na criação, ainda a 67; ela tem de ir a 137."""
+    db = TestingSessionLocal()
+    fake = FakeAsaas(next_payment=_second_month())
+    monkeypatch.setattr(checkout, "_ensure_asaas_client", lambda: fake)
+
+    result = checkout.start_card_payment(db, _new_session(db, MONTHLY), _card())
+
+    assert fake.payment_updates == [("pay_sub_2", {"billingType": "CREDIT_CARD", "value": 137.0, "dueDate": "2026-11-14"})]
+    assert result.metadata_json["first_payment_id"] == "pay_sub_1"
+    assert "future_payments_checked_at" in result.metadata_json
+
+
+def test_first_payment_in_risk_analysis_is_never_raised(monkeypatch, quiet):
+    db = TestingSessionLocal()
+    fake = FakeAsaas(status="PENDING", next_payment=_second_month())
+    monkeypatch.setattr(checkout, "_ensure_asaas_client", lambda: fake)
+
+    checkout.start_card_payment(db, _new_session(db, MONTHLY), _card())
+
+    assert [pid for pid, _ in fake.payment_updates] == ["pay_sub_2"]
+
+
+def test_job_fixes_second_month_of_purchases_made_before_the_fix(monkeypatch, quiet):
+    db = TestingSessionLocal()
+    fake = FakeAsaas()
+    monkeypatch.setattr(checkout, "_ensure_asaas_client", lambda: fake)
+    result = checkout.start_card_payment(db, _new_session(db, MONTHLY), _card())
+    # Compra antiga: a 2ª mensalidade ficou a 67 e nunca foi conferida.
+    metadata = dict(result.metadata_json)
+    metadata.pop("future_payments_checked_at")
+    result.metadata_json = metadata
+    db.commit()
+    fake.next_payment = _second_month()
+
+    assert checkout.fix_future_promo_payments(db, fake) == 1
+    assert fake.payment_updates[-1][0] == "pay_sub_2"
+    # Conferida uma vez só.
+    assert checkout.fix_future_promo_payments(db, fake) == 0
+    assert len(fake.payment_updates) == 1
 
 
 def test_monthly_promo_on_pix_automatic(monkeypatch, quiet):

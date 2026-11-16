@@ -2260,6 +2260,8 @@ def start_card_payment(db: Session, session: CheckoutSession, payload: dict[str,
             # agora) e passa ao valor cheio para as próximas. updatePendingPayments=False não mexe
             # na 1ª cobrança, mesmo que ela ainda esteja em análise. Se falhar, o job horário tenta de novo.
             metadata["pending_subscription_value"] = str(amount)
+            if first_payment.get("id"):
+                metadata["first_payment_id"] = str(first_payment["id"])
             session.metadata_json = metadata
             _apply_pending_subscription_value(client, session, update_pending_payments=False)
             metadata = dict(session.metadata_json or {})
@@ -2315,6 +2317,48 @@ def _apply_pending_subscription_value(
         return False
     metadata.pop("pending_subscription_value", None)
     metadata["subscription_value_updated_at"] = _utcnow().isoformat()
+    session.metadata_json = metadata
+    _raise_future_promo_payments(client, session)
+    return True
+
+
+def _raise_future_promo_payments(client: AsaasClient, session: CheckoutSession) -> bool:
+    """Põe no valor cheio as mensalidades seguintes que o Asaas já gerou no valor da promoção.
+
+    O Asaas gera a cobrança seguinte da assinatura com antecedência (já na criação, num plano
+    mensal). Trocar o valor da assinatura com updatePendingPayments=False não mexe nela, e o
+    2º mês saía no valor promocional. Aqui, toda cobrança ainda pendente que não seja a 1ª passa
+    para o valor cheio. A 1ª (a promoção) nunca é tocada. Falha aqui fica para o job horário."""
+    metadata = dict(session.metadata_json or {})
+    subscription_id = str(metadata.get("asaas_subscription_id") or "").strip()
+    if not subscription_id or session.billing_cycle != "monthly":
+        return False
+    full = _quantize_money(_parse_decimal(session.amount))
+    first_id = str(metadata.get("first_payment_id") or session.asaas_payment_id or "").strip()
+    try:
+        rows = (client.list_subscription_payments(subscription_id) or {}).get("data") or []
+        if not first_id:
+            # Sem o id da 1ª cobrança não dá para saber qual é a promoção: fica para depois.
+            return False
+        for row in rows:
+            payment_id = str(row.get("id") or "")
+            if not payment_id or payment_id == first_id:
+                continue
+            if str(row.get("status") or "").upper() != "PENDING":
+                continue
+            if _quantize_money(_parse_decimal(row.get("value"))) >= full:
+                continue
+            payload: dict[str, Any] = {"billingType": row.get("billingType") or "CREDIT_CARD", "value": float(full)}
+            if row.get("dueDate"):
+                payload["dueDate"] = row["dueDate"]
+            client.update_payment(payment_id, payload)
+    except Exception:  # a compra já foi feita; o job horário tenta de novo
+        logger.exception("Mensalidades seguintes da assinatura %s não passaram para o valor cheio.", subscription_id)
+        metadata["future_payments_pending_fix"] = True
+        session.metadata_json = metadata
+        return False
+    metadata.pop("future_payments_pending_fix", None)
+    metadata["future_payments_checked_at"] = _utcnow().isoformat()
     session.metadata_json = metadata
     return True
 
@@ -2984,7 +3028,38 @@ def apply_pending_subscription_values(db: Session, client: AsaasClient) -> int:
             db.add(session)
             db.commit()
             updated += 1
+    updated += fix_future_promo_payments(db, client, sessions)
     return updated
+
+
+def fix_future_promo_payments(db: Session, client: AsaasClient, sessions: list[CheckoutSession] | None = None) -> int:
+    """Compras com a 1ª mensalidade promocional cujas mensalidades seguintes ainda não foram
+    conferidas (compras de antes desta correção, ou em que a conferência falhou): põe no valor
+    cheio as cobranças pendentes que o Asaas gerou no valor da promoção. Cada compra é conferida
+    uma vez; a que falhar é tentada de novo na próxima rodada."""
+    if sessions is None:
+        sessions = (
+            db.query(CheckoutSession)
+            .filter(CheckoutSession.payment_method == "card", CheckoutSession.status == "paid", CheckoutSession.metadata_json.isnot(None))
+            .all()
+        )
+    fixed = 0
+    for session in sessions:
+        metadata = session.metadata_json or {}
+        if not metadata.get("first_payment_amount") or not metadata.get("asaas_subscription_id"):
+            continue
+        if metadata.get("pending_subscription_value"):
+            continue  # a assinatura ainda nem passou para o valor cheio
+        if metadata.get("future_payments_checked_at") and not metadata.get("future_payments_pending_fix"):
+            continue
+        if session_first_payment_amount(session) is None:
+            continue
+        if _raise_future_promo_payments(client, session):
+            fixed += 1
+        session.updated_at = _utcnow()
+        db.add(session)
+        db.commit()
+    return fixed
 
 
 def handle_asaas_checkout_webhook(db: Session, payload: dict[str, Any]) -> bool:
