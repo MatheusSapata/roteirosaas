@@ -2251,21 +2251,48 @@ def start_card_payment(db: Session, session: CheckoutSession, payload: dict[str,
             "remoteIp": remote_ip,
         })
         first_payment = client.create_payment(promo_payload)
+        next_due = next_due_date(date.fromisoformat(_billing_today()), session.billing_cycle)
         metadata = dict(session.metadata_json or {})
         metadata["first_payment_separate"] = True
-        metadata["card_token"] = _saved_card_token(
-            client,
-            first_payment,
-            customer_id=customer_id,
-            credit_card=credit_card,
-            holder_info=holder_info,
-            remote_ip=remote_ip,
-        )
-        metadata["promo_subscription"] = {
-            "state": "pending",
-            "value": str(amount),
-            "next_due_date": next_due_date(date.fromisoformat(_billing_today()), session.billing_cycle).isoformat(),
-        }
+        promo_state: dict[str, Any] = {"state": "pending", "value": str(amount), "next_due_date": next_due.isoformat()}
+        if _map_asaas_payment_status(first_payment.get("status")) in {"paid", "awaiting_payment"}:
+            # Cobrança aprovada (ou em análise): a assinatura no valor cheio sai agora, com os dados do
+            # cartão que a pessoa acabou de digitar. Não depende do cartão salvo (tokenização) do Asaas.
+            # Se a análise reprovar depois, o aviso do Asaas cancela esta assinatura.
+            try:
+                created = client.create_subscription(
+                    _with_optional_split({
+                        "customer": customer_id,
+                        "billingType": "CREDIT_CARD",
+                        "nextDueDate": next_due.isoformat(),
+                        "cycle": _resolve_asaas_cycle(session.billing_cycle),
+                        "value": float(amount),
+                        "description": session.product_name,
+                        "externalReference": external_reference,
+                        "split": build_default_split_payload(),
+                        "creditCard": credit_card,
+                        "creditCardHolderInfo": holder_info,
+                        "remoteIp": remote_ip,
+                    })
+                )
+                subscription_id = _extract_asaas_resource_id((created or {}).get("id"))
+                if subscription_id:
+                    metadata["asaas_subscription_id"] = subscription_id
+                    promo_state.update(state="created", subscription_id=subscription_id, created_at=_utcnow().isoformat())
+            except Exception as exc:  # a 1ª mensalidade já foi cobrada; o job tenta pelo cartão salvo
+                logger.exception("Assinatura no valor cheio não foi criada na compra %s.", session.token)
+                promo_state.update(state="error", error=str(exc)[:500])
+        if not metadata.get("asaas_subscription_id"):
+            # Sem a assinatura agora: guarda o cartão salvo (se o Asaas tokenizar) para o job criar depois.
+            metadata["card_token"] = _saved_card_token(
+                client,
+                first_payment,
+                customer_id=customer_id,
+                credit_card=credit_card,
+                holder_info=holder_info,
+                remote_ip=remote_ip,
+            )
+        metadata["promo_subscription"] = promo_state
         session.metadata_json = metadata
     else:
         subscription_payload: dict[str, Any] = _with_optional_split({
@@ -2394,6 +2421,28 @@ def _create_full_price_subscription(
     if not subscription_id:
         raise AsaasAPIError({"errors": [{"description": "Asaas não retornou o id da assinatura."}]})
     return subscription_id
+
+
+def _cancel_promo_subscription_of_unpaid_purchase(session: CheckoutSession) -> None:
+    """1ª mensalidade promocional recusada (ex.: reprovada na análise de risco): a assinatura no valor
+    cheio criada na compra é cancelada, para não cobrar quem não concluiu a compra."""
+    metadata = dict(session.metadata_json or {})
+    subscription_id = str(metadata.get("asaas_subscription_id") or "").strip()
+    if session.paid_at or not metadata.get("first_payment_separate") or not subscription_id:
+        return
+    if session.status not in {"failed", "expired", "refunded"}:
+        return
+    try:
+        _ensure_asaas_client().cancel_subscription(subscription_id)
+    except Exception as exc:
+        logger.exception("Assinatura %s da compra não concluída não foi cancelada.", subscription_id)
+        _alert_subscription_problem(session, f"Compra não concluída, mas a assinatura {subscription_id} não foi cancelada: {exc}", "promo_cancel_unpaid")
+        return
+    metadata.pop("asaas_subscription_id", None)
+    promo = dict(metadata.get("promo_subscription") or {})
+    promo.update(state="cancelled", cancelled_at=_utcnow().isoformat())
+    metadata["promo_subscription"] = promo
+    session.metadata_json = metadata
 
 
 def ensure_promo_subscription(db: Session, client: AsaasClient, session_id: int) -> bool:
@@ -2820,6 +2869,7 @@ def refresh_session_status(db: Session, session: CheckoutSession) -> CheckoutSes
     mapped = _map_asaas_payment_status(payment.get("status"))
     if mapped:
         session.status = mapped
+        _cancel_promo_subscription_of_unpaid_purchase(session)
     if mapped == "paid" and not session.paid_at:
         session.paid_at = _utcnow()
         _complete_paid_checkout_session(db, session)
@@ -3436,6 +3486,7 @@ def handle_asaas_checkout_webhook(db: Session, payload: dict[str, Any]) -> bool:
             _notify_checkout_payment_overdue(session, payment, "Primeira cobrança (compra não concluída)")
     elif event in {"PAYMENT_REPROVED_BY_RISK_ANALYSIS", "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_CANCELLED"}:
         session.status = "failed"
+    _cancel_promo_subscription_of_unpaid_purchase(session)
     session.updated_at = _utcnow()
     db.add(session)
     db.commit()

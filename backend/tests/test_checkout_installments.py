@@ -259,8 +259,10 @@ def test_monthly_promo_on_card_charges_67_then_subscription_at_full_price(monkey
     sub = fake.subscriptions[0]
     assert sub["value"] == 137.0
     assert sub["nextDueDate"] == "2026-12-16"
-    assert sub["creditCardToken"] == "tok_card"
-    assert "creditCard" not in sub
+    # Com os dados do cartão digitados na compra: não depende do cartão salvo (tokenização).
+    assert sub["creditCard"]["number"] == "4111111111111111"
+    assert "creditCardToken" not in sub
+    assert "card_token" not in result.metadata_json
     assert sub["externalReference"] == f"checkout:{result.token}"
     assert fake.updates == []  # nenhuma troca de valor
     assert result.status == "paid"
@@ -271,22 +273,41 @@ def test_monthly_promo_on_card_charges_67_then_subscription_at_full_price(monkey
     assert user.subscription.mrr_amount == Decimal("137.00")
 
 
-def test_promo_payment_in_risk_analysis_creates_subscription_only_after_paid(monkeypatch, quiet):
+def test_promo_payment_in_risk_analysis_keeps_subscription_until_reproved(monkeypatch, quiet):
     db = TestingSessionLocal()
     fake = FakeAsaas(status="PENDING")
     monkeypatch.setattr(checkout, "_ensure_asaas_client", lambda: fake)
     result = checkout.start_card_payment(db, _new_session(db, MONTHLY), _card())
-    assert fake.subscriptions == []
-    assert checkout.apply_pending_subscription_values(db, fake) == 0
+    assert result.status == "awaiting_payment"
+    assert result.metadata_json["asaas_subscription_id"] == "sub_novo"
 
-    result.status = "paid"
-    result.paid_at = datetime.now(timezone.utc)
-    db.commit()
-    assert checkout.apply_pending_subscription_values(db, fake) == 1
-    assert fake.subscriptions[0]["value"] == 137.0
-    # Uma assinatura só, mesmo com o job rodando de novo.
-    assert checkout.apply_pending_subscription_values(db, fake) == 0
+    # Análise de risco reprova a 1ª mensalidade: a assinatura de 137 é cancelada.
+    payload = {
+        "event": "PAYMENT_REPROVED_BY_RISK_ANALYSIS",
+        "payment": {"id": "pay_1", "status": "REPROVED_BY_RISK_ANALYSIS", "externalReference": f"checkout:{result.token}"},
+    }
+    assert checkout.handle_asaas_checkout_webhook(db, payload)
+    assert fake.cancelled == ["sub_novo"]
+    db.expire_all()
+    session = db.get(CheckoutSession, result.id)
+    assert session.status == "failed"
+    assert "asaas_subscription_id" not in session.metadata_json
+
+
+def test_promo_payment_approved_after_analysis_keeps_subscription(monkeypatch, quiet):
+    db = TestingSessionLocal()
+    fake = FakeAsaas(status="PENDING")
+    monkeypatch.setattr(checkout, "_ensure_asaas_client", lambda: fake)
+    result = checkout.start_card_payment(db, _new_session(db, MONTHLY), _card())
+    payload = {
+        "event": "PAYMENT_CONFIRMED",
+        "payment": {"id": "pay_1", "status": "CONFIRMED", "externalReference": f"checkout:{result.token}"},
+    }
+    assert checkout.handle_asaas_checkout_webhook(db, payload)
+    assert fake.cancelled == []
     assert len(fake.subscriptions) == 1
+    user = db.query(User).filter(User.email == "cliente@example.com").one()
+    assert user.subscription.asaas_subscription_id == "sub_novo"
 
 
 def test_promo_subscription_failure_is_retried_by_the_job(monkeypatch, quiet):
