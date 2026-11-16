@@ -52,6 +52,9 @@ class FakeAsaas:
         # O Asaas já gera a mensalidade seguinte junto com a assinatura (no valor dela).
         self.next_payment = next_payment
         self.payment_updates: list[tuple[str, dict]] = []
+        self.fail_subscription = False
+        self.old_payments: list[dict] | None = None
+        self.old_next_due: str | None = None
         self.token = token
         self.existing = existing or []
         self.fail_update = fail_update
@@ -74,10 +77,20 @@ class FakeAsaas:
         return {"creditCardToken": "tok_separado"}
 
     def create_subscription(self, payload: dict) -> dict:
+        if self.fail_subscription:
+            raise RuntimeError("Asaas fora")
         self.subscriptions.append(payload)
-        return {"id": "sub_novo"}
+        return {"id": "sub_novo" if len(self.subscriptions) == 1 else f"sub_novo_{len(self.subscriptions)}"}
+
+    def get_subscription(self, subscription_id: str) -> dict:
+        return {"id": subscription_id, "nextDueDate": self.old_next_due}
+
+    def get_payment(self, payment_id: str) -> dict:
+        return {"id": payment_id, "creditCard": {"creditCardToken": "tok_do_pagamento"}}
 
     def list_subscription_payments(self, _subscription_id: str) -> dict:
+        if self.old_payments is not None:
+            return {"data": [dict(row) for row in self.old_payments]}
         rows = [{"id": "pay_sub_1", "status": self.status, "dueDate": "2026-10-14", "value": 67.0, "billingType": "CREDIT_CARD"}]
         if self.next_payment:
             rows.append(dict(self.next_payment))
@@ -227,81 +240,192 @@ def test_card_without_token_in_response_is_saved_separately(monkeypatch, quiet):
     assert result.metadata_json["card_token"] == "tok_separado"
 
 
-def test_monthly_promo_on_card_charges_67_then_full_price(monkeypatch, quiet):
+def test_monthly_promo_on_card_charges_67_then_subscription_at_full_price(monkeypatch, quiet):
+    """O Asaas não deixa mudar o valor de assinatura no cartão com fatura paga: a promoção é uma
+    cobrança avulsa e a assinatura já nasce em 137, vencendo um mês depois."""
     db = TestingSessionLocal()
     fake = FakeAsaas()
     monkeypatch.setattr(checkout, "_ensure_asaas_client", lambda: fake)
+    monkeypatch.setattr(checkout, "_billing_today", lambda: "2026-11-16")
     session = _new_session(db, MONTHLY)
     assert checkout.serialize_checkout_session(db, session)["first_payment_amount"] == Decimal("67.00")
 
     result = checkout.start_card_payment(db, session, _card())
 
-    assert fake.subscriptions[0]["value"] == 67.0
-    # Próximas mensalidades no valor cheio, sem mexer na cobrança de agora.
-    assert fake.updates == [("sub_novo", {"value": 137.0, "updatePendingPayments": False})]
-    assert "pending_subscription_value" not in result.metadata_json
+    assert fake.payments[0]["value"] == 67.0
+    assert "installmentCount" not in fake.payments[0]
+    assert fake.payments[0]["creditCard"]["number"] == "4111111111111111"
+    assert len(fake.subscriptions) == 1
+    sub = fake.subscriptions[0]
+    assert sub["value"] == 137.0
+    assert sub["nextDueDate"] == "2026-12-16"
+    assert sub["creditCardToken"] == "tok_card"
+    assert "creditCard" not in sub
+    assert sub["externalReference"] == f"checkout:{result.token}"
+    assert fake.updates == []  # nenhuma troca de valor
+    assert result.status == "paid"
+    assert result.metadata_json["asaas_subscription_id"] == "sub_novo"
+    assert result.metadata_json["first_payment_id"] == "pay_1"
     user = db.query(User).filter(User.email == "cliente@example.com").one()
+    assert user.subscription.asaas_subscription_id == "sub_novo"
     assert user.subscription.mrr_amount == Decimal("137.00")
 
 
-def test_monthly_promo_update_failure_is_retried_by_the_job(monkeypatch, quiet):
+def test_promo_payment_in_risk_analysis_creates_subscription_only_after_paid(monkeypatch, quiet):
     db = TestingSessionLocal()
-    fake = FakeAsaas(fail_update=True)
+    fake = FakeAsaas(status="PENDING")
     monkeypatch.setattr(checkout, "_ensure_asaas_client", lambda: fake)
     result = checkout.start_card_payment(db, _new_session(db, MONTHLY), _card())
-    assert result.metadata_json["pending_subscription_value"] == "137.00"
+    assert fake.subscriptions == []
+    assert checkout.apply_pending_subscription_values(db, fake) == 0
 
-    fake.fail_update = False
+    result.status = "paid"
+    result.paid_at = datetime.now(timezone.utc)
+    db.commit()
     assert checkout.apply_pending_subscription_values(db, fake) == 1
-    assert fake.updates == [("sub_novo", {"value": 137.0, "updatePendingPayments": True})]
-    db.expire_all()
-    assert "pending_subscription_value" not in db.get(CheckoutSession, result.id).metadata_json
+    assert fake.subscriptions[0]["value"] == 137.0
+    # Uma assinatura só, mesmo com o job rodando de novo.
+    assert checkout.apply_pending_subscription_values(db, fake) == 0
+    assert len(fake.subscriptions) == 1
 
 
-def _second_month() -> dict:
-    return {"id": "pay_sub_2", "status": "PENDING", "dueDate": "2026-11-14", "value": 67.0, "billingType": "CREDIT_CARD"}
-
-
-def test_second_month_already_generated_by_asaas_goes_to_full_price(monkeypatch, quiet):
-    """Caso Moises Gama: o Asaas gera a 2ª mensalidade na criação, ainda a 67; ela tem de ir a 137."""
+def test_promo_subscription_failure_is_retried_by_the_job(monkeypatch, quiet):
     db = TestingSessionLocal()
-    fake = FakeAsaas(next_payment=_second_month())
+    fake = FakeAsaas()
+    fake.fail_subscription = True
     monkeypatch.setattr(checkout, "_ensure_asaas_client", lambda: fake)
+    alerts: list = []
+    monkeypatch.setattr(checkout, "_alert_subscription_problem", lambda *a, **k: alerts.append(a))
 
     result = checkout.start_card_payment(db, _new_session(db, MONTHLY), _card())
+    assert result.status == "paid"  # a compra vale mesmo assim
+    assert "asaas_subscription_id" not in result.metadata_json
+    assert alerts
 
-    assert fake.payment_updates == [("pay_sub_2", {"billingType": "CREDIT_CARD", "value": 137.0, "dueDate": "2026-11-14"})]
-    assert result.metadata_json["first_payment_id"] == "pay_sub_1"
-    assert "future_payments_checked_at" in result.metadata_json
-
-
-def test_first_payment_in_risk_analysis_is_never_raised(monkeypatch, quiet):
-    db = TestingSessionLocal()
-    fake = FakeAsaas(status="PENDING", next_payment=_second_month())
-    monkeypatch.setattr(checkout, "_ensure_asaas_client", lambda: fake)
-
-    checkout.start_card_payment(db, _new_session(db, MONTHLY), _card())
-
-    assert [pid for pid, _ in fake.payment_updates] == ["pay_sub_2"]
+    fake.fail_subscription = False
+    assert checkout.apply_pending_subscription_values(db, fake) == 1
+    db.expire_all()
+    assert db.get(CheckoutSession, result.id).metadata_json["asaas_subscription_id"] == "sub_novo"
 
 
-def test_job_fixes_second_month_of_purchases_made_before_the_fix(monkeypatch, quiet):
+def test_promo_subscription_payments_count_as_renewals(monkeypatch, quiet):
     db = TestingSessionLocal()
     fake = FakeAsaas()
     monkeypatch.setattr(checkout, "_ensure_asaas_client", lambda: fake)
     result = checkout.start_card_payment(db, _new_session(db, MONTHLY), _card())
-    # Compra antiga: a 2ª mensalidade ficou a 67 e nunca foi conferida.
-    metadata = dict(result.metadata_json)
-    metadata.pop("future_payments_checked_at")
-    result.metadata_json = metadata
-    db.commit()
-    fake.next_payment = _second_month()
+    due = (result.paid_at + timedelta(days=31)).date().isoformat()
+    payment = {"id": "pay_renova", "subscription": "sub_novo", "dueDate": due, "status": "CONFIRMED", "externalReference": f"checkout:{result.token}"}
+    assert checkout._is_card_subscription_renewal(db, result, payment)
+    # A cobrança avulsa da promoção não é renovação.
+    assert not checkout._is_card_subscription_renewal(db, result, {"id": "pay_1", "dueDate": due})
 
-    assert checkout.fix_future_promo_payments(db, fake) == 1
-    assert fake.payment_updates[-1][0] == "pay_sub_2"
-    # Conferida uma vez só.
-    assert checkout.fix_future_promo_payments(db, fake) == 0
-    assert len(fake.payment_updates) == 1
+
+def _stuck_session(db, monkeypatch, fake) -> CheckoutSession:
+    """Compra feita antes da correção: assinatura criada em 67 e a troca para 137 recusada."""
+    monkeypatch.setattr(checkout, "_ensure_asaas_client", lambda: fake)
+    result = checkout.start_card_payment(db, _new_session(db, MONTHLY), _card())
+    metadata = {
+        key: value
+        for key, value in result.metadata_json.items()
+        if key not in {"first_payment_separate", "promo_subscription", "card_token"}
+    }
+    metadata.update(asaas_subscription_id="sub_antiga", pending_subscription_value="137.00", first_payment_id="pay_sub_1")
+    result.metadata_json = metadata
+    user = db.query(User).filter(User.email == "cliente@example.com").one()
+    user.subscription.asaas_subscription_id = "sub_antiga"
+    db.commit()
+    fake.subscriptions.clear()
+    return result
+
+
+def test_stuck_promo_subscription_is_replaced_by_full_price_one(monkeypatch, quiet):
+    """Caso Moises Gama: assinatura presa em 67 vira uma nova em 137, no mesmo vencimento e cartão."""
+    db = TestingSessionLocal()
+    fake = FakeAsaas()
+    monkeypatch.setattr(checkout, "_billing_today", lambda: "2026-11-16")
+    result = _stuck_session(db, monkeypatch, fake)
+    fake.old_payments = [
+        {"id": "pay_sub_1", "status": "CONFIRMED", "dueDate": "2026-10-15", "creditCard": {"creditCardToken": "tok_antigo"}},
+        {"id": "pay_sub_2", "status": "CONFIRMED", "dueDate": "2026-11-15"},
+        {"id": "pay_sub_3", "status": "PENDING", "dueDate": "2026-12-15"},
+    ]
+
+    assert checkout.apply_pending_subscription_values(db, fake) == 1
+
+    assert fake.cancelled == ["sub_antiga"]
+    sub = fake.subscriptions[0]
+    assert (sub["value"], sub["nextDueDate"], sub["creditCardToken"]) == (137.0, "2026-12-15", "tok_antigo")
+    assert sub["externalReference"] == f"checkout:{result.token}"
+    db.expire_all()
+    metadata = db.get(CheckoutSession, result.id).metadata_json
+    assert metadata["asaas_subscription_id"] == "sub_novo"
+    assert "pending_subscription_value" not in metadata
+    assert metadata["previous_asaas_subscription_ids"] == ["sub_antiga"]
+    user = db.query(User).filter(User.email == "cliente@example.com").one()
+    assert user.subscription.asaas_subscription_id == "sub_novo"
+    # Uma vez só.
+    assert checkout.apply_pending_subscription_values(db, fake) == 0
+    assert len(fake.subscriptions) == 1
+    # Aviso atrasado da cobrança removida da assinatura antiga não mexe na compra.
+    removed = {"id": "pay_sub_3", "subscription": "sub_antiga", "dueDate": "2026-12-15", "status": "PENDING"}
+    session = db.get(CheckoutSession, result.id)
+    session.paid_at = datetime(2026, 10, 15, 19, 45, tzinfo=timezone.utc)
+    db.commit()
+    assert checkout._is_card_subscription_renewal(db, session, removed)
+
+
+def test_stuck_promo_waits_while_a_charge_is_due_today(monkeypatch, quiet):
+    db = TestingSessionLocal()
+    fake = FakeAsaas()
+    monkeypatch.setattr(checkout, "_billing_today", lambda: "2026-11-16")
+    _stuck_session(db, monkeypatch, fake)
+    fake.old_payments = [
+        {"id": "pay_sub_1", "status": "CONFIRMED", "dueDate": "2026-10-16", "creditCard": {"creditCardToken": "tok_antigo"}},
+        {"id": "pay_sub_2", "status": "PENDING", "dueDate": "2026-11-16"},
+    ]
+    assert checkout.apply_pending_subscription_values(db, fake) == 0
+    assert fake.cancelled == [] and fake.subscriptions == []
+
+    # Depois que o Asaas passou a de hoje no cartão, troca a partir da próxima.
+    fake.old_payments[1]["status"] = "CONFIRMED"
+    fake.old_payments.append({"id": "pay_sub_3", "status": "PENDING", "dueDate": "2026-12-16"})
+    assert checkout.apply_pending_subscription_values(db, fake) == 1
+    assert fake.subscriptions[0]["nextDueDate"] == "2026-12-16"
+
+
+def test_stuck_promo_uses_subscription_next_due_and_payment_card(monkeypatch, quiet):
+    db = TestingSessionLocal()
+    fake = FakeAsaas()
+    monkeypatch.setattr(checkout, "_billing_today", lambda: "2026-11-16")
+    _stuck_session(db, monkeypatch, fake)
+    fake.old_payments = [{"id": "pay_sub_1", "status": "CONFIRMED", "dueDate": "2026-11-01"}]
+    fake.old_next_due = "2026-12-01"
+    assert checkout.apply_pending_subscription_values(db, fake) == 1
+    assert (fake.subscriptions[0]["nextDueDate"], fake.subscriptions[0]["creditCardToken"]) == ("2026-12-01", "tok_do_pagamento")
+
+
+def test_stuck_promo_create_failure_after_cancel_retries_without_cancelling_again(monkeypatch, quiet):
+    db = TestingSessionLocal()
+    fake = FakeAsaas()
+    monkeypatch.setattr(checkout, "_billing_today", lambda: "2026-11-16")
+    alerts: list = []
+    monkeypatch.setattr(checkout, "_alert_subscription_problem", lambda *a, **k: alerts.append(a))
+    result = _stuck_session(db, monkeypatch, fake)
+    fake.old_payments = [
+        {"id": "pay_sub_1", "status": "CONFIRMED", "dueDate": "2026-10-22", "creditCard": {"creditCardToken": "tok_antigo"}},
+        {"id": "pay_sub_2", "status": "PENDING", "dueDate": "2026-11-22"},
+    ]
+    fake.fail_subscription = True
+    assert checkout.apply_pending_subscription_values(db, fake) == 0
+    assert fake.cancelled == ["sub_antiga"] and alerts
+
+    fake.fail_subscription = False
+    fake.old_payments = []  # a assinatura antiga já foi cancelada
+    assert checkout.apply_pending_subscription_values(db, fake) == 1
+    assert fake.cancelled == ["sub_antiga"]
+    assert fake.subscriptions[0]["nextDueDate"] == "2026-11-22"
+    db.expire_all()
+    assert db.get(CheckoutSession, result.id).metadata_json["asaas_subscription_id"] == "sub_novo"
 
 
 def test_monthly_promo_on_pix_automatic(monkeypatch, quiet):

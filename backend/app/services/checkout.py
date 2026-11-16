@@ -2232,14 +2232,48 @@ def start_card_payment(db: Session, session: CheckoutSession, payload: dict[str,
             }
         )
         session.metadata_json = metadata
+    elif session_first_payment_amount(session) is not None:
+        # 1ª mensalidade promocional: o Asaas não deixa mudar o valor de uma assinatura no cartão
+        # que já tem fatura paga. Por isso a promoção é uma cobrança avulsa agora e a assinatura
+        # nasce já no valor cheio, com o 1º vencimento daqui a um ciclo, no cartão salvo (token).
+        # A assinatura é criada depois que a cobrança avulsa é aprovada (ensure_promo_subscription).
+        first_value = session_first_payment_amount(session)
+        promo_payload: dict[str, Any] = _with_optional_split({
+            "customer": customer_id,
+            "billingType": "CREDIT_CARD",
+            "value": float(first_value),
+            "dueDate": _billing_today(),
+            "description": f"{session.product_name} (1ª mensalidade)"[:500],
+            "externalReference": external_reference,
+            "split": build_default_split_payload(),
+            "creditCard": credit_card,
+            "creditCardHolderInfo": holder_info,
+            "remoteIp": remote_ip,
+        })
+        first_payment = client.create_payment(promo_payload)
+        metadata = dict(session.metadata_json or {})
+        metadata["first_payment_separate"] = True
+        metadata["card_token"] = _saved_card_token(
+            client,
+            first_payment,
+            customer_id=customer_id,
+            credit_card=credit_card,
+            holder_info=holder_info,
+            remote_ip=remote_ip,
+        )
+        metadata["promo_subscription"] = {
+            "state": "pending",
+            "value": str(amount),
+            "next_due_date": next_due_date(date.fromisoformat(_billing_today()), session.billing_cycle).isoformat(),
+        }
+        session.metadata_json = metadata
     else:
-        first_value = session_first_payment_amount(session) or amount
         subscription_payload: dict[str, Any] = _with_optional_split({
             "customer": customer_id,
             "billingType": "CREDIT_CARD",
             "nextDueDate": _billing_today(),
             "cycle": _resolve_asaas_cycle(session.billing_cycle),
-            "value": float(first_value),
+            "value": float(amount),
             "description": session.product_name,
             "externalReference": external_reference,
             "split": build_default_split_payload(),
@@ -2255,16 +2289,6 @@ def start_card_payment(db: Session, session: CheckoutSession, payload: dict[str,
         first_payment = _pick_checkout_subscription_payment(payments)
         metadata = dict(session.metadata_json or {})
         metadata["asaas_subscription_id"] = subscription_id
-        if first_value != amount:
-            # 1ª mensalidade promocional: a assinatura nasce no valor da promoção (a cobrança de
-            # agora) e passa ao valor cheio para as próximas. updatePendingPayments=False não mexe
-            # na 1ª cobrança, mesmo que ela ainda esteja em análise. Se falhar, o job horário tenta de novo.
-            metadata["pending_subscription_value"] = str(amount)
-            if first_payment.get("id"):
-                metadata["first_payment_id"] = str(first_payment["id"])
-            session.metadata_json = metadata
-            _apply_pending_subscription_value(client, session, update_pending_payments=False)
-            metadata = dict(session.metadata_json or {})
         session.metadata_json = metadata
 
     payment_id = first_payment.get("id")
@@ -2295,71 +2319,133 @@ def start_card_payment(db: Session, session: CheckoutSession, payload: dict[str,
     db.commit()
     db.refresh(session)
     _replace_open_payments_after_renewal(db, client, session)
+    if session.status == "paid" and (session.metadata_json or {}).get("first_payment_separate"):
+        ensure_promo_subscription(db, client, session.id)
+        db.refresh(session)
     return session
 
 
-def _apply_pending_subscription_value(
-    client: AsaasClient, session: CheckoutSession, *, update_pending_payments: bool
-) -> bool:
-    """Passa a assinatura do Asaas para o valor cheio depois da 1ª mensalidade promocional."""
-    metadata = dict(session.metadata_json or {})
-    pending = str(metadata.get("pending_subscription_value") or "").strip()
-    subscription_id = str(metadata.get("asaas_subscription_id") or "").strip()
-    if not pending or not subscription_id:
+def _checkout_external_reference(session: CheckoutSession) -> str:
+    return f"checkout_upgrade:{session.token}" if _is_upgrade_session(session) else f"checkout:{session.token}"
+
+
+def _lock_checkout_session(db: Session, session_id: int) -> CheckoutSession | None:
+    """Trava a compra enquanto mexe na assinatura dela no Asaas: os dois servidores rodam o job
+    horário e não podem criar duas assinaturas para a mesma compra."""
+    return (
+        db.query(CheckoutSession)
+        .filter(CheckoutSession.id == session_id)
+        .with_for_update(skip_locked=True)
+        .populate_existing()
+        .first()
+    )
+
+
+def _alert_subscription_problem(session: CheckoutSession, problem: str, key: str) -> None:
+    """Aviso no Pushover quando a assinatura do cliente não ficou como deveria no Asaas."""
+    notify_safely(
+        event_key="subscription_billing_error",
+        context={
+            "event_label": "Assinatura com problema no Asaas",
+            "user_name": session.customer_name or "Não informado",
+            "plan_name": session.product_name or session.offer_key,
+            "amount": session.amount,
+            "problem": problem[:300],
+            **contact_context(session.customer_email, session.customer_phone),
+        },
+        dedupe_key=f"{session.token}:{key}",
+        dedupe_seconds=24 * 3600,
+    )
+
+
+def _link_contract_subscription(db: Session, session: CheckoutSession, subscription_id: str) -> None:
+    """A conta do cliente passa a apontar para a assinatura nova do Asaas (se ainda é desta compra)."""
+    user = session.user or _find_existing_user(db, session.customer_email, session.customer_document)
+    subscription = user.subscription if user else None
+    if subscription is None:
+        return
+    if str(subscription.external_reference or "") not in {f"checkout:{session.token}", f"checkout_upgrade:{session.token}"}:
+        return
+    subscription.asaas_subscription_id = subscription_id
+    db.add(subscription)
+
+
+def _create_full_price_subscription(
+    client: AsaasClient, session: CheckoutSession, *, card_token: str, next_due: date
+) -> str:
+    """Assinatura no cartão salvo, já no valor cheio, a partir de next_due (nunca antes de hoje)."""
+    today = date.fromisoformat(_billing_today())
+    metadata = session.metadata_json or {}
+    created = client.create_subscription(
+        _with_optional_split({
+            "customer": session.asaas_customer_id,
+            "billingType": "CREDIT_CARD",
+            "nextDueDate": max(next_due, today).isoformat(),
+            "cycle": _resolve_asaas_cycle(session.billing_cycle),
+            "value": float(_quantize_money(_parse_decimal(session.amount))),
+            "description": session.product_name,
+            "externalReference": _checkout_external_reference(session),
+            "split": build_default_split_payload(),
+            "creditCardToken": card_token,
+            "remoteIp": str(metadata.get("remote_ip") or "127.0.0.1"),
+        })
+    )
+    subscription_id = _extract_asaas_resource_id((created or {}).get("id"))
+    if not subscription_id:
+        raise AsaasAPIError({"errors": [{"description": "Asaas não retornou o id da assinatura."}]})
+    return subscription_id
+
+
+def ensure_promo_subscription(db: Session, client: AsaasClient, session_id: int) -> bool:
+    """Compra com a 1ª mensalidade promocional (cobrança avulsa) já paga: cria a assinatura no valor
+    cheio, com o 1º vencimento um ciclo depois da compra. Uma vez só; falha fica para o job horário."""
+    session = _lock_checkout_session(db, session_id)
+    if session is None:
+        db.rollback()
         return False
-    try:
-        client.update_subscription(
-            subscription_id,
-            {"value": float(_parse_decimal(pending)), "updatePendingPayments": update_pending_payments},
+    metadata = dict(session.metadata_json or {})
+    promo = dict(metadata.get("promo_subscription") or {})
+    if (
+        not metadata.get("first_payment_separate")
+        or metadata.get("asaas_subscription_id")
+        or session.status != "paid"
+        or session.payment_method != "card"
+    ):
+        db.rollback()
+        return False
+    card_token = str(metadata.get("card_token") or "").strip()
+    if not card_token:
+        db.rollback()
+        _alert_subscription_problem(
+            session, "1ª mensalidade paga, mas o cartão não foi salvo: a assinatura de R$ cheio não foi criada.", "promo_no_token"
         )
-    except Exception:  # noqa: BLE001 - a compra já foi feita; o job horário tenta de novo
-        logger.exception("Assinatura %s não passou para o valor cheio depois da 1ª mensalidade.", subscription_id)
         return False
-    metadata.pop("pending_subscription_value", None)
-    metadata["subscription_value_updated_at"] = _utcnow().isoformat()
-    session.metadata_json = metadata
-    _raise_future_promo_payments(client, session)
-    return True
-
-
-def _raise_future_promo_payments(client: AsaasClient, session: CheckoutSession) -> bool:
-    """Põe no valor cheio as mensalidades seguintes que o Asaas já gerou no valor da promoção.
-
-    O Asaas gera a cobrança seguinte da assinatura com antecedência (já na criação, num plano
-    mensal). Trocar o valor da assinatura com updatePendingPayments=False não mexe nela, e o
-    2º mês saía no valor promocional. Aqui, toda cobrança ainda pendente que não seja a 1ª passa
-    para o valor cheio. A 1ª (a promoção) nunca é tocada. Falha aqui fica para o job horário."""
-    metadata = dict(session.metadata_json or {})
-    subscription_id = str(metadata.get("asaas_subscription_id") or "").strip()
-    if not subscription_id or session.billing_cycle != "monthly":
-        return False
-    full = _quantize_money(_parse_decimal(session.amount))
-    first_id = str(metadata.get("first_payment_id") or session.asaas_payment_id or "").strip()
     try:
-        rows = (client.list_subscription_payments(subscription_id) or {}).get("data") or []
-        if not first_id:
-            # Sem o id da 1ª cobrança não dá para saber qual é a promoção: fica para depois.
-            return False
-        for row in rows:
-            payment_id = str(row.get("id") or "")
-            if not payment_id or payment_id == first_id:
-                continue
-            if str(row.get("status") or "").upper() != "PENDING":
-                continue
-            if _quantize_money(_parse_decimal(row.get("value"))) >= full:
-                continue
-            payload: dict[str, Any] = {"billingType": row.get("billingType") or "CREDIT_CARD", "value": float(full)}
-            if row.get("dueDate"):
-                payload["dueDate"] = row["dueDate"]
-            client.update_payment(payment_id, payload)
-    except Exception:  # a compra já foi feita; o job horário tenta de novo
-        logger.exception("Mensalidades seguintes da assinatura %s não passaram para o valor cheio.", subscription_id)
-        metadata["future_payments_pending_fix"] = True
+        next_due = date.fromisoformat(str(promo.get("next_due_date") or ""))
+    except ValueError:
+        paid = (session.paid_at or _utcnow()).astimezone(ZoneInfo("America/Sao_Paulo")).date()
+        next_due = next_due_date(paid, session.billing_cycle)
+    try:
+        subscription_id = _create_full_price_subscription(client, session, card_token=card_token, next_due=next_due)
+    except Exception as exc:  # a compra já foi paga; o job horário tenta de novo
+        logger.exception("Assinatura no valor cheio não foi criada para a compra %s.", session.token)
+        promo["state"] = "error"
+        promo["error"] = str(exc)[:500]
+        metadata["promo_subscription"] = promo
         session.metadata_json = metadata
+        db.add(session)
+        db.commit()
+        _alert_subscription_problem(session, f"Assinatura no valor cheio não foi criada: {exc}", "promo_create_error")
         return False
-    metadata.pop("future_payments_pending_fix", None)
-    metadata["future_payments_checked_at"] = _utcnow().isoformat()
+    promo.update(state="created", subscription_id=subscription_id, created_at=_utcnow().isoformat())
+    promo.pop("error", None)
+    metadata["promo_subscription"] = promo
+    metadata["asaas_subscription_id"] = subscription_id
     session.metadata_json = metadata
+    _link_contract_subscription(db, session, subscription_id)
+    session.updated_at = _utcnow()
+    db.add(session)
+    db.commit()
     return True
 
 
@@ -2628,6 +2714,9 @@ def refresh_session_status(db: Session, session: CheckoutSession) -> CheckoutSes
     payment_id = session.asaas_payment_id
     subscription_id = _resolve_session_subscription_id(session)
     metadata = dict(session.metadata_json or {})
+    if metadata.get("first_payment_separate"):
+        # A compra é a cobrança avulsa da promoção; a assinatura só tem as mensalidades seguintes.
+        subscription_id = None
     automatic_authorization_id = str(metadata.get("asaas_pix_automatic_authorization_id") or "").strip()
 
     if session.payment_method == "pix" and automatic_authorization_id:
@@ -2786,7 +2875,11 @@ def _payment_due_date(payment: dict[str, Any]) -> date | None:
 def _session_contract_subscription_ids(db: Session, session: CheckoutSession) -> set[str]:
     """Assinaturas do Asaas que pertencem a esta compra: a criada nela e, nos upgrades antigos feitos
     "no lugar", a assinatura do cliente que passou a apontar para esta compra."""
-    ids = {str((session.metadata_json or {}).get("asaas_subscription_id") or "").strip()}
+    metadata = session.metadata_json or {}
+    ids = {str(metadata.get("asaas_subscription_id") or "").strip()}
+    # Assinatura trocada pela do valor cheio: avisos atrasados dela (cobrança removida, pagamento
+    # recebido) continuam sendo da mesma compra.
+    ids.update(str(item).strip() for item in (metadata.get("previous_asaas_subscription_ids") or []))
     user = session.user or _find_existing_user(db, session.customer_email, session.customer_document)
     subscription = user.subscription if user else None
     if subscription is not None and str(subscription.external_reference or "") in {
@@ -3011,55 +3104,189 @@ def renew_due_installment_subscriptions(db: Session, client: AsaasClient, now: d
     return charged
 
 
+PAID_PAYMENT_STATUSES = {"RECEIVED", "CONFIRMED", "RECEIVED_IN_CASH"}
+UNPAID_PAYMENT_STATUSES = {"PENDING", "OVERDUE", "AWAITING_RISK_ANALYSIS"}
+
+
+def _card_token_from_payments(client: AsaasClient, rows: list[dict[str, Any]], first_payment_id: str) -> str | None:
+    for row in rows:
+        card = row.get("creditCard") if isinstance(row.get("creditCard"), dict) else {}
+        token = str(card.get("creditCardToken") or "").strip()
+        if token:
+            return token
+    if first_payment_id:
+        try:
+            card = (client.get_payment(first_payment_id) or {}).get("creditCard") or {}
+        except Exception:
+            logger.exception("Pagamento %s não foi lido no Asaas para pegar o cartão salvo.", first_payment_id)
+            return None
+        token = str(card.get("creditCardToken") or "").strip() if isinstance(card, dict) else ""
+        return token or None
+    return None
+
+
+def _next_due_of_old_subscription(client: AsaasClient, old_id: str, rows: list[dict[str, Any]], today: date) -> date | None:
+    future = sorted(
+        due
+        for row in rows
+        if str(row.get("status") or "").upper() == "PENDING" and (due := _payment_due_date(row)) is not None and due > today
+    )
+    if future:
+        return future[0]
+    try:
+        raw = str((client.get_subscription(old_id) or {}).get("nextDueDate") or "")[:10]
+        due = date.fromisoformat(raw) if raw else None
+    except Exception:
+        logger.exception("Assinatura %s não foi lida no Asaas.", old_id)
+        return None
+    return due if due and due > today else None
+
+
+def migrate_stuck_promo_subscription(db: Session, client: AsaasClient, session_id: int) -> bool:
+    """Compras com a promoção feitas antes desta correção: a assinatura do Asaas ficou no valor da
+    promoção, porque o Asaas não deixa mudar o valor de assinatura no cartão com fatura paga.
+
+    Troca por uma assinatura nova no valor cheio, no mesmo cartão (token) e no mesmo vencimento:
+    1. confere que não há mensalidade vencendo hoje ou em aberto (senão espera ou avisa);
+    2. cancela a assinatura antiga (some só o que ainda está pendente; o que foi pago fica);
+    3. cria a nova a partir da próxima mensalidade.
+    Cancelar antes de criar: se algo falhar no meio, o cliente fica um tempo sem cobrança (o job
+    tenta de novo e avisa), nunca com duas cobranças no mesmo mês."""
+    session = _lock_checkout_session(db, session_id)
+    if session is None:
+        db.rollback()
+        return False
+    metadata = dict(session.metadata_json or {})
+    old_id = str(metadata.get("asaas_subscription_id") or "").strip()
+    migration = dict(metadata.get("promo_migration") or {})
+    if not metadata.get("pending_subscription_value") or session.status != "paid" or session.payment_method != "card":
+        db.rollback()
+        return False
+    today = date.fromisoformat(_billing_today())
+
+    if migration.get("state") != "old_cancelled":
+        if not old_id:
+            db.rollback()
+            return False
+        try:
+            rows = (client.list_subscription_payments(old_id) or {}).get("data") or []
+        except Exception:
+            logger.exception("Cobranças da assinatura %s não foram lidas no Asaas.", old_id)
+            db.rollback()
+            return False
+        open_now = [
+            row
+            for row in rows
+            if str(row.get("status") or "").upper() in UNPAID_PAYMENT_STATUSES
+            and (due := _payment_due_date(row)) is not None
+            and due <= today
+        ]
+        if open_now:
+            # Mensalidade vencendo hoje (o Asaas ainda vai passar no cartão) ou em aberto: não mexe
+            # agora, para não cancelar uma cobrança em andamento. Em aberto há mais de um dia, avisa.
+            db.rollback()
+            if any((_payment_due_date(row) or today) < today - timedelta(days=1) for row in open_now):
+                _alert_subscription_problem(
+                    session,
+                    f"Assinatura {old_id} no valor da promoção tem mensalidade em aberto; passe para o valor cheio à mão.",
+                    "promo_migration_open",
+                )
+            return False
+        card_token = _card_token_from_payments(client, rows, str(metadata.get("first_payment_id") or session.asaas_payment_id or ""))
+        next_due = _next_due_of_old_subscription(client, old_id, rows, today)
+        if not card_token or next_due is None:
+            db.rollback()
+            _alert_subscription_problem(
+                session,
+                f"Assinatura {old_id} segue no valor da promoção: "
+                + ("cartão salvo não encontrado" if not card_token else "próximo vencimento não encontrado")
+                + ". Passe para o valor cheio à mão.",
+                "promo_migration_data",
+            )
+            return False
+        try:
+            client.cancel_subscription(old_id)
+        except Exception as exc:
+            logger.exception("Assinatura %s (valor da promoção) não foi cancelada no Asaas.", old_id)
+            db.rollback()
+            _alert_subscription_problem(session, f"Assinatura {old_id} não foi cancelada para ir ao valor cheio: {exc}", "promo_migration_cancel")
+            return False
+        previous = [str(item) for item in (metadata.get("previous_asaas_subscription_ids") or [])]
+        metadata["previous_asaas_subscription_ids"] = list(dict.fromkeys(previous + [old_id]))
+        migration = {
+            "state": "old_cancelled",
+            "old_subscription_id": old_id,
+            "next_due_date": next_due.isoformat(),
+            "card_token": card_token,
+            "cancelled_at": _utcnow().isoformat(),
+        }
+        metadata["promo_migration"] = migration
+        session.metadata_json = metadata
+        db.add(session)
+        db.commit()
+        session = _lock_checkout_session(db, session_id)
+        if session is None:
+            db.rollback()
+            return False
+        metadata = dict(session.metadata_json or {})
+        migration = dict(metadata.get("promo_migration") or {})
+        if migration.get("state") != "old_cancelled":
+            db.rollback()
+            return False
+
+    try:
+        new_id = _create_full_price_subscription(
+            client,
+            session,
+            card_token=str(migration.get("card_token") or ""),
+            next_due=date.fromisoformat(str(migration.get("next_due_date"))),
+        )
+    except Exception as exc:
+        logger.exception("Assinatura nova no valor cheio não foi criada para a compra %s.", session.token)
+        migration["error"] = str(exc)[:500]
+        metadata["promo_migration"] = migration
+        session.metadata_json = metadata
+        db.add(session)
+        db.commit()
+        _alert_subscription_problem(
+            session,
+            f"Assinatura antiga cancelada, mas a nova no valor cheio não foi criada (tenta de novo a cada hora): {exc}",
+            "promo_migration_create",
+        )
+        return False
+    migration.update(state="done", new_subscription_id=new_id, done_at=_utcnow().isoformat())
+    migration.pop("error", None)
+    migration.pop("card_token", None)
+    metadata["promo_migration"] = migration
+    metadata["asaas_subscription_id"] = new_id
+    metadata.pop("pending_subscription_value", None)
+    metadata["subscription_value_updated_at"] = _utcnow().isoformat()
+    session.metadata_json = metadata
+    _link_contract_subscription(db, session, new_id)
+    session.updated_at = _utcnow()
+    db.add(session)
+    db.commit()
+    return True
+
+
 def apply_pending_subscription_values(db: Session, client: AsaasClient) -> int:
-    """Assinaturas que ficaram no valor da 1ª mensalidade promocional (a troca falhou na compra):
-    passa para o valor cheio, inclusive na próxima cobrança se ela já foi gerada."""
-    updated = 0
+    """Job horário da 1ª mensalidade promocional no cartão:
+    - compras novas (promoção em cobrança avulsa) já pagas e ainda sem assinatura: cria a assinatura
+      no valor cheio;
+    - compras antigas presas no valor da promoção: troca por uma assinatura no valor cheio."""
+    done = 0
     sessions = (
-        db.query(CheckoutSession)
+        db.query(CheckoutSession.id, CheckoutSession.metadata_json)
         .filter(CheckoutSession.payment_method == "card", CheckoutSession.status == "paid", CheckoutSession.metadata_json.isnot(None))
         .all()
     )
-    for session in sessions:
-        if not (session.metadata_json or {}).get("pending_subscription_value"):
-            continue
-        if _apply_pending_subscription_value(client, session, update_pending_payments=True):
-            session.updated_at = _utcnow()
-            db.add(session)
-            db.commit()
-            updated += 1
-    updated += fix_future_promo_payments(db, client, sessions)
-    return updated
-
-
-def fix_future_promo_payments(db: Session, client: AsaasClient, sessions: list[CheckoutSession] | None = None) -> int:
-    """Compras com a 1ª mensalidade promocional cujas mensalidades seguintes ainda não foram
-    conferidas (compras de antes desta correção, ou em que a conferência falhou): põe no valor
-    cheio as cobranças pendentes que o Asaas gerou no valor da promoção. Cada compra é conferida
-    uma vez; a que falhar é tentada de novo na próxima rodada."""
-    if sessions is None:
-        sessions = (
-            db.query(CheckoutSession)
-            .filter(CheckoutSession.payment_method == "card", CheckoutSession.status == "paid", CheckoutSession.metadata_json.isnot(None))
-            .all()
-        )
-    fixed = 0
-    for session in sessions:
-        metadata = session.metadata_json or {}
-        if not metadata.get("first_payment_amount") or not metadata.get("asaas_subscription_id"):
-            continue
-        if metadata.get("pending_subscription_value"):
-            continue  # a assinatura ainda nem passou para o valor cheio
-        if metadata.get("future_payments_checked_at") and not metadata.get("future_payments_pending_fix"):
-            continue
-        if session_first_payment_amount(session) is None:
-            continue
-        if _raise_future_promo_payments(client, session):
-            fixed += 1
-        session.updated_at = _utcnow()
-        db.add(session)
-        db.commit()
-    return fixed
+    for session_id, metadata in sessions:
+        metadata = metadata or {}
+        if metadata.get("first_payment_separate") and not metadata.get("asaas_subscription_id"):
+            done += int(ensure_promo_subscription(db, client, session_id))
+        elif metadata.get("pending_subscription_value"):
+            done += int(migrate_stuck_promo_subscription(db, client, session_id))
+    return done
 
 
 def handle_asaas_checkout_webhook(db: Session, payload: dict[str, Any]) -> bool:

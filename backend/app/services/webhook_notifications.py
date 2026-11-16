@@ -159,6 +159,18 @@ DEFAULT_WEBHOOK_RULES: list[dict[str, Any]] = [
         "is_builtin": True,
     },
     {
+        "event_key": "subscription_billing_error",
+        "display_name": "Assinatura com problema no Asaas",
+        "description": "A assinatura do cliente não ficou como deveria no Asaas (ex.: não passou para o valor cheio depois da 1ª mensalidade promocional). Confira o cliente no Asaas.",
+        "enabled": True,
+        "title_template": "Assinatura com problema - {{user_name}}",
+        "body_template": "{{problem}} | {{plan_name}} | {{amount}} | {{customer_email}}",
+        "icon_tag": "rotating_light",
+        "priority": 4,
+        "sort_order": 57,
+        "is_builtin": True,
+    },
+    {
         "event_key": "subscription_cancelled",
         "display_name": "Assinatura cancelada",
         "description": "Dispara quando a assinatura é cancelada.",
@@ -275,7 +287,7 @@ def ensure_default_rules(db: Session) -> None:
                 db.add(WebhookNotificationRule(**row))
         except IntegrityError:
             pass  # outra requisição criou o mesmo evento ao mesmo tempo
-    for new_key in ("paid_but_blocked", "billing_whatsapp_disconnected"):
+    for new_key in ("paid_but_blocked", "billing_whatsapp_disconnected", "subscription_billing_error"):
         if any(row["event_key"] == new_key for row in missing):
             # Quem já recebe "Cobrança vencida" passa a receber também este aviso (mesma equipe de cobrança).
             for account in db.query(PushoverAccount).all():
