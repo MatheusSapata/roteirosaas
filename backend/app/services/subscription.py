@@ -13,6 +13,7 @@ from app.services.asaas import AsaasAPIError, AsaasClient, build_default_split_p
 from app.services.billing_cycles import next_due_date
 from app.services.checkout import (
     apply_pending_subscription_values,
+    create_pix_renewal_charges,
     find_pix_automatic_authorization_id,
     renew_due_installment_subscriptions,
 )
@@ -369,6 +370,21 @@ def end_unpaid_subscriptions(now: Optional[datetime] = None) -> int:
     return ended
 
 
+def create_pix_renewal_invoices() -> int:
+    """Fatura PIX 3 dias antes do vencimento de quem cancelou a recorrência do PIX Automático."""
+    if not settings.asaas_api_key:
+        return 0
+    db = SessionLocal()
+    try:
+        return create_pix_renewal_charges(db, AsaasClient(settings.asaas_api_key, settings.asaas_base_url))
+    except Exception:
+        db.rollback()
+        logger.exception("Erro ao gerar as faturas PIX de renovação")
+        return 0
+    finally:
+        db.close()
+
+
 def charge_card_renewals() -> int:
     """Cobranças no cartão que o sistema faz (e não o Asaas): renovação do anual parcelado e a
     troca para o valor cheio depois da 1ª mensalidade promocional. Roda antes da expiração, para a
@@ -425,6 +441,7 @@ def schedule_expiration_job(interval_minutes: int = 60) -> None:
                 _apply_scheduled_cancellations(datetime.utcnow())
                 tag_abandoned_checkout_sessions(cutoff_minutes=30)
                 create_due_pix_automatic_instructions()
+                create_pix_renewal_invoices()
                 charge_card_renewals()
                 expire_subscriptions()
                 end_unpaid_subscriptions()

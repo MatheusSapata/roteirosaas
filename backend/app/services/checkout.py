@@ -412,6 +412,48 @@ def _notify_checkout_payment_overdue(session: CheckoutSession, payment: dict[str
     )
 
 
+PIX_CANCELLATION_REASONS = {
+    "REQUESTED_BY_PAYER_USER": "cancelada pelo cliente no app do banco",
+    "REQUESTED_BY_PAYER_PSP": "cancelada pelo banco do cliente",
+    "REQUESTED_BY_RECEIVER_USER": "cancelada pela empresa",
+}
+
+
+def _notify_pix_recurrence_cancelled(db: Session, session: CheckoutSession, authorization: dict[str, Any]) -> None:
+    """Aviso no Pushover: a recorrência do PIX Automático de uma compra paga foi cancelada. O serviço
+    segue ativo (o acesso vale até o vencimento) e a fatura sai 3 dias antes; a equipe pode falar com
+    o cliente. Cancelamento do próprio serviço (pedido do cliente ou do admin) já tem aviso próprio."""
+    user = session.user or _find_existing_user(db, session.customer_email, session.customer_document)
+    subscription = user.subscription if user else None
+    if subscription is None or str(subscription.external_reference or "") not in {
+        f"checkout:{session.token}",
+        f"checkout_upgrade:{session.token}",
+    }:
+        return
+    if str(subscription.status or "").strip().lower() not in {"active", "past_due"}:
+        return
+    code = str(authorization.get("cancellationReason") or "").strip()
+    reason = PIX_CANCELLATION_REASONS.get(code) or (code.lower().replace("_", " ") if code else "motivo não informado")
+    valid_until = subscription.valid_until
+    if valid_until is not None and valid_until.tzinfo is None:
+        valid_until = valid_until.replace(tzinfo=timezone.utc)
+    until_text = valid_until.astimezone(ZoneInfo("America/Sao_Paulo")).strftime("%d/%m/%Y") if valid_until else "sem data"
+    notify_safely(
+        event_key="pix_recurrence_cancelled",
+        context={
+            "event_label": "Recorrência do PIX cancelada",
+            "user_name": session.customer_name or (user.name if user else None) or "Não informado",
+            "plan_name": session.product_name or session.offer_key,
+            "amount": session.amount,
+            "due_date": until_text,
+            "problem": f"Recorrência {reason}. A fatura sai 3 dias antes do vencimento",
+            **contact_context(session.customer_email or (user.email if user else None), session.customer_phone or (user.whatsapp if user else None)),
+        },
+        dedupe_key=str(authorization.get("id") or session.token),
+        dedupe_seconds=7 * 24 * 3600,
+    )
+
+
 def _notify_gateway_modified_cakto_to_asaas(user: User) -> None:
     try:
         send_notification(
@@ -2392,6 +2434,16 @@ def _lock_checkout_session(db: Session, session_id: int) -> CheckoutSession | No
     )
 
 
+def _lock_checkout_session_by_token(db: Session, token: str) -> CheckoutSession | None:
+    return (
+        db.query(CheckoutSession)
+        .filter(CheckoutSession.token == token)
+        .with_for_update(skip_locked=True)
+        .populate_existing()
+        .first()
+    )
+
+
 def _alert_subscription_problem(session: CheckoutSession, problem: str, key: str) -> None:
     """Aviso no Pushover quando a assinatura do cliente não ficou como deveria no Asaas."""
     notify_safely(
@@ -3082,6 +3134,95 @@ def _existing_renewal_payment(client: AsaasClient, reference: str) -> dict[str, 
     return (paid or alive)[0]
 
 
+PIX_INVOICE_DAYS_BEFORE = 3
+PIX_INVOICE_LATE_DAYS = 30
+
+
+def create_pix_renewal_charges(db: Session, client: AsaasClient, now: datetime | None = None) -> int:
+    """Renovação de quem pagou por PIX Automático e cancelou a recorrência no banco.
+
+    O serviço segue ativo, então a cobrança continua: 3 dias antes do fim do acesso o sistema gera
+    uma fatura PIX comum no valor do contrato (sem promoção). O cliente paga pela tela de faturas ou
+    pelo link, e o acesso é estendido a partir do vencimento (mesmo caminho da renovação do anual
+    parcelado, `checkout_renewal:<compra>:<vencimento>`). Uma fatura por vencimento; quem tem a
+    autorização ativa continua com a cobrança automática, e quem pediu para cancelar o serviço
+    (status diferente de ativo/inadimplente) não é cobrado."""
+    now = now or _utcnow()
+    today = now.astimezone(ZoneInfo("America/Sao_Paulo")).date()
+    candidates = (
+        db.query(Subscription)
+        .filter(
+            Subscription.provider == "asaas",
+            Subscription.status.in_(("active", "past_due")),
+            Subscription.valid_until.isnot(None),
+            Subscription.valid_until <= now + timedelta(days=PIX_INVOICE_DAYS_BEFORE + 1),
+            Subscription.valid_until >= now - timedelta(days=PIX_INVOICE_LATE_DAYS),
+            Subscription.asaas_subscription_id.is_(None),
+            or_(Subscription.external_reference.like("checkout:%"), Subscription.external_reference.like("checkout_upgrade:%")),
+        )
+        .all()
+    )
+    created = 0
+    for subscription in candidates:
+        token = _extract_checkout_session_token(str(subscription.external_reference or ""))
+        valid_until = subscription.valid_until
+        if not token or valid_until is None:
+            continue
+        if valid_until.tzinfo is None:
+            valid_until = valid_until.replace(tzinfo=timezone.utc)
+        due = valid_until.astimezone(ZoneInfo("America/Sao_Paulo")).date()
+        if (due - today).days > PIX_INVOICE_DAYS_BEFORE:
+            continue
+        customer_id = str(subscription.asaas_customer_id or "").strip()
+        session = _lock_checkout_session_by_token(db, token)
+        if session is None:
+            db.rollback()
+            continue
+        metadata = dict(session.metadata_json or {})
+        if (
+            session.payment_method != "pix"
+            or session.status != "paid"
+            or str(metadata.get("pix_mode") or "").strip().lower() != "automatic"
+            or str(metadata.get("asaas_pix_automatic_authorization_status") or "").strip().upper() == "ACTIVE"
+        ):
+            db.rollback()
+            continue
+        customer_id = str(session.asaas_customer_id or customer_id).strip()
+        key = due.isoformat()
+        charges = dict(metadata.get("pix_renewal_charges") or {})
+        if not customer_id or key in charges:
+            db.rollback()
+            continue
+        reference = f"checkout_renewal:{token}:{key}"
+        try:
+            payment = _existing_renewal_payment(client, reference)
+            if payment is None:
+                payment = client.create_payment(
+                    _with_optional_split({
+                        "customer": customer_id,
+                        "billingType": "PIX",
+                        "value": float(_quantize_money(_parse_decimal(session.amount))),
+                        "dueDate": max(due, today).isoformat(),
+                        "description": f"Renovação {session.product_name}"[:500],
+                        "externalReference": reference,
+                        "split": build_default_split_payload(),
+                    })
+                )
+        except Exception as exc:
+            logger.exception("Fatura PIX da renovação não foi gerada (checkout %s).", session.token)
+            db.rollback()
+            _alert_subscription_problem(session, f"Fatura da renovação de {key} não foi gerada: {exc}", f"pix_invoice_{key}")
+            continue
+        charges[key] = {"payment_id": str((payment or {}).get("id") or ""), "created_at": _utcnow().isoformat()}
+        metadata["pix_renewal_charges"] = dict(list(charges.items())[-12:])
+        session.metadata_json = metadata
+        session.updated_at = _utcnow()
+        db.add(session)
+        db.commit()
+        created += 1
+    return created
+
+
 def renew_due_installment_subscriptions(db: Session, client: AsaasClient, now: datetime | None = None) -> int:
     """Renovação do anual parcelado: no vencimento, cobra de novo no cartão salvo, nas mesmas
     parcelas e no mesmo valor da compra. Uma tentativa por dia; recusado, a assinatura segue a
@@ -3516,6 +3657,11 @@ def handle_asaas_checkout_webhook(db: Session, payload: dict[str, Any]) -> bool:
         session.updated_at = _utcnow()
         db.add(session)
         db.commit()
+        if event.endswith("_CANCELLED") or authorization_status == "CANCELLED":
+            try:
+                _notify_pix_recurrence_cancelled(db, session, authorization)
+            except Exception:  # o aviso nunca quebra o webhook
+                logger.exception("Aviso de recorrência do PIX cancelada não foi enviado (checkout %s).", session.token)
         return True
     authorization_activated = event in {
         "PIX_AUTOMATIC_RECURRING_AUTHORIZATION_ACTIVE",
