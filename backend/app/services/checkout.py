@@ -3354,6 +3354,75 @@ def migrate_stuck_promo_subscription(db: Session, client: AsaasClient, session_i
     return True
 
 
+def end_promo_subscription_for_renewal(db: Session, client: AsaasClient, session_id: int) -> bool:
+    """Compra presa no valor da promoção marcada (promo_migration.state = "end_and_renew") para
+    encerrar a assinatura de 67 e cobrar a renovação pelo sistema.
+
+    A conta segue ativa até o vencimento e depois cai no fluxo de quem está vencido (no ar por 3 dias,
+    depois o painel pede a renovação, que já cria a assinatura no valor cheio, sem promoção).
+    A assinatura sai da conta antes de ser cancelada no Asaas: assim o aviso "assinatura removida"
+    não marca a conta como cancelada (o que a deixaria inativa no vencimento)."""
+    session = _lock_checkout_session(db, session_id)
+    if session is None:
+        db.rollback()
+        return False
+    metadata = dict(session.metadata_json or {})
+    migration = dict(metadata.get("promo_migration") or {})
+    if migration.get("state") != "end_and_renew" or session.payment_method != "card":
+        db.rollback()
+        return False
+    user = session.user or _find_existing_user(db, session.customer_email, session.customer_document)
+    contract = user.subscription if user else None
+    old_id = str(
+        migration.get("old_subscription_id")
+        or (contract.asaas_subscription_id if contract else None)
+        or metadata.get("asaas_subscription_id")
+        or ""
+    ).strip()
+    if not old_id:
+        db.rollback()
+        return False
+    # 1. A conta deixa de apontar para a assinatura de 67 (o vencimento e o status ficam como estão).
+    previous = [str(item) for item in (metadata.get("previous_asaas_subscription_ids") or [])]
+    metadata["previous_asaas_subscription_ids"] = list(dict.fromkeys(previous + [old_id]))
+    migration["old_subscription_id"] = old_id
+    if contract is not None and str(contract.asaas_subscription_id or "") == old_id:
+        contract.asaas_subscription_id = None
+        db.add(contract)
+    if str(metadata.get("asaas_subscription_id") or "") == old_id:
+        metadata.pop("asaas_subscription_id", None)
+    metadata["promo_migration"] = migration
+    session.metadata_json = metadata
+    db.add(session)
+    db.commit()
+    # 2. Cancela no Asaas (só some o que está pendente; o que foi pago fica).
+    session = _lock_checkout_session(db, session_id)
+    if session is None:
+        db.rollback()
+        return False
+    metadata = dict(session.metadata_json or {})
+    migration = dict(metadata.get("promo_migration") or {})
+    if migration.get("state") != "end_and_renew":
+        db.rollback()
+        return False
+    if not _cancel_subscription_if_active(client, old_id):
+        db.rollback()
+        _alert_subscription_problem(
+            session,
+            f"Assinatura {old_id} (valor da promoção) não foi cancelada no Asaas; o job tenta de novo a cada hora.",
+            "promo_end_cancel",
+        )
+        return False
+    migration.update(state="ended_awaiting_renewal", ended_at=_utcnow().isoformat())
+    metadata["promo_migration"] = migration
+    metadata.pop("pending_subscription_value", None)
+    session.metadata_json = metadata
+    session.updated_at = _utcnow()
+    db.add(session)
+    db.commit()
+    return True
+
+
 def apply_pending_subscription_values(db: Session, client: AsaasClient) -> int:
     """Job horário da 1ª mensalidade promocional no cartão:
     - compras novas (promoção em cobrança avulsa) já pagas e ainda sem assinatura: cria a assinatura
@@ -3367,7 +3436,9 @@ def apply_pending_subscription_values(db: Session, client: AsaasClient) -> int:
     )
     for session_id, metadata in sessions:
         metadata = metadata or {}
-        if metadata.get("first_payment_separate") and not metadata.get("asaas_subscription_id"):
+        if (metadata.get("promo_migration") or {}).get("state") == "end_and_renew":
+            done += int(end_promo_subscription_for_renewal(db, client, session_id))
+        elif metadata.get("first_payment_separate") and not metadata.get("asaas_subscription_id"):
             done += int(ensure_promo_subscription(db, client, session_id))
         elif metadata.get("pending_subscription_value") and (metadata.get("promo_migration") or {}).get("state") != "skipped_manual":
             done += int(migrate_stuck_promo_subscription(db, client, session_id))
