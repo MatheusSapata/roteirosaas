@@ -5244,6 +5244,16 @@ const clone = <T>(val: T): T => {
   }
 };
 
+const DEFAULT_WHATSAPP_MESSAGE_PREFIX = "oi, tenho interesse no roteiro:";
+const hasDefaultWhatsappMessage = (link: string) => {
+  try {
+    const url = new URL(link.startsWith("http") ? link : `https://${link}`);
+    return (url.searchParams.get("text") || "").trim().toLowerCase().startsWith(DEFAULT_WHATSAPP_MESSAGE_PREFIX);
+  } catch {
+    return false;
+  }
+};
+
 const applyWhatsAppDefaults = (sectionsList: PageSection[]): PageSection[] => {
   const baseAuto = buildWhatsappLink(pageTitle.value);
   const isAutoLink = (link?: string, candidate?: string) => {
@@ -5256,7 +5266,9 @@ const applyWhatsAppDefaults = (sectionsList: PageSection[]): PageSection[] => {
       "https://wa.me/5599999999"
     ].filter(Boolean) as string[];
     if (candidates.some(c => normalized === c.toLowerCase())) return true;
-    return normalized.includes("wa.me") && normalized.includes("interesse");
+    // Só é automático o link com a mensagem padrão do sistema. Antes bastava a palavra "interesse" em
+    // qualquer lugar, e a mensagem que a pessoa escreveu voltava para a padrão ao recarregar.
+    return normalized.includes("wa.me") && hasDefaultWhatsappMessage(link);
   };
 
   const updated = sectionsList.map(section => {
