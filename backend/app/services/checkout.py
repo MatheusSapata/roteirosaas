@@ -639,6 +639,24 @@ def _apply_upgrade_after_payment(db: Session, session: CheckoutSession) -> tuple
     return user, previous_plan
 
 
+def _cancel_subscription_if_active(client: AsaasClient, subscription_id: str) -> bool:
+    """Cancela a assinatura no Asaas. Já cancelada (ex.: cancelamento agendado para o fim do ciclo,
+    e o cliente voltou a assinar pelo sistema) conta como feito, sem erro."""
+    try:
+        client.cancel_subscription(subscription_id)
+        return True
+    except AsaasAPIError:
+        try:
+            remote = client.get_subscription(subscription_id) or {}
+        except AsaasAPIError:
+            logger.exception("Assinatura anterior %s não foi cancelada nem lida no Asaas.", subscription_id)
+            return False
+        if remote.get("deleted") or str(remote.get("status") or "").upper() in {"INACTIVE", "CANCELLED", "DELETED", "EXPIRED"}:
+            return True
+        logger.exception("Assinatura anterior %s não foi cancelada no Asaas.", subscription_id)
+        return False
+
+
 def _cancel_replaced_contracts_after_upgrade(db: Session, session: CheckoutSession) -> None:
     metadata = dict(session.metadata_json or {})
     previous_subscription_id = str(metadata.get("replaced_asaas_subscription_id") or "").strip()
@@ -658,7 +676,13 @@ def _cancel_replaced_contracts_after_upgrade(db: Session, session: CheckoutSessi
         and not metadata.get("replaced_asaas_subscription_cancelled")
     ):
         client = client or _ensure_asaas_client()
-        client.cancel_subscription(previous_subscription_id)
+        if not _cancel_subscription_if_active(client, previous_subscription_id):
+            # O pagamento novo já foi feito: não pode travar a compra. Fica o aviso para cancelar à mão.
+            _alert_subscription_problem(
+                session,
+                f"Plano novo pago, mas a assinatura anterior {previous_subscription_id} não foi cancelada no Asaas.",
+                "replaced_cancel_error",
+            )
         metadata["replaced_asaas_subscription_cancelled"] = True
         if target_subscription and target_subscription.asaas_subscription_id == previous_subscription_id:
             target_subscription.asaas_subscription_id = None
@@ -3212,6 +3236,17 @@ def migrate_stuck_promo_subscription(db: Session, client: AsaasClient, session_i
     if not metadata.get("pending_subscription_value") or session.status != "paid" or session.payment_method != "card":
         db.rollback()
         return False
+    if migration.get("state") != "old_cancelled":
+        # Cliente com cancelamento agendado, cancelado ou que migrou de plano: não cria assinatura nova.
+        user = session.user or _find_existing_user(db, session.customer_email, session.customer_document)
+        contract = user.subscription if user else None
+        if (
+            contract is None
+            or str(contract.external_reference or "") not in {f"checkout:{session.token}", f"checkout_upgrade:{session.token}"}
+            or str(contract.status or "").strip().lower() not in {"active", "past_due"}
+        ):
+            db.rollback()
+            return False
     today = date.fromisoformat(_billing_today())
 
     if migration.get("state") != "old_cancelled":
@@ -3334,7 +3369,7 @@ def apply_pending_subscription_values(db: Session, client: AsaasClient) -> int:
         metadata = metadata or {}
         if metadata.get("first_payment_separate") and not metadata.get("asaas_subscription_id"):
             done += int(ensure_promo_subscription(db, client, session_id))
-        elif metadata.get("pending_subscription_value"):
+        elif metadata.get("pending_subscription_value") and (metadata.get("promo_migration") or {}).get("state") != "skipped_manual":
             done += int(migrate_stuck_promo_subscription(db, client, session_id))
     return done
 

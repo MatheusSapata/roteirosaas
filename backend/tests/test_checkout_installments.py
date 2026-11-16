@@ -395,6 +395,64 @@ def test_stuck_promo_subscription_is_replaced_by_full_price_one(monkeypatch, qui
     assert checkout._is_card_subscription_renewal(db, session, removed)
 
 
+def test_stuck_promo_left_alone_when_marked_or_cancel_scheduled(monkeypatch, quiet):
+    db = TestingSessionLocal()
+    fake = FakeAsaas()
+    monkeypatch.setattr(checkout, "_billing_today", lambda: "2026-11-16")
+    result = _stuck_session(db, monkeypatch, fake)
+    fake.old_payments = [
+        {"id": "pay_sub_1", "status": "CONFIRMED", "dueDate": "2026-10-22", "creditCard": {"creditCardToken": "tok_antigo"}},
+        {"id": "pay_sub_2", "status": "PENDING", "dueDate": "2026-11-22"},
+    ]
+    user = db.query(User).filter(User.email == "cliente@example.com").one()
+    user.subscription.status = "cancel_at_period_end"
+    db.commit()
+    assert checkout.apply_pending_subscription_values(db, fake) == 0
+
+    user.subscription.status = "active"
+    metadata = dict(result.metadata_json)
+    metadata["promo_migration"] = {"state": "skipped_manual"}
+    result.metadata_json = metadata
+    db.commit()
+    assert checkout.apply_pending_subscription_values(db, fake) == 0
+    assert fake.cancelled == [] and fake.subscriptions == []
+
+
+def test_buying_again_after_scheduled_cancel_does_not_fail_on_old_subscription(monkeypatch, quiet):
+    """Assinatura de 67 cancelada no fim do ciclo; o cliente assina de novo pelo painel (137). Cancelar
+    de novo a antiga dá erro no Asaas, e isso não pode travar a compra já paga."""
+    db = TestingSessionLocal()
+    fake = FakeAsaas()
+    monkeypatch.setattr(checkout, "_ensure_asaas_client", lambda: fake)
+
+    def already_deleted(subscription_id: str) -> None:
+        raise checkout.AsaasAPIError({"errors": [{"description": "Assinatura removida"}]})
+
+    monkeypatch.setattr(fake, "cancel_subscription", already_deleted)
+    monkeypatch.setattr(fake, "get_subscription", lambda sid: {"id": sid, "deleted": True, "status": "INACTIVE"})
+    _settings(db, MONTHLY)
+    user = User(email="volta@example.com", name="Cliente", hashed_password="x", cpf="12345678901", whatsapp="47999999999", address_zipcode="89000000", plan="unico", is_active=True)
+    db.add(user)
+    db.flush()
+    sub = Subscription(user_id=user.id, provider="asaas", status="cancelled", asaas_subscription_id="sub_67_cancelada", mrr_amount=Decimal("137.00"), billing_cycle="monthly")
+    db.add(sub)
+    db.flush()
+    user.subscription_id = sub.id
+    db.commit()
+
+    session = checkout.create_upgrade_checkout_session(db, offer=CheckoutOfferOut.model_validate(MONTHLY), user=user)
+    session.asaas_customer_id = "cus_1"
+    db.commit()
+    assert checkout.session_first_payment_amount(session) is None  # sem promoção de novo: 137 cheio
+
+    result = checkout.start_card_payment(db, session, _card())
+
+    assert result.status == "paid"
+    assert fake.subscriptions[0]["value"] == 137.0
+    db.expire_all()
+    assert db.get(User, user.id).subscription.status == "active"
+
+
 def test_stuck_promo_waits_while_a_charge_is_due_today(monkeypatch, quiet):
     db = TestingSessionLocal()
     fake = FakeAsaas()
