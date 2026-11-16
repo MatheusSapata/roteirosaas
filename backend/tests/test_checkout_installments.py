@@ -453,6 +453,115 @@ def test_buying_again_after_scheduled_cancel_does_not_fail_on_old_subscription(m
     assert db.get(User, user.id).subscription.status == "active"
 
 
+def test_end_and_renew_cancels_67_and_keeps_access_until_due(monkeypatch, quiet):
+    """Giuseppe e outros: a assinatura de 67 é encerrada; a conta segue ativa até o vencimento e depois
+    cai no fluxo de vencido, que cobra a renovação em 137."""
+    db = TestingSessionLocal()
+    fake = FakeAsaas()
+    result = _stuck_session(db, monkeypatch, fake)
+    metadata = dict(result.metadata_json)
+    metadata["promo_migration"] = {"state": "end_and_renew"}
+    result.metadata_json = metadata
+    db.commit()
+    user = db.query(User).filter(User.email == "cliente@example.com").one()
+    valid_until = user.subscription.valid_until
+
+    assert checkout.apply_pending_subscription_values(db, fake) == 1
+
+    assert fake.cancelled == ["sub_antiga"]
+    assert fake.subscriptions == []
+    db.expire_all()
+    user = db.query(User).filter(User.email == "cliente@example.com").one()
+    assert user.subscription.asaas_subscription_id is None  # aviso "assinatura removida" não acha a conta
+    assert user.subscription.status == "active"
+    assert user.subscription.valid_until == valid_until
+    metadata = db.get(CheckoutSession, result.id).metadata_json
+    assert metadata["promo_migration"]["state"] == "ended_awaiting_renewal"
+    assert "pending_subscription_value" not in metadata
+    assert "sub_antiga" in metadata["previous_asaas_subscription_ids"]
+    # Uma vez só.
+    assert checkout.apply_pending_subscription_values(db, fake) == 0
+    assert fake.cancelled == ["sub_antiga"]
+
+
+def test_end_and_renew_retries_when_cancel_fails(monkeypatch, quiet):
+    db = TestingSessionLocal()
+    fake = FakeAsaas()
+    result = _stuck_session(db, monkeypatch, fake)
+    metadata = dict(result.metadata_json)
+    metadata["promo_migration"] = {"state": "end_and_renew"}
+    result.metadata_json = metadata
+    db.commit()
+    alerts: list = []
+    monkeypatch.setattr(checkout, "_alert_subscription_problem", lambda *a, **k: alerts.append(a))
+    monkeypatch.setattr(fake, "cancel_subscription", lambda sid: (_ for _ in ()).throw(checkout.AsaasAPIError({"errors": []})))
+    monkeypatch.setattr(fake, "get_subscription", lambda sid: {"id": sid, "status": "ACTIVE"})
+
+    assert checkout.apply_pending_subscription_values(db, fake) == 0
+    assert alerts
+    db.expire_all()
+    assert db.get(CheckoutSession, result.id).metadata_json["promo_migration"]["state"] == "end_and_renew"
+
+    monkeypatch.setattr(fake, "cancel_subscription", lambda sid: fake.cancelled.append(sid))
+    assert checkout.apply_pending_subscription_values(db, fake) == 1
+    assert fake.cancelled == ["sub_antiga"]
+
+
+def test_expired_after_end_and_renew_goes_past_due_not_inactive(monkeypatch, quiet):
+    from app.services import subscription as subscription_service
+
+    db = TestingSessionLocal()
+    fake = FakeAsaas()
+    result = _stuck_session(db, monkeypatch, fake)
+    metadata = dict(result.metadata_json)
+    metadata["promo_migration"] = {"state": "end_and_renew"}
+    result.metadata_json = metadata
+    db.commit()
+    checkout.apply_pending_subscription_values(db, fake)
+    user = db.query(User).filter(User.email == "cliente@example.com").one()
+    user.subscription.valid_until = datetime.now(timezone.utc) - timedelta(hours=1)
+    db.commit()
+    monkeypatch.setattr(subscription_service, "SessionLocal", TestingSessionLocal)
+
+    subscription_service.expire_subscriptions()
+
+    db.expire_all()
+    assert db.query(User).filter(User.email == "cliente@example.com").one().subscription.status == "past_due"
+
+
+def test_renewal_after_end_and_renew_charges_full_price_subscription(monkeypatch, quiet):
+    from app.services.legacy_renewal import create_renewal_checkout_session
+
+    db = TestingSessionLocal()
+    fake = FakeAsaas()
+    result = _stuck_session(db, monkeypatch, fake)
+    metadata = dict(result.metadata_json)
+    metadata["promo_migration"] = {"state": "end_and_renew"}
+    result.metadata_json = metadata
+    db.commit()
+    checkout.apply_pending_subscription_values(db, fake)
+    user = db.query(User).filter(User.email == "cliente@example.com").one()
+    user.subscription.status = "past_due"
+    db.commit()
+    fake.cancelled.clear()
+
+    renewal = create_renewal_checkout_session(db, user)
+    assert renewal.amount == Decimal("137.00")
+    assert checkout.session_first_payment_amount(renewal) is None
+    renewal.asaas_customer_id = "cus_1"
+    db.commit()
+    paid = checkout.start_card_payment(db, renewal, _card())
+
+    assert paid.status == "paid"
+    sub = fake.subscriptions[-1]
+    assert sub["value"] == 137.0 and "creditCard" in sub
+    assert fake.cancelled == []  # a assinatura de 67 já tinha saído da conta
+    db.expire_all()
+    user = db.query(User).filter(User.email == "cliente@example.com").one()
+    assert user.subscription.status == "active"
+    assert user.subscription.asaas_subscription_id == "sub_novo"
+
+
 def test_stuck_promo_waits_while_a_charge_is_due_today(monkeypatch, quiet):
     db = TestingSessionLocal()
     fake = FakeAsaas()
