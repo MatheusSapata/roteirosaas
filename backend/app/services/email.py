@@ -123,12 +123,19 @@ def _plan_label(plan_key: str | None) -> str:
     if not plan_key:
         return "seu plano"
     mapping = {
-        "essencial": "plano Essencial",
-        "growth": "plano Growth",
-        "infinity": "plano Infinity",
+        "essencial": "plano Profissional",
+        "professional": "plano Profissional",
+        "profissional": "plano Profissional",
+        "growth": "plano Agência",
+        "agency": "plano Agência",
+        "agencia": "plano Agência",
+        "infinity": "plano Escala",
+        "scale": "plano Escala",
+        "escala": "plano Escala",
         "teste": "plano Teste",
+        "test": "plano Teste",
     }
-    return mapping.get(plan_key.lower(), f"plano {plan_key}")
+    return mapping.get(plan_key.strip().lower(), f"plano {plan_key}")
 
 
 def _cycle_label(cycle: str | None) -> str:
