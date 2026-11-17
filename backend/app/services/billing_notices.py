@@ -131,7 +131,7 @@ STEP_BY_KEY = {step.key: step for step in STEPS}
 VARIABLES: tuple[tuple[str, str], ...] = (
     ("nome", "Primeiro nome do cliente"),
     ("nome_completo", "Nome completo"),
-    ("plano", "Plano (ex.: plano Essencial)"),
+    ("plano", "Plano (ex.: plano Escala)"),
     ("valor", "Valor da fatura"),
     ("vencimento", "Data de vencimento"),
     ("link", "Link para pagar ou ver a fatura"),
@@ -538,7 +538,7 @@ def build_context(user: User | None, payment: dict[str, Any], today: date | None
 SAMPLE_CONTEXT = {
     "nome": "Maria",
     "nome_completo": "Maria Souza",
-    "plano": "plano Essencial",
+    "plano": "plano Escala",
     "valor": "R$ 97,00",
     "vencimento": "10/12/2026",
     "link": "https://www.asaas.com/i/exemplo",

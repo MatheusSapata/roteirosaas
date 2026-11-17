@@ -178,7 +178,7 @@ class SystemEmail:
 
 EMAIL_FIELDS = ("subject", "eyebrow", "title", "body", "button_label", "note")
 _WELCOME_VARS = (("nome", "Nome do cliente"), ("plano", "Plano"), ("ciclo", "Ciclo (mensal, anual…)"), ("link", "Link para criar a senha"))
-_WELCOME_SAMPLE = {"nome": "Maria Souza", "plano": "plano Essencial", "ciclo": "ciclo anual", "link": "https://roteiroonline.com/create-password"}
+_WELCOME_SAMPLE = {"nome": "Maria Souza", "plano": "plano Escala", "ciclo": "ciclo anual", "link": "https://roteiroonline.com/create-password"}
 
 SYSTEM_EMAILS: tuple[SystemEmail, ...] = (
     SystemEmail(
