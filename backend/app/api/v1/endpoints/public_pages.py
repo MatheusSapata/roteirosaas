@@ -14,6 +14,7 @@ from app.models.agency_user import AgencyUser
 from app.models.page import Page
 from app.models.user import User
 from app.schemas.page import PublicPageOut
+from app.services.custom_domain_links import strip_agency_slug_from_links
 from app.services.flight_sections import inject_flight_sections_into_config
 from app.services.page_tags import inject_tag_links_into_config
 from app.services.public_page_resolver import PublicPageResolverService
@@ -93,11 +94,13 @@ def build_agency_profile(agency: Agency) -> dict[str, object]:
     }
 
 
-def serialize_public_page(page: Page, agency_slug: str, db: Session) -> PublicPageOut:
+def serialize_public_page(page: Page, agency_slug: str, db: Session, *, custom_domain: bool = False) -> PublicPageOut:
     plan = resolve_agency_plan(db, page.agency_id)
     config = apply_free_footer(normalize_config(page.config_json), plan) or {}
     config = inject_flight_sections_into_config(db, page.id, config, include_lookup_status=False)
     config = inject_tag_links_into_config(db, page, config)
+    if custom_domain:
+        config = strip_agency_slug_from_links(config, agency_slug)
     branding = {
         "agency_name": page.agency.name,
         "logo_url": page.agency.logo_url,
@@ -241,4 +244,4 @@ def get_public_page_by_host(
         page = _find_page_by_slug(db, resolution.agency_slug, resolution.page_slug)
     else:
         page = _find_default_page(db, resolution.agency_slug)
-    return serialize_public_page(page, resolution.agency_slug, db)
+    return serialize_public_page(page, resolution.agency_slug, db, custom_domain=True)
