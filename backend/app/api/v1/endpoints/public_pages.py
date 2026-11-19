@@ -124,6 +124,14 @@ def serialize_public_page(page: Page, agency_slug: str, db: Session, *, custom_d
     )
 
 
+def strip_custom_domain_links(page_out: PublicPageOut, agency_slug: str, db: Session) -> PublicPageOut:
+    """Mesma limpeza de links do serialize_public_page, para quem já tem a página serializada."""
+    agency_id = db.query(Page.agency_id).filter(Page.id == page_out.id).scalar()
+    page_slugs = {row[0] for row in db.query(Page.slug).filter(Page.agency_id == agency_id).all()} if agency_id else set()
+    page_out.config = strip_agency_slug_from_links(page_out.config, agency_slug, page_slugs)
+    return page_out
+
+
 def base_page_query(db: Session):
     return (
         db.query(Page)

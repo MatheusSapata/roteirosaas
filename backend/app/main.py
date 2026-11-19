@@ -185,7 +185,7 @@ def _serve_public_page(
         if resolution.mode == "platform_path" and settings.platform_primary_domain:
             host_for_url = settings.platform_primary_domain
         page_url = f"{resolution.scheme or 'https'}://{host_for_url}{request.url.path}"
-        html = render_public_page_html(resolution.agency_slug, resolution.page_slug, page_url=page_url, db=db)
+        html = render_public_page_html(resolution.agency_slug, resolution.page_slug, page_url=page_url, db=db, custom_domain=resolution.mode == "custom_domain")
         return _frontend_response(html)
     except PublicPageNotAvailable:
         # Retorna o HTML padrao para permitir que o SPA trate o erro normalmente.
