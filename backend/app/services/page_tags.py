@@ -187,6 +187,20 @@ def agency_page_base(db: Session, agency: Agency) -> str:
     return "/" if has_domain or not agency.slug else f"/{agency.slug}/"
 
 
+# Campos de um card da tag que a agência pode ajustar à mão (guardados em `tagOverrides`, por página).
+# O link (url) fica de fora: o card sempre leva para a própria página.
+OVERRIDE_FIELDS = (
+    "image", "title", "description", "buttonLabel", "showDates", "departureDate", "returnDate",
+    "showPrice", "priceValue", "pricePrefix", "priceSuffix", "highlights",
+)
+
+
+def _overrides_for(section: dict, page_id: int) -> dict:
+    overrides = section.get("tagOverrides")
+    entry = overrides.get(str(page_id)) if isinstance(overrides, dict) else None
+    return entry if isinstance(entry, dict) else {}
+
+
 def resolve_tag_section(
     db: Session,
     section: dict,
@@ -225,7 +239,9 @@ def resolve_tag_section(
             continue
         data = page_card_data(page)
         reason = ""
-        if exclude_current and host_page_id and page.id == host_page_id:
+        if _overrides_for(section, page.id).get("hidden") is True:
+            reason = "hidden"
+        elif exclude_current and host_page_id and page.id == host_page_id:
             reason = "current"
         elif page.status != PageStatus.published:
             reason = "draft"
@@ -280,6 +296,10 @@ def resolve_tag_section(
                 "priceSuffix": {"pt": "por pessoa", "es": "por persona"},
             }
         )
+        override = _overrides_for(section, page.id)
+        for field in OVERRIDE_FIELDS:
+            if field in override:
+                cards[-1][field] = override[field]
     return cards, excluded
 
 

@@ -72,7 +72,7 @@ class TagCardsRequest(BaseModel):
 class TagCardExcluded(BaseModel):
     pageId: int
     title: str
-    reason: Literal["current", "draft", "past", "limit"]
+    reason: Literal["current", "draft", "past", "limit", "hidden"]
 
 
 class TagCardsOut(BaseModel):

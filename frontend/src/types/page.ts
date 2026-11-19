@@ -581,6 +581,8 @@ export interface LinksSection extends SectionBase {
   tagLimit?: number;
   tagHidePast?: boolean;
   tagExcludeCurrent?: boolean;
+  /** Ajustes à mão dos cards da tag, por id da página ("hidden" oculta o card só nesta seção). */
+  tagOverrides?: Record<string, Partial<LinkCardItem> & { hidden?: boolean }>;
   tagShowDates?: boolean;
   tagShowPrice?: boolean;
   tagButtonLabel?: LocalizedString;

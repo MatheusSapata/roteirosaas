@@ -84,6 +84,36 @@
             </ul>
           </template>
         </div>
+        <button v-if="selectedTagIds.length" type="button" class="ved-inline-btn" :aria-expanded="editingCards" @click="editingCards = !editingCards">
+          {{ editingCards ? "Fechar edição individual" : "Editar roteiros da tag individualmente" }}
+        </button>
+        <template v-if="editingCards && selectedTagIds.length">
+          <p class="ved-hint">
+            Mude foto, textos, datas, preço, botão e destaques de cada card. A regra da tag continua valendo: roteiros novos entram sozinhos
+            e o que você não mexer segue a página.
+          </p>
+          <EdList
+            fixed
+            remove-label="Ocultar nesta seção"
+            :items="items"
+            :item-title="item => readText(item.title)"
+            :new-item="newItem"
+            add-label=""
+            item-label="Roteiro"
+            @update:items="onTagItemsChange"
+          >
+            <template #default="{ item, update }">
+              <LinkCardFields :item="item" :update="update" />
+              <button v-if="hasOverride(item)" type="button" class="ved-inline-btn" @click="resetCard(item)">Voltar ao original</button>
+            </template>
+          </EdList>
+          <ul v-if="hiddenRows.length" class="fl-out fl-hidden">
+            <li v-for="row in hiddenRows" :key="row.pageId">
+              <span>{{ row.title }} (oculto nesta seção)</span>
+              <button type="button" class="ved-inline-btn" @click="showAgain(row.pageId)">Mostrar de novo</button>
+            </li>
+          </ul>
+        </template>
       </EdGroup>
       <EdGroup v-else title="Links/Roteiros" :count="`${items.length} ${items.length === 1 ? 'item' : 'itens'}`">
         <EdList
@@ -120,67 +150,7 @@
               </button>
               <p v-if="fetchError" class="ved-hint">{{ fetchError }}</p>
             </template>
-            <ImageUploadField layout="compact" enable-crop edit-label="Cortar" editor-title="Cortar foto" :model-value="item.image || ''" label="Foto" @update:model-value="update({ image: $event || '' })" />
-            <EdText :model-value="readText(item.title)" label="Título" @update:model-value="update({ title: writeText(item.title, $event) })" />
-            <EdText :model-value="readText(item.description)" label="Texto" multiline @update:model-value="update({ description: writeText(item.description, $event) })" />
-            <EdToggle :model-value="!!item.showDates" label="Mostrar datas" @update:model-value="update({ showDates: $event })" />
-            <div v-if="item.showDates" class="ved-pair">
-              <EdText :model-value="item.departureDate || ''" label="Saída" type="date" @update:model-value="update({ departureDate: $event })" />
-              <EdText :model-value="item.returnDate || ''" label="Volta" type="date" @update:model-value="update({ returnDate: $event })" />
-            </div>
-            <EdToggle :model-value="!!item.showPrice" label="Mostrar preço" @update:model-value="update({ showPrice: $event })" />
-            <template v-if="item.showPrice">
-              <EdText :model-value="item.priceValue || ''" label="Preço" placeholder="R$ 15.900" @update:model-value="update({ priceValue: $event })" />
-              <div class="ved-pair">
-                <EdText :model-value="readText(item.pricePrefix)" label="Antes do preço" placeholder="a partir de" @update:model-value="update({ pricePrefix: writeText(item.pricePrefix, $event) })" />
-                <EdText :model-value="readText(item.priceSuffix)" label="Depois do preço" placeholder="por pessoa" @update:model-value="update({ priceSuffix: writeText(item.priceSuffix, $event) })" />
-              </div>
-            </template>
-            <EdText :model-value="readText(item.buttonLabel)" label="Texto do botão" placeholder="Ver roteiro" @update:model-value="update({ buttonLabel: writeText(item.buttonLabel, $event) })" />
-            <EdToggle v-if="item.source === 'external'" :model-value="item.openInNewTab !== false" label="Abrir em nova aba" @update:model-value="update({ openInNewTab: $event })" />
-            <div class="ved-field">
-              <span class="ved-label">Destaques</span>
-              <span class="ved-hint">Faixas sobre a foto, tipo "LOTADO". Até 3 por card, cada uma com texto e, se quiser, um ícone.</span>
-              <EdList
-                :items="item.highlights || []"
-                :item-title="h => readText(h.text)"
-                :new-item="newHighlight"
-                add-label="Adicionar destaque"
-                item-label="Destaque"
-                :max="3"
-                @update:items="update({ highlights: $event })"
-              >
-                <template #default="{ item: highlight, update: updateHighlight }">
-                  <EdText :model-value="readText(highlight.text)" label="Texto" placeholder="LOTADO" @update:model-value="updateHighlight({ text: writeText(highlight.text, $event) })" />
-                  <EdColor :model-value="highlight.color" label="Cor de fundo" @update:model-value="updateHighlight({ color: $event })" />
-                  <div class="ved-field">
-                    <span class="ved-label">Ícone (opcional)</span>
-                    <span class="ved-hint">Escolha da lista de turismo, ou cole um emoji (ex: com o atalho de emoji do sistema — Windows "Win + ." ou Mac "Cmd + Ctrl + Espaço").</span>
-                    <div class="fl-icon-row">
-                      <TravelIconPicker :model-value="isLibraryIcon(highlight.icon) ? highlight.icon || '' : ''" @update:model-value="updateHighlight({ icon: $event })" />
-                      <input
-                        class="ved-input fl-icon-emoji"
-                        type="text"
-                        maxlength="8"
-                        placeholder="ou emoji"
-                        :value="isLibraryIcon(highlight.icon) ? '' : highlight.icon || ''"
-                        @input="updateHighlight({ icon: ($event.target as HTMLInputElement).value })"
-                      />
-                    </div>
-                    <EdSeg
-                      v-if="highlight.icon"
-                      :model-value="highlight.iconPosition === 'right' ? 'right' : 'left'"
-                      label="Lado do ícone"
-                      :options="[
-                        { value: 'left', label: 'Esquerda' },
-                        { value: 'right', label: 'Direita' }
-                      ]"
-                      @update:model-value="updateHighlight({ iconPosition: $event })"
-                    />
-                  </div>
-                </template>
-              </EdList>
-            </div>
+            <LinkCardFields :item="item" :update="update" />
           </template>
         </EdList>
       </EdGroup>
@@ -213,13 +183,10 @@ import { errorDetail, usePageTags } from "../../../../composables/usePageTags";
 import { useAgencyStore } from "../../../../store/useAgencyStore";
 import { tagStyle } from "../../../../types/pageTag";
 import { pageCardPrefillFields } from "../../../../utils/pageCardPrefill";
-import { iconValueName } from "../../../../utils/travelIcons";
-import type { LinkCardItem, LinkHighlight, LinksSection } from "../../../../types/page";
-import ImageUploadField from "../../inputs/ImageUploadField.vue";
-import TravelIconPicker from "../../inputs/TravelIconPicker.vue";
+import type { LinkCardItem, LinksSection } from "../../../../types/page";
+import LinkCardFields from "./LinkCardFields.vue";
 import EdAlign from "../EdAlign.vue";
 import EdBackground from "../EdBackground.vue";
-import EdColor from "../EdColor.vue";
 import EdGroup from "../EdGroup.vue";
 import EdHeading from "../EdHeading.vue";
 import EdLayouts from "../EdLayouts.vue";
@@ -250,9 +217,6 @@ const newItem = (): LinkCardItem => ({
   showPrice: false,
   highlights: []
 });
-const newHighlight = (): LinkHighlight => ({ id: `hl-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, text: "", color: "#F59E0B", icon: "" });
-// Ícone da lista de turismo ("icon:<chave>") ou emoji livre (qualquer outro texto).
-const isLibraryIcon = (icon?: string) => !!iconValueName(icon);
 
 const { pages, loading: loadingPages, load: loadPages, pageUrl } = useAgencyPages();
 onMounted(loadPages);
@@ -263,7 +227,7 @@ const route = useRoute();
 const agencyStore = useAgencyStore();
 const { tags: agencyTags, load: loadTags } = usePageTags();
 const LIMIT_OPTIONS = [4, 6, 8, 12, 0];
-const REASONS: Record<string, string> = { current: "é esta página", draft: "rascunho", past: "viagem já saiu", limit: "passou do limite" };
+const REASONS: Record<string, string> = { current: "é esta página", draft: "rascunho", past: "viagem já saiu", limit: "passou do limite", hidden: "oculto nesta seção" };
 const tagMode = computed(() => props.modelValue.mode === "tag");
 const isGrid = computed(() => props.modelValue.carouselEnabled === false);
 const selectedTagIds = computed(() => props.modelValue.tagIds || []);
@@ -271,6 +235,54 @@ const tagLimit = computed(() => {
   const limit = props.modelValue.tagLimit ?? 12;
   return isGrid.value && (!limit || limit > 8) ? 8 : limit;
 });
+// Edição individual dos cards da tag: cada ajuste fica em tagOverrides (por página) e vale por cima do que a tag gera.
+const OVERRIDE_FIELDS = ["image", "title", "description", "buttonLabel", "showDates", "departureDate", "returnDate", "showPrice", "priceValue", "pricePrefix", "priceSuffix", "highlights"] as const;
+const editingCards = ref(false);
+const hiddenRows = computed(() => excluded.value.filter(row => row.reason === "hidden"));
+const hasOverride = (item: LinkCardItem) => {
+  const entry = item.pageId ? props.modelValue.tagOverrides?.[String(item.pageId)] : undefined;
+  return !!entry && Object.keys(entry).some(key => key !== "hidden");
+};
+const setOverrides = (overrides: NonNullable<LinksSection["tagOverrides"]>, extra: Partial<LinksSection> = {}) => {
+  patch({ tagOverrides: Object.keys(overrides).length ? overrides : undefined, ...extra });
+};
+const onTagItemsChange = (next: LinkCardItem[]) => {
+  const overrides = { ...(props.modelValue.tagOverrides || {}) };
+  next.forEach(card => {
+    const current = items.value.find(item => item.id === card.id);
+    if (!current || !card.pageId) return;
+    const key = String(card.pageId);
+    OVERRIDE_FIELDS.forEach(field => {
+      if (JSON.stringify(card[field]) !== JSON.stringify(current[field])) overrides[key] = { ...overrides[key], [field]: card[field] };
+    });
+  });
+  items.value.forEach(current => {
+    if (current.pageId && !next.some(card => card.id === current.id)) overrides[String(current.pageId)] = { ...overrides[String(current.pageId)], hidden: true };
+  });
+  setOverrides(overrides, { items: next });
+  // Card ocultado: busca de novo para ele aparecer na lista de ocultos com o botão "Mostrar de novo".
+  if (next.length < items.value.length) setTimeout(resolveCards, 0);
+};
+const resetCard = (item: LinkCardItem) => {
+  if (!item.pageId) return;
+  const overrides = { ...(props.modelValue.tagOverrides || {}) };
+  const key = String(item.pageId);
+  const keepHidden = overrides[key]?.hidden;
+  if (keepHidden) overrides[key] = { hidden: true };
+  else delete overrides[key];
+  setOverrides(overrides);
+  resolveCards();
+};
+const showAgain = (pageId: number) => {
+  const overrides = { ...(props.modelValue.tagOverrides || {}) };
+  const key = String(pageId);
+  const { hidden: _hidden, ...rest } = overrides[key] || {};
+  if (Object.keys(rest).length) overrides[key] = rest;
+  else delete overrides[key];
+  setOverrides(overrides);
+  resolveCards();
+};
+
 const resolving = ref(false);
 const resolveError = ref("");
 const excluded = ref<{ pageId: number; title: string; reason: string }[]>([]);
@@ -397,17 +409,6 @@ const setLayout = (layout: string) => {
 </script>
 
 <style scoped>
-.fl-icon-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 14px;
-}
-.fl-icon-emoji {
-  width: 100px;
-  text-align: center;
-  font-size: 18px;
-}
 .fl-chips {
   display: flex;
   flex-wrap: wrap;

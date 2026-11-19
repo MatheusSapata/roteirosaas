@@ -11,7 +11,7 @@
         @drop.prevent="drop(index)"
       >
         <div class="ved-item-head">
-          <span class="ved-item-grip" draggable="true" title="Arraste para reordenar" @dragstart="dragFrom = index" @dragend="dragFrom = dragOver = null">
+          <span v-if="!fixed" class="ved-item-grip" draggable="true" title="Arraste para reordenar" @dragstart="dragFrom = index" @dragend="dragFrom = dragOver = null">
             <GripVerticalIcon aria-hidden="true" />
           </span>
           <button type="button" class="ved-item-toggle" :aria-expanded="openIndex === index" @click="openIndex = openIndex === index ? null : index">
@@ -22,13 +22,13 @@
         <div v-if="openIndex === index" class="ved-item-body">
           <slot :item="item" :index="index" :update="(changes: Record<string, any>) => update(index, changes)" />
           <div class="ved-item-actions">
-            <button type="button" :disabled="!!max && items.length >= max" @click="duplicate(index)"><CopyIcon aria-hidden="true" />Duplicar</button>
-            <button type="button" class="danger" :disabled="items.length <= (min || 0)" @click="remove(index)"><Trash2Icon aria-hidden="true" />Excluir</button>
+            <button v-if="!fixed" type="button" :disabled="!!max && items.length >= max" @click="duplicate(index)"><CopyIcon aria-hidden="true" />Duplicar</button>
+            <button type="button" class="danger" :disabled="items.length <= (min || 0)" @click="remove(index)"><Trash2Icon aria-hidden="true" />{{ removeLabel || "Excluir" }}</button>
           </div>
         </div>
       </li>
     </ol>
-    <button type="button" class="ved-add" :disabled="!!max && items.length >= max" @click="add">
+    <button v-if="!fixed" type="button" class="ved-add" :disabled="!!max && items.length >= max" @click="add">
       <PlusIcon aria-hidden="true" />
       {{ addLabel }}
     </button>
@@ -47,6 +47,9 @@ const props = defineProps<{
   itemLabel?: string;
   min?: number;
   max?: number;
+  /** Lista fixa: sem adicionar, duplicar nem reordenar (só editar e remover). */
+  fixed?: boolean;
+  removeLabel?: string;
 }>();
 const emit = defineEmits<{ (e: "update:items", value: T[]): void }>();
 
