@@ -207,6 +207,29 @@
       </div>
     </Teleport>
 
+    <Teleport to="body" v-if="logoHomeModal.open">
+      <div class="fixed inset-0 z-[120] flex items-center justify-center px-4 page-editor-overlay">
+        <div class="editor-dialog-shell w-full max-w-lg p-6">
+          <h3 class="text-xl font-bold text-slate-900">
+            {{ logoHomeModal.target ? "Ativar o redirecionamento da logo?" : "Desativar o redirecionamento da logo?" }}
+          </h3>
+          <p class="mt-2 text-sm text-slate-600">
+            {{ logoHomeModal.target
+              ? "Quer ativar o redirecionamento para a página principal só nesta página ou em todas as páginas?"
+              : "Quer desativar o redirecionamento para a página principal só nesta página ou em todas as páginas?" }}
+          </p>
+          <p v-if="logoHomeModal.error" class="mt-2 text-sm text-red-600" role="alert">{{ logoHomeModal.error }}</p>
+          <div class="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <button type="button" class="editor-dialog-action editor-dialog-action--neutral" :disabled="logoHomeModal.saving" @click="logoHomeModal.open = false">Cancelar</button>
+            <button type="button" class="editor-dialog-action editor-dialog-action--primary" :disabled="logoHomeModal.saving" @click="applyLogoHomeChange(false)">Só esta página</button>
+            <button type="button" class="editor-dialog-action editor-dialog-action--primary" :disabled="logoHomeModal.saving" @click="applyLogoHomeChange(true)">
+              {{ logoHomeModal.saving ? "Salvando..." : "Todas as páginas" }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <Teleport to="body" v-if="unsavedSectionModal.open">
       <div class="fixed inset-0 z-[120] flex items-center justify-center px-4 page-editor-overlay">
         <div class="editor-dialog-shell w-full max-w-lg p-6">
@@ -608,6 +631,14 @@
                 placeholder="Ex.: Pacote completo com transporte, hospedagem e ingressos."
                 @update:model-value="pageShortDescription = $event"
               />
+              <template v-if="showLogoHomeToggle">
+                <EdToggle
+                  :model-value="logoHomeEnabled"
+                  label="Logo leva para a página principal"
+                  hint="Ao clicar na logo do Banner Inicial ou do Menu, o visitante vai para a página principal da agência."
+                  @update:model-value="requestLogoHomeChange"
+                />
+              </template>
               <ImageUploadField
                 :model-value="pageShareImage"
                 @update:model-value="pageShareImage = $event || ''"
@@ -2519,7 +2550,7 @@ const computeStateSnapshot = () => {
   return JSON.stringify({
     title: pageTitle.value,
     slug: pageSlug.value,
-    general: { shortDescription: pageShortDescription.value, shareImage: pageShareImage.value },
+    general: { shortDescription: pageShortDescription.value, shareImage: pageShareImage.value, logoHomeRedirect: pageLogoHomeOverride.value },
     theme: themeSnapshot,
     editor: editorSnapshot,
     design: useLegacyDesign.value ? "legacy" : "default",
@@ -4611,6 +4642,46 @@ let sectionModalResizeObserver: ResizeObserver | null = null;
 const unsavedFlightSegmentModal = ref({ open: false });
 // switching: a pessoa clicou em outra seção (os botões falam em abrir a outra, não em sair).
 const unsavedSectionModal = ref({ open: false, saving: false, switching: false });
+// Logo do Banner Inicial e do Menu leva para a página principal. null = segue a regra da agência.
+const pageLogoHomeOverride = ref<boolean | null>(null);
+const logoHomeModal = ref({ open: false, target: false, saving: false, error: "" });
+const isHomePage = computed(() => {
+  const homeId = currentAgency.value?.default_page_id;
+  return !!page.value && (!!(page.value as any).is_default || (!!homeId && homeId === page.value.id));
+});
+const agencyLogoHomeOn = computed(() => currentAgency.value?.logo_home_redirect !== false);
+const logoHomeEnabled = computed(() => pageLogoHomeOverride.value ?? agencyLogoHomeOn.value);
+const showLogoHomeToggle = computed(() => !!currentAgency.value?.default_page_id && !isHomePage.value);
+const requestLogoHomeChange = (next: boolean) => {
+  // Voltar ao que a agência já usa não pede confirmação: só tira a exceção desta página.
+  if (next && agencyLogoHomeOn.value) {
+    pageLogoHomeOverride.value = null;
+    return;
+  }
+  logoHomeModal.value = { open: true, target: next, saving: false, error: "" };
+};
+const applyLogoHomeChange = async (allPages: boolean) => {
+  const target = logoHomeModal.value.target;
+  if (!allPages) {
+    pageLogoHomeOverride.value = target === agencyLogoHomeOn.value ? null : target;
+    logoHomeModal.value.open = false;
+    return;
+  }
+  const agency = currentAgency.value;
+  if (!agency) return;
+  logoHomeModal.value.saving = true;
+  logoHomeModal.value.error = "";
+  try {
+    await api.put(`/agencies/${agency.id}`, { logo_home_redirect: target });
+    agency.logo_home_redirect = target;
+    pageLogoHomeOverride.value = null;
+    logoHomeModal.value.open = false;
+  } catch (err) {
+    logoHomeModal.value.error = (err as any)?.response?.data?.detail || "Não foi possível salvar. Tente de novo.";
+  } finally {
+    logoHomeModal.value.saving = false;
+  }
+};
 let pendingUnsavedSectionAction: null | (() => void | Promise<void>) = null;
 const sectionCatalog = ref<SectionCatalogItem[]>([]);
 const sectionPicker = ref<{ open: boolean; index: number | null }>({ open: false, index: null });
@@ -5444,7 +5515,8 @@ const buildConfig = (): PageConfig => ({
   ...(useLegacyDesign.value ? { design: "legacy" as const } : {}),
   general: {
     shortDescription: pageShortDescription.value || "",
-    ...(pageShareImage.value ? { shareImage: pageShareImage.value } : {})
+    ...(pageShareImage.value ? { shareImage: pageShareImage.value } : {}),
+    ...(pageLogoHomeOverride.value !== null ? { logoHomeRedirect: pageLogoHomeOverride.value } : {})
   },
   theme: { ...theme.value, color1: colorA.value, color2: colorB.value },
   editor: { ...editorPrefs.value, previewEnabled: true, previewDevice: previewDevice.value },
@@ -6040,6 +6112,7 @@ const hydrateFromConfig = (config?: PageConfig | string | null) => {
     const general = (parsed as any).general;
     pageShortDescription.value = typeof general?.shortDescription === "string" ? general.shortDescription : "";
     pageShareImage.value = typeof general?.shareImage === "string" ? general.shareImage : "";
+    pageLogoHomeOverride.value = typeof general?.logoHomeRedirect === "boolean" ? general.logoHomeRedirect : null;
 
     if (parsed.sections && Array.isArray(parsed.sections) && parsed.sections.length) {
       // Textos de exemplo que a seção antiga gravava e nunca mostrava chegam vazios ao editor.

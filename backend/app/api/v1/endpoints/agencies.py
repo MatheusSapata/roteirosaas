@@ -1,3 +1,4 @@
+import json
 import re
 import unicodedata
 
@@ -9,10 +10,27 @@ from app.api.deps import get_current_active_user, get_db, require_agency_members
 from app.models.agency import Agency
 from app.models.agency_social_link import AgencySocialLink
 from app.models.agency_user import AgencyUser
+from app.models.page import Page
 from app.models.user import User
 from app.schemas.agency import AgencyCreate, AgencyOut, AgencyUpdate, AgencySocialLinkCreate
 
 router = APIRouter()
+
+
+def clear_logo_home_overrides(db: Session, agency_id: int) -> None:
+    """Tira de todas as páginas da agência a exceção `general.logoHomeRedirect`."""
+    for page in db.query(Page).filter(Page.agency_id == agency_id).all():
+        config = page.config_json
+        if isinstance(config, str):
+            try:
+                config = json.loads(config)
+            except json.JSONDecodeError:
+                continue
+        general = config.get("general") if isinstance(config, dict) else None
+        if isinstance(general, dict) and "logoHomeRedirect" in general:
+            new_config = {**config, "general": {k: v for k, v in general.items() if k != "logoHomeRedirect"}}
+            page.config_json = new_config
+            db.add(page)
 
 
 def _normalize_slug(value: str, max_length: int = 30, *, allow_dots: bool = False) -> str:
@@ -109,6 +127,12 @@ def update_agency(
 
     if "name" in update_data and update_data["name"]:
         update_data["name"] = update_data["name"].strip()
+
+    if "logo_home_redirect" in update_data and update_data["logo_home_redirect"] is None:
+        update_data.pop("logo_home_redirect")
+    elif "logo_home_redirect" in update_data:
+        # Vale para todas as páginas: some qualquer exceção que alguma página tenha aberto.
+        clear_logo_home_overrides(db, agency.id)
 
     for key, value in update_data.items():
         setattr(agency, key, value)

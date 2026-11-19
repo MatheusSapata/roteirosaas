@@ -17,7 +17,7 @@
             <div v-if="!props.hideLogo" class="flex w-full justify-center mt-auto mb-0" :class="animationClasses(1)">
               <template v-if="logoSrc">
                 <div class="drop-shadow-xl overflow-hidden" :style="logoBoxStyle">
-                  <img :src="logoSrc" alt="Logo" class="h-full w-auto object-contain" :style="logoImageStyle" />
+                  <LogoHomeLink><img :src="logoSrc" alt="Logo" class="h-full w-auto object-contain" :style="logoImageStyle" /></LogoHomeLink>
                 </div>
               </template>
               <span
@@ -129,13 +129,13 @@
               ]"
             >
               <div v-if="!props.hideLogo" class="flex items-center gap-3" :class="animationClasses(1)">
-                <img
+                <LogoHomeLink v-if="logoSrc"><img
                   v-if="logoSrc"
                   :src="logoSrc"
                   alt="Logo"
                   class="w-auto drop-shadow-lg object-contain"
                   :style="logoImageStyle"
-                />
+                /></LogoHomeLink>
                 <div v-else class="rounded-full bg-white/20 px-4 py-1 text-sm font-semibold uppercase tracking-[0.25em]">
                   {{ branding.agency_name || fallbackBrandName }}
                 </div>
@@ -283,6 +283,7 @@ import { getReadableTextColor } from "../../utils/colorContrast";
 import type { HeroSection } from "../../types/page";
 import { createLocalizer, getCurrentLanguage } from "../../utils/i18n";
 import { heroPhoto } from "../../utils/heroPhoto";
+import LogoHomeLink from "./LogoHomeLink.vue";
 
 const props = defineProps<{
   section: HeroSection;

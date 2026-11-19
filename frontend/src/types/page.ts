@@ -686,6 +686,8 @@ export interface PageConfig {
     shortDescription?: string;
     /** Imagem do link compartilhado. Vazia = usa a do Banner Inicial. */
     shareImage?: string;
+    /** Exceção desta página à regra da agência: logo leva (true) ou não (false) à página principal. */
+    logoHomeRedirect?: boolean;
   };
 }
 

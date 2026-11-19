@@ -20,6 +20,7 @@ export interface Agency {
   secondary_color?: string | null;
   contact_email?: string | null;
   default_page_id?: number | null;
+  logo_home_redirect?: boolean;
   cta_whatsapp?: string | null;
   description?: string | null;
   social_links?: AgencySocialLink[];

@@ -50,7 +50,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed, inject, onMounted, onUnmounted, ref } from "vue";
+import { LOGO_HOME_PATH_KEY } from "./livePage";
 import { siFacebook, siInstagram, siLinkedin, siTiktok, siYoutube } from "simple-icons";
 import type { HeaderLinkItem, HeaderSection } from "../../../types/page";
 import { resolveMediaUrl, responsiveSrcset } from "../../../utils/media";
@@ -126,8 +127,12 @@ const handleLinkClick = (item: { raw: HeaderLinkItem }, event: MouseEvent) => {
   event.preventDefault();
   document.getElementById(item.raw.target.replace(/^#/, ""))?.scrollIntoView({ behavior: "smooth", block: "start" });
 };
+const homePath = inject(LOGO_HOME_PATH_KEY, null);
+// Sem destino escolhido à mão (padrão "topo"), a logo leva para a página principal da agência.
+const logoToHome = computed(() => !!homePath?.value && (props.section.logoActionType || "top") === "top");
 const isLogoLink = computed(() => props.section.logoActionType === "page" || props.section.logoActionType === "external");
 const logoHref = computed(() => {
+  if (logoToHome.value) return homePath?.value || "#";
   const type = props.section.logoActionType || "top";
   const target = (props.section.logoActionTarget || "").trim();
   if (type === "section") return target ? `#${target.replace(/^#/, "")}` : "#";
@@ -136,6 +141,7 @@ const logoHref = computed(() => {
   return "#";
 });
 const handleLogoClick = (event: MouseEvent) => {
+  if (logoToHome.value) return;
   const type = props.section.logoActionType || "top";
   if (type === "none") return event.preventDefault();
   if (type === "top") {
