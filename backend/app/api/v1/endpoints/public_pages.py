@@ -100,7 +100,8 @@ def serialize_public_page(page: Page, agency_slug: str, db: Session, *, custom_d
     config = inject_flight_sections_into_config(db, page.id, config, include_lookup_status=False)
     config = inject_tag_links_into_config(db, page, config)
     if custom_domain:
-        config = strip_agency_slug_from_links(config, agency_slug)
+        page_slugs = {row[0] for row in db.query(Page.slug).filter(Page.agency_id == page.agency_id).all()}
+        config = strip_agency_slug_from_links(config, agency_slug, page_slugs)
     branding = {
         "agency_name": page.agency.name,
         "logo_url": page.agency.logo_url,
