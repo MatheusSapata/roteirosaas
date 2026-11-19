@@ -1097,6 +1097,32 @@ def _confirmed_recently(payment: dict[str, Any], today: date) -> bool:
     return (today - paid_on).days <= CONFIRMED_MAX_AGE_DAYS
 
 
+OWN_REFERENCE_PREFIXES = ("checkout_upgrade:", "checkout_renewal:", "checkout:", "co:")
+
+
+def _is_own_payment(user: User, payment: dict[str, Any]) -> bool:
+    """O pagamento é do Roteiro Online? A conta Asaas é a mesma do ViajeOn, então o webhook também
+    recebe pagamentos de lá (ex.: combo da Black). Esses o ViajeOn avisa; o Roteiro não manda nada.
+    - Conta de combo (provider "viajeon"): o aviso é sempre do ViajeOn.
+    - Referência nossa (checkout, id:plano:ciclo) ou assinatura Asaas da conta: é nosso.
+    - Referência de outro sistema: não é nosso, mesmo que o cliente do Asaas coincida.
+    - Sem referência (ex.: Pix Automático): vale o dono encontrado pelo cliente."""
+    sub = user.subscription
+    if sub is None or str(sub.provider or "").strip().lower() == "viajeon":
+        return False
+    reference = str(payment.get("externalReference") or "").strip()
+    if not reference:
+        return True
+    if reference.startswith(OWN_REFERENCE_PREFIXES):
+        return True
+    parts = reference.split(":")
+    if len(parts) == 3 and parts[0].isdigit():
+        return True
+    subscription = payment.get("subscription")
+    subscription_id = str(subscription.get("id") if isinstance(subscription, dict) else subscription or "").strip()
+    return bool(subscription_id) and subscription_id == str(sub.asaas_subscription_id or "")
+
+
 def payment_confirmed(db: Session, payment: dict[str, Any], *, now: datetime | None = None) -> dict[str, str]:
     settings_row = db.get(BillingNoticeSettings, 1)
     if settings_row is None or not settings_row.enabled or not payment.get("id") or not is_paid_payment(payment):
@@ -1110,6 +1136,9 @@ def payment_confirmed(db: Session, payment: dict[str, Any], *, now: datetime | N
         return {}
     user = owner_of_payment(db, payment)
     if user is None or user.is_superuser or user.subscription is None:
+        return {}
+    if not _is_own_payment(user, payment):
+        # Pagamento do ViajeOn (combo, outro produto): quem avisa o cliente é o ViajeOn.
         return {}
     created = user.created_at
     if created is not None:
