@@ -354,11 +354,15 @@ def _page_data_script(page: PublicPageOut, path: str) -> str:
     return f'<script id="ro-page-data" type="application/json">{payload}</script>'
 
 
-def _fetch_page_payload(db: Session, agency_slug: str, page_slug: Optional[str]) -> PublicPageOut:
+def _fetch_page_payload(db: Session, agency_slug: str, page_slug: Optional[str], custom_domain: bool = False) -> PublicPageOut:
     try:
         if page_slug:
-            return public_pages.get_public_page(agency_slug, page_slug, db)
-        return public_pages.get_default_public_page(agency_slug, db)
+            data = public_pages.get_public_page(agency_slug, page_slug, db)
+        else:
+            data = public_pages.get_default_public_page(agency_slug, db)
+        if custom_domain:
+            data = public_pages.strip_custom_domain_links(data, agency_slug, db)
+        return data
     except HTTPException as exc:  # pragma: no cover - FastAPI específica
         raise PublicPageNotAvailable(exc.detail) from exc
 
@@ -368,8 +372,9 @@ def render_public_page_html(
     page_slug: Optional[str],
     page_url: str,
     db: Session,
+    custom_domain: bool = False,
 ) -> str:
-    page_data = _fetch_page_payload(db, agency_slug, page_slug)
+    page_data = _fetch_page_payload(db, agency_slug, page_slug, custom_domain)
     canonical_url, origin = _canonicalize_url(page_url)
     meta_block = _build_meta_block(page_data, canonical_url, origin)
     preload_tags = _hero_preload_tags(page_data, (urlsplit(canonical_url).hostname or "").lower() in _LEGACY_IMAGE_HOSTS)
