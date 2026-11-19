@@ -34,6 +34,41 @@ def _rewrite(node: Any, pattern: re.Pattern[str]) -> Any:
     return node
 
 
-def strip_agency_slug_from_links(config: Any, agency_slug: str) -> Any:
+def _two_segment_pattern(page_slugs: set[str]) -> re.Pattern[str] | None:
+    """`/qualquer-slug/pagina-da-agencia`: o primeiro trecho é um slug antigo da agência (ela pode ter
+    mudado de slug depois de salvar o link), então vale a regra pelo segundo trecho ser uma página dela."""
+    slugs = [re.escape(slug) for slug in page_slugs if slug]
+    if not slugs:
+        return None
+    hosts = "|".join(re.escape(host) for host in PLATFORM_HOSTS)
+    return re.compile(
+        rf"^(?:https?://(?:{hosts})(?::\d+)?)?/(?:p/)?[^/?#\s]+/(?:{'|'.join(slugs)})(?=[/?#]|$)",
+        re.IGNORECASE,
+    )
+
+
+def _rewrite_two(node: Any, pattern: re.Pattern[str]) -> Any:
+    if isinstance(node, str):
+        match = pattern.match(node)
+        if not match:
+            return node
+        return _drop_first_segment(node)
+    if isinstance(node, list):
+        return [_rewrite_two(item, pattern) for item in node]
+    if isinstance(node, dict):
+        return {key: _rewrite_two(value, pattern) for key, value in node.items()}
+    return node
+
+
+def _drop_first_segment(value: str) -> str:
+    path = re.sub(r"^https?://[^/]+", "", value, flags=re.IGNORECASE)
+    path = re.sub(r"^/p/", "/", path, flags=re.IGNORECASE)
+    return "/" + path.split("/", 2)[2]
+
+
+def strip_agency_slug_from_links(config: Any, agency_slug: str, page_slugs: set[str] | None = None) -> Any:
     pattern = _pattern(agency_slug)
-    return config if pattern is None else _rewrite(config, pattern)
+    if pattern is not None:
+        config = _rewrite(config, pattern)
+    two = _two_segment_pattern(page_slugs or set())
+    return config if two is None else _rewrite_two(config, two)
