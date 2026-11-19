@@ -64,7 +64,7 @@ import type { HeroSection, PageConfig, PageSection, SectionType, ThemeConfig } f
 import { resolvePageDesign } from "../../utils/pageDesign";
 import { pickSectionComponent, v2Components } from "../../components/public/v2/registry";
 import { DEFAULT_ACCENT, PAGE_DESIGN_KEY } from "../../components/public/v2/designContext";
-import { LIVE_PAGE_KEY } from "../../components/public/v2/livePage";
+import { LIVE_PAGE_KEY, LOGO_HOME_PATH_KEY } from "../../components/public/v2/livePage";
 import { SECTION_PLACEHOLDER_KEY, lazySection } from "../../components/public/lazySection";
 import type { LeadForm } from "../../types/leads";
 import { PUBLIC_BRANDING_KEY } from "../../utils/brandingKeys";
@@ -109,6 +109,7 @@ interface PublicPageResponse {
   seo_title?: string | null;
   design_v2_enabled?: boolean;
   agency_slug?: string;
+  logo_home_path?: string | null;
 }
 
 const route = useRoute();
@@ -175,6 +176,8 @@ const statsApi = computed(() => (isPlatformHost.value ? api : platformApi));
 provide(PUBLIC_BRANDING_KEY, brandingInfo);
 // Página publicada de verdade: só aqui o Redirecionamento conta e leva ao destino.
 provide(LIVE_PAGE_KEY, true);
+// Logo do Banner Inicial e do Menu leva para a página principal (vem da API; vazio = não leva).
+provide(LOGO_HOME_PATH_KEY, computed(() => pageData.value?.logo_home_path || null));
 // Seção ainda baixando já ocupa espaço: dá para rolar a página antes de tudo chegar.
 provide(SECTION_PLACEHOLDER_KEY, true);
 // Crédito das fotos de bancos gratuitos ("©" no canto de cada foto).

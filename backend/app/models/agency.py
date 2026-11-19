@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -21,6 +21,8 @@ class Agency(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
     default_page_id = Column(Integer, ForeignKey("pages.id", ondelete="SET NULL"), nullable=True)
+    # Logo do Banner Inicial e do Menu leva para a página principal (cada página pode abrir exceção).
+    logo_home_redirect = Column(Boolean, nullable=False, server_default="true", default=True)
 
     users = relationship("AgencyUser", back_populates="agency")
     pages = relationship("Page", back_populates="agency", foreign_keys="Page.agency_id")

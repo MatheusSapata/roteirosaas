@@ -1,3 +1,4 @@
+from typing import Any
 from urllib.parse import quote_plus
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -94,11 +95,27 @@ def build_agency_profile(agency: Agency) -> dict[str, object]:
     }
 
 
+def resolve_logo_home_path(page: Page, config: Any, agency_slug: str, custom_domain: bool) -> str | None:
+    """Destino da logo: a página principal da agência, salvo se a página atual já é ela ou se a
+    agência (ou só esta página) desligou o redirecionamento."""
+    agency = page.agency
+    home = agency.default_page if agency is not None and agency.default_page_id else None
+    if home is None or home.id == page.id or home.status != "published":
+        return None
+    general = config.get("general") if isinstance(config, dict) else None
+    override = general.get("logoHomeRedirect") if isinstance(general, dict) else None
+    enabled = override if isinstance(override, bool) else bool(agency.logo_home_redirect is not False)
+    if not enabled:
+        return None
+    return "/" if custom_domain else f"/{agency_slug}"
+
+
 def serialize_public_page(page: Page, agency_slug: str, db: Session, *, custom_domain: bool = False) -> PublicPageOut:
     plan = resolve_agency_plan(db, page.agency_id)
     config = apply_free_footer(normalize_config(page.config_json), plan) or {}
     config = inject_flight_sections_into_config(db, page.id, config, include_lookup_status=False)
     config = inject_tag_links_into_config(db, page, config)
+    logo_home_path = resolve_logo_home_path(page, config, agency_slug, custom_domain)
     if custom_domain:
         page_slugs = {row[0] for row in db.query(Page.slug).filter(Page.agency_id == page.agency_id).all()}
         config = strip_agency_slug_from_links(config, agency_slug, page_slugs)
@@ -121,6 +138,7 @@ def serialize_public_page(page: Page, agency_slug: str, db: Session, *, custom_d
         config=config,
         branding=branding,
         design_v2_enabled=design_v2_enabled_for_agency(page.agency),
+        logo_home_path=logo_home_path,
     )
 
 
@@ -129,6 +147,8 @@ def strip_custom_domain_links(page_out: PublicPageOut, agency_slug: str, db: Ses
     agency_id = db.query(Page.agency_id).filter(Page.id == page_out.id).scalar()
     page_slugs = {row[0] for row in db.query(Page.slug).filter(Page.agency_id == agency_id).all()} if agency_id else set()
     page_out.config = strip_agency_slug_from_links(page_out.config, agency_slug, page_slugs)
+    if page_out.logo_home_path:
+        page_out.logo_home_path = "/"
     return page_out
 
 

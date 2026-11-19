@@ -81,3 +81,5 @@ class PublicPageOut(BaseModel):
     config: Any
     branding: dict[str, Any]
     design_v2_enabled: bool = False
+    # Para onde a logo do Banner Inicial e do Menu leva (página principal); vazio = sem redirecionamento.
+    logo_home_path: Optional[str] = None

@@ -15,7 +15,7 @@
       <div class="v2-hero-inner">
         <HeroContent v-bind="contentProps" />
       </div>
-      <div v-if="topLogo" class="v2-hero-logo"><img :src="logo" :alt="agencyName" :style="logoStyle" v-bind="logoAttrs" /></div>
+      <div v-if="topLogo" class="v2-hero-logo"><LogoHomeLink><img :src="logo" :alt="agencyName" :style="logoStyle" v-bind="logoAttrs" /></LogoHomeLink></div>
       <V2PhotoCredit v-if="!video" :src="image" class="v2-hero-credit" />
     </div>
 
@@ -28,12 +28,12 @@
       <div class="v2-hero-inner is-center">
         <HeroContent v-bind="contentProps" centered />
       </div>
-      <div v-if="topLogo" class="v2-hero-logo"><img :src="logo" :alt="agencyName" :style="logoStyle" v-bind="logoAttrs" /></div>
+      <div v-if="topLogo" class="v2-hero-logo"><LogoHomeLink><img :src="logo" :alt="agencyName" :style="logoStyle" v-bind="logoAttrs" /></LogoHomeLink></div>
       <V2PhotoCredit v-if="!video" :src="image" class="v2-hero-credit" />
     </div>
 
     <div v-else-if="layout === 'split'" class="v2-hero v2-hero--split" :class="{ 'has-logo': topLogo }" :style="heroVars">
-      <div v-if="topLogo" class="v2-hero-split-top"><img :src="logo" :alt="agencyName" :style="logoStyle" class="v2-hero-logo-inline" v-bind="logoAttrs" /></div>
+      <div v-if="topLogo" class="v2-hero-split-top"><LogoHomeLink><img :src="logo" :alt="agencyName" :style="logoStyle" class="v2-hero-logo-inline" v-bind="logoAttrs" /></LogoHomeLink></div>
       <div class="v2-hero-split">
         <div class="v2-hero-split-copy">
           <HeroContent v-bind="contentProps" light />
@@ -52,7 +52,7 @@
           <HeroContent v-bind="contentProps" light />
         </div>
       </div>
-      <div v-if="topLogo" class="v2-hero-logo"><img :src="logo" :alt="agencyName" :style="logoStyle" v-bind="logoAttrs" /></div>
+      <div v-if="topLogo" class="v2-hero-logo"><LogoHomeLink><img :src="logo" :alt="agencyName" :style="logoStyle" v-bind="logoAttrs" /></LogoHomeLink></div>
       <V2PhotoCredit v-if="!video" :src="image" class="v2-hero-credit" />
     </div>
   </V2Section>
@@ -73,6 +73,7 @@ import { useCopyFit } from "./useCopyFit";
 import TravelIcon from "../../shared/TravelIcon.vue";
 import { formatDayMonth, parseTripDate } from "../../../utils/tripDates";
 import { heroPhoto } from "../../../utils/heroPhoto";
+import LogoHomeLink from "../LogoHomeLink.vue";
 
 interface HeroChip {
   label: string;

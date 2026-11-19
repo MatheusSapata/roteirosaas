@@ -106,6 +106,7 @@ class AgencyUpdate(BaseModel):
     secondary_color: Optional[str] = None
     contact_email: Optional[str] = None
     default_page_id: Optional[int] = None
+    logo_home_redirect: Optional[bool] = None
     cta_whatsapp: Optional[str] = None
     description: Optional[str] = None
     social_links: Optional[list[AgencySocialLinkCreate]] = None
@@ -138,5 +139,6 @@ class AgencyUpdate(BaseModel):
 class AgencyOut(AgencyBase):
     id: int
     default_page_id: Optional[int] = None
+    logo_home_redirect: bool = True
     social_links: list[AgencySocialLinkOut] = []
     model_config = ConfigDict(from_attributes=True)
