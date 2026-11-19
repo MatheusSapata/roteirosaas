@@ -275,6 +275,45 @@ def test_payment_confirmed_skips_new_accounts_and_old_payments(db_session, outbo
     assert outbox == []
 
 
+def test_payment_confirmed_not_sent_for_viajeon_combo_account(db_session, outbox):
+    user = make_user(db_session, email="combo@example.com")
+    user.subscription.provider = "viajeon"
+    db_session.commit()
+    enable(db_session)
+    paid = payment(user, due=TODAY, status="CONFIRMED") | {"paymentDate": TODAY.isoformat()}
+    assert notices.payment_confirmed(db_session, paid, now=datetime(2026, 11, 2, 15, 0, tzinfo=timezone.utc)) == {}
+    assert outbox == []
+
+
+def test_payment_confirmed_not_sent_for_other_system_reference(db_session, outbox):
+    # Mesma conta Asaas: o pagamento do checkout do ViajeOn casa só pelo cliente, mas a referência é de lá.
+    user = make_user(db_session, email="moises@example.com")
+    enable(db_session)
+    paid = payment(user, "pay_vj", due=TODAY, status="CONFIRMED", value=3997.0) | {
+        "paymentDate": TODAY.isoformat(),
+        "externalReference": "assin:7f0c9a52-0000-4000-8000-000000000001",
+        "subscription": None,
+    }
+    assert notices.payment_confirmed(db_session, paid, now=datetime(2026, 11, 2, 15, 0, tzinfo=timezone.utc)) == {}
+    assert outbox == []
+
+
+def test_payment_confirmed_still_sent_without_reference_and_for_own_subscription(db_session, outbox):
+    user = make_user(db_session, email="pixauto@example.com")
+    user.subscription.asaas_subscription_id = "sub_own"
+    db_session.commit()
+    enable(db_session)
+    now = datetime(2026, 11, 2, 15, 0, tzinfo=timezone.utc)
+    no_ref = payment(user, "pay_noref", due=TODAY, status="RECEIVED") | {
+        "paymentDate": TODAY.isoformat(), "externalReference": None
+    }
+    assert notices.payment_confirmed(db_session, no_ref, now=now) == {"whatsapp": "sent", "email": "sent"}
+    by_sub = payment(user, "pay_sub", due=TODAY, status="RECEIVED") | {
+        "paymentDate": TODAY.isoformat(), "externalReference": "outra:ref", "subscription": "sub_own"
+    }
+    assert notices.payment_confirmed(db_session, by_sub, now=now) == {"whatsapp": "sent", "email": "sent"}
+
+
 # ---------------------------------------------------------------- próximos envios
 
 
