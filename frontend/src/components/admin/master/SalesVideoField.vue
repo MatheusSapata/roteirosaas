@@ -98,7 +98,7 @@ import { mp4Faststart } from "../../../utils/mp4Faststart";
 const props = defineProps<{ modelValue: SalesVideo | null }>();
 const emit = defineEmits<{ (event: "update:modelValue", value: SalesVideo | null): void }>();
 
-const DEFAULT_COLOR = "#12B981";
+const DEFAULT_COLOR = "#0A6346";
 const MAX_BYTES = 300 * 1024 * 1024;
 const TYPES = ["video/mp4", "video/webm"];
 

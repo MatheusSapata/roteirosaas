@@ -11,7 +11,7 @@
     <header v-if="home" class="lp-topbar">
       <div class="lp-wrap lp-topbar-row">
         <RouterLink to="/" class="lp-topbar-brand" aria-label="Roteiro Online - início">
-          <img :src="logoWhiteRow" alt="Roteiro Online" width="264" height="40" />
+          <img :src="logoWhiteRow" alt="Roteiro Online" width="264" height="54" />
         </RouterLink>
         <nav class="lp-topbar-actions" aria-label="Acesso">
           <template v-if="isLoggedIn">
@@ -31,9 +31,9 @@
         <div class="lp-hero-copy">
           <!-- No celular vira o cabeçalho: logo centralizado, com uma linha fina embaixo. -->
           <div v-if="!home" class="lp-hero-top">
-            <img :src="logoWhite" alt="Roteiro Online" class="lp-logo" width="240" height="76" />
+            <img :src="logoWhite" alt="Roteiro Online" class="lp-logo" width="240" height="91" />
             <!-- No celular o cabeçalho usa o logo lado a lado. -->
-            <img :src="logoWhiteRow" alt="Roteiro Online" class="lp-logo-row" width="264" height="40" />
+            <img :src="logoWhiteRow" alt="Roteiro Online" class="lp-logo-row" width="264" height="54" />
           </div>
           <span class="lp-pill">Aumente a sua conversão!</span>
           <h1 class="lp-h1">Seu cliente não compra o que <span class="is-brand">não consegue imaginar!</span></h1>
@@ -479,7 +479,7 @@
     <!-- 14 Chamada final (escura) -->
     <section class="lp-sec is-night lp-final">
       <div class="lp-wrap lp-final-inner">
-        <img :src="logoWhiteRow" alt="" class="lp-final-logo" width="264" height="40" aria-hidden="true" />
+        <img :src="logoWhiteRow" alt="" class="lp-final-logo" width="264" height="54" aria-hidden="true" />
         <h2 class="lp-h2 lp-final-title">Publique hoje mesmo o seu <span class="is-brand">primeiro roteiro.</span></h2>
         <p class="lp-final-sub">
           Assine, entre na plataforma e publique em menos de 30 minutos. Se não gostar, devolvemos 100% do valor em 7 dias.
@@ -551,8 +551,8 @@ import { formatBRL, salesPlanMath } from "../../utils/salesPlan";
 import { BILLING_CYCLES, cycleDays, cycleLabel, cycleMonths, cyclePeriod, cycleSpan, joinCycleLabels, type BillingCycle } from "../../utils/billingCycle";
 import { captureAttribution, utmQuery } from "../../utils/attribution";
 import { SALES_META_PIXEL_ID, startMetaPixels } from "../../utils/metaPixel";
-import logoWhite from "../../assets/lp/logo-branco.webp";
-import logoWhiteRow from "../../assets/lp/logo-branco-horizontal.webp";
+import logoWhite from "../../assets/lp/logo-fundo-escuro.webp";
+import logoWhiteRow from "../../assets/lp/logo-fundo-escuro-horizontal.webp";
 import editorMp4 from "../../assets/lp/editor.mp4";
 import editorWebm from "../../assets/lp/editor.webm";
 import editorPoster from "../../assets/lp/editor-poster.webp";
@@ -1019,7 +1019,8 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-/* Página de vendas no design system do painel (Inter no texto, Sora nos títulos, verde da marca),
+/* Página de vendas no design system do painel (Inter no texto, Sora nos títulos), na paleta nova do
+   Viaje On: Verde Viaje #0A6346, Verde On #90EE8F, Verde Trilha #15915C, Névoa #EFF3ED e Noite #0A110E,
    com seções que se alternam entre escura, clara e verde. As cores são fixas: a página fica igual
    com o painel no tema claro ou escuro.
    Cada seção cabe numa tela (de 1920×940 a 360×640): tamanhos limitados pela altura da tela e,
@@ -1027,16 +1028,16 @@ onBeforeUnmount(() => {
 .lp {
   --lp-pad-y: clamp(32px, 6svh, 64px);
   --lp-pad-x: 24px;
-  --ink: #0b1712;
-  --muted: #55665e;
-  --line: #dbe6e0;
-  --mist: #eef6f2;
-  --night: #07130e;
-  --night-card: #0f2119;
-  --green: #12b981;
-  --green-dark: #0b7a5b;
-  --green-deep: #064e3b;
-  --mint: #1de9a0;
+  --ink: #0e1f17;
+  --muted: #5a6d62;
+  --line: #e1e8dc;
+  --mist: #eff3ed;
+  --night: #0a110e;
+  --night-card: #0f2219;
+  --green: #15915c;
+  --green-dark: #0a6346;
+  --green-deep: #084d37;
+  --mint: #90ee8f;
   --red: #e5484d;
   --whats: #22c55e;
   --blue: #3b82f6;
@@ -1069,9 +1070,9 @@ onBeforeUnmount(() => {
   --t-card: #fff;
   --t-line: var(--line);
   --t-accent: var(--green-dark);
-  --t-btn: var(--green);
+  --t-btn: var(--green-dark);
   --t-btn-ink: #fff;
-  --t-btn-hover: var(--green-dark);
+  --t-btn-hover: var(--green-deep);
   position: relative;
   padding: var(--lp-pad-y) var(--lp-pad-x);
   background: #fff;
@@ -1081,29 +1082,29 @@ onBeforeUnmount(() => {
   background: var(--mist);
 }
 .lp-sec.is-night {
-  --t-ink: #f2f7f4;
+  --t-ink: #f2f5f0;
   --t-muted: #a3b8ae;
   --t-card: var(--night-card);
   --t-line: rgba(255, 255, 255, 0.09);
   --t-accent: var(--mint);
   --t-btn: var(--mint);
-  --t-btn-ink: #05170f;
-  --t-btn-hover: #5ff3bd;
+  --t-btn-ink: #0a110e;
+  --t-btn-hover: #b5f4b4;
   background:
-    radial-gradient(ellipse 55% 60% at 100% 0%, rgba(29, 233, 160, 0.1), transparent 70%),
+    radial-gradient(ellipse 55% 60% at 100% 0%, rgba(144, 238, 143, 0.1), transparent 70%),
     var(--night);
 }
 .lp-sec.is-green {
   --t-ink: #fff;
   --t-muted: rgba(255, 255, 255, 0.85);
   --t-line: rgba(255, 255, 255, 0.22);
-  --t-accent: #d1fae5;
+  --t-accent: #d8f1d0;
   --t-btn: #fff;
   --t-btn-ink: var(--green-deep);
-  --t-btn-hover: #ecfdf5;
+  --t-btn-hover: #eff3ed;
   background:
-    radial-gradient(ellipse 60% 80% at 90% 0%, rgba(29, 233, 160, 0.35), transparent 70%),
-    linear-gradient(135deg, var(--green-dark) 0%, #0f9e70 55%, var(--green) 100%);
+    radial-gradient(ellipse 60% 80% at 90% 0%, rgba(144, 238, 143, 0.35), transparent 70%),
+    linear-gradient(135deg, var(--green-dark) 0%, #107a51 55%, var(--green) 100%);
 }
 .lp-wrap {
   width: 100%;
@@ -1143,7 +1144,7 @@ onBeforeUnmount(() => {
 .is-green .is-brand {
   padding: 0 0.18em;
   border-radius: 8px;
-  background: rgba(4, 47, 34, 0.42);
+  background: rgba(8, 77, 55, 0.42);
   color: #fff;
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
@@ -1203,7 +1204,7 @@ onBeforeUnmount(() => {
 .lp-btn {
   background: var(--t-btn);
   color: var(--t-btn-ink);
-  box-shadow: 0 14px 28px -14px rgba(18, 185, 129, 0.8);
+  box-shadow: 0 14px 28px -14px rgba(21, 145, 92, 0.8);
 }
 .lp-btn:hover {
   background: var(--t-btn-hover);
@@ -1228,7 +1229,7 @@ onBeforeUnmount(() => {
 }
 .is-mist .lp-pain,
 .is-mist .lp-feat {
-  box-shadow: 0 1px 2px rgba(11, 23, 18, 0.04), 0 12px 28px -18px rgba(11, 23, 18, 0.28);
+  box-shadow: 0 1px 2px rgba(14, 31, 23, 0.04), 0 12px 28px -18px rgba(14, 31, 23, 0.28);
 }
 
 /* Cabeçalho da home: fixo no topo, escuro como a capa, com o logo e o acesso ao painel. */
@@ -1238,7 +1239,7 @@ onBeforeUnmount(() => {
   z-index: 50;
   padding: 0 var(--lp-pad-x);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(7, 19, 14, 0.86);
+  background: rgba(10, 17, 14, 0.86);
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
 }
@@ -1278,18 +1279,18 @@ onBeforeUnmount(() => {
 }
 .lp-topbar-login {
   border: 1px solid rgba(255, 255, 255, 0.18);
-  color: #f2f7f4;
+  color: #f2f5f0;
 }
 .lp-topbar-login:hover {
-  border-color: rgba(29, 233, 160, 0.55);
+  border-color: rgba(144, 238, 143, 0.55);
   color: var(--mint);
 }
 .lp-topbar-cta {
   background: var(--mint);
-  color: #05170f;
+  color: #0a110e;
 }
 .lp-topbar-cta:hover {
-  background: #5ff3bd;
+  background: #b5f4b4;
 }
 .lp-topbar a:focus-visible {
   outline: 2px solid var(--mint);
@@ -1316,8 +1317,8 @@ onBeforeUnmount(() => {
   padding-top: clamp(20px, 4svh, 40px);
   padding-bottom: clamp(24px, 5svh, 48px);
   background:
-    radial-gradient(ellipse 45% 60% at 82% 30%, rgba(29, 233, 160, 0.22), transparent 70%),
-    radial-gradient(ellipse 40% 55% at 0% 100%, rgba(18, 185, 129, 0.16), transparent 70%),
+    radial-gradient(ellipse 45% 60% at 82% 30%, rgba(144, 238, 143, 0.22), transparent 70%),
+    radial-gradient(ellipse 40% 55% at 0% 100%, rgba(21, 145, 92, 0.16), transparent 70%),
     var(--night);
 }
 /* Grade sutil no fundo da capa. */
@@ -1370,9 +1371,9 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
-  border: 1px solid rgba(29, 233, 160, 0.35);
+  border: 1px solid rgba(144, 238, 143, 0.35);
   border-radius: 999px;
-  background: rgba(29, 233, 160, 0.12);
+  background: rgba(144, 238, 143, 0.12);
   color: var(--mint);
   font-size: 12px;
   font-weight: 700;
@@ -1403,7 +1404,7 @@ onBeforeUnmount(() => {
   overflow: hidden;
   border-radius: 22px;
   background: #0c100e;
-  box-shadow: 0 0 0 1px rgba(29, 233, 160, 0.35), 0 0 0 8px rgba(29, 233, 160, 0.07), 0 30px 80px -30px rgba(29, 233, 160, 0.45);
+  box-shadow: 0 0 0 1px rgba(144, 238, 143, 0.35), 0 0 0 8px rgba(144, 238, 143, 0.07), 0 30px 80px -30px rgba(144, 238, 143, 0.45);
 }
 .lp-hero-video iframe {
   position: absolute;
@@ -1555,7 +1556,7 @@ onBeforeUnmount(() => {
 .is-mist .lp-shot-tag {
   background: var(--night);
   color: var(--mint);
-  box-shadow: 0 0 0 1px rgba(29, 233, 160, 0.5), 0 8px 20px -8px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 0 0 1px rgba(144, 238, 143, 0.5), 0 8px 20px -8px rgba(0, 0, 0, 0.55);
 }
 @keyframes lp-live {
   0%,
@@ -1639,7 +1640,7 @@ onBeforeUnmount(() => {
   height: 28px;
   border-radius: 50%;
   background: var(--mint);
-  color: #05170f;
+  color: #0a110e;
   font-family: var(--font-display);
   font-size: 14px;
   font-weight: 800;
@@ -1667,9 +1668,9 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 6px;
   padding: 5px 10px;
-  border: 1px solid rgba(29, 233, 160, 0.3);
+  border: 1px solid rgba(144, 238, 143, 0.3);
   border-radius: 999px;
-  background: rgba(29, 233, 160, 0.08);
+  background: rgba(144, 238, 143, 0.08);
   color: var(--mint);
   font-size: 12.5px;
   font-weight: 600;
@@ -1678,7 +1679,7 @@ onBeforeUnmount(() => {
   overflow: hidden;
   border-radius: 16px;
   background: #fff;
-  box-shadow: 0 0 0 1px rgba(29, 233, 160, 0.35), 0 30px 70px -30px rgba(29, 233, 160, 0.5);
+  box-shadow: 0 0 0 1px rgba(144, 238, 143, 0.35), 0 30px 70px -30px rgba(144, 238, 143, 0.5);
 }
 .lp-ai-visual video {
   display: block;
@@ -1761,7 +1762,7 @@ onBeforeUnmount(() => {
 .lp-cmp.is-after {
   border-color: transparent;
   background: linear-gradient(160deg, var(--green) 0%, var(--green-dark) 100%);
-  box-shadow: 0 24px 60px -30px rgba(29, 233, 160, 0.6);
+  box-shadow: 0 24px 60px -30px rgba(144, 238, 143, 0.6);
 }
 .lp-cmp-mock {
   display: flex;
@@ -1775,7 +1776,7 @@ onBeforeUnmount(() => {
   background: rgba(255, 255, 255, 0.04);
 }
 .is-after .lp-cmp-mock {
-  background: rgba(4, 47, 34, 0.25);
+  background: rgba(8, 77, 55, 0.25);
 }
 .lp-chat {
   display: flex;
@@ -1791,7 +1792,7 @@ onBeforeUnmount(() => {
   width: 100%;
   padding: 10px 12px 6px;
   border-radius: 12px 12px 2px 12px;
-  background: #1f3b2f;
+  background: #1d3a2b;
 }
 .lp-skel {
   display: block;
@@ -1810,7 +1811,7 @@ onBeforeUnmount(() => {
   gap: 6px;
   padding: 6px 10px;
   border-radius: 10px;
-  background: #1f3b2f;
+  background: #1d3a2b;
   color: #fca5a5;
   font-size: 11px;
 }
@@ -1827,7 +1828,7 @@ onBeforeUnmount(() => {
   width: 100px;
   height: 150px;
   padding: 5px 5px 8px;
-  border: 3px solid #0b1712;
+  border: 3px solid #0e1f17;
   border-radius: 16px;
   background: #fff;
   box-shadow: 0 14px 30px -12px rgba(0, 0, 0, 0.5);
@@ -1940,8 +1941,8 @@ onBeforeUnmount(() => {
   height: 44px;
   border-radius: 50%;
   background: var(--mint);
-  color: #05170f;
-  box-shadow: 0 0 0 6px rgba(29, 233, 160, 0.14);
+  color: #0a110e;
+  box-shadow: 0 0 0 6px rgba(144, 238, 143, 0.14);
 }
 
 /* 05 Funcionalidades: cartão com mini-tela colorida em cima e o texto embaixo. */
@@ -1953,7 +1954,7 @@ onBeforeUnmount(() => {
 }
 .lp-feat {
   --tone: var(--green);
-  --tone-soft: #e3f8ef;
+  --tone-soft: #e6f5df;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -2043,7 +2044,7 @@ onBeforeUnmount(() => {
   height: 16px;
   border-radius: 6px;
   background: #fff;
-  box-shadow: 0 1px 2px rgba(11, 23, 18, 0.08);
+  box-shadow: 0 1px 2px rgba(14, 31, 23, 0.08);
 }
 .fx-block.is-on {
   height: 24px;
@@ -2115,7 +2116,7 @@ onBeforeUnmount(() => {
   color: var(--ink);
   font-size: 10.5px;
   line-height: 1.35;
-  box-shadow: 0 1px 2px rgba(11, 23, 18, 0.08);
+  box-shadow: 0 1px 2px rgba(14, 31, 23, 0.08);
 }
 .fx-wbtn {
   display: inline-flex;
@@ -2142,7 +2143,7 @@ onBeforeUnmount(() => {
   border-top: 3px solid var(--tone);
   border-radius: 8px;
   background: #fff;
-  box-shadow: 0 1px 2px rgba(11, 23, 18, 0.08);
+  box-shadow: 0 1px 2px rgba(14, 31, 23, 0.08);
 }
 .fx-price small {
   color: var(--muted);
@@ -2276,7 +2277,7 @@ onBeforeUnmount(() => {
   padding: 18px;
   border-color: transparent;
   background:
-    radial-gradient(ellipse 80% 60% at 100% 0%, rgba(29, 233, 160, 0.25), transparent 70%),
+    radial-gradient(ellipse 80% 60% at 100% 0%, rgba(144, 238, 143, 0.25), transparent 70%),
     var(--night);
   color: #fff;
 }
@@ -2319,7 +2320,7 @@ onBeforeUnmount(() => {
   transition: border-color 0.2s ease, transform 0.2s ease;
 }
 .lp-ex:hover {
-  border-color: rgba(29, 233, 160, 0.45);
+  border-color: rgba(144, 238, 143, 0.45);
   transform: translateY(-3px);
 }
 .lp-ex-img {
@@ -2338,7 +2339,7 @@ onBeforeUnmount(() => {
   padding: 4px 9px;
   border-radius: 999px;
   background: var(--mint);
-  color: #05170f;
+  color: #0a110e;
   font-size: 10.5px;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -2371,7 +2372,7 @@ onBeforeUnmount(() => {
   gap: 8px;
   padding: 10px 12px;
   border-radius: 10px;
-  background: rgba(29, 233, 160, 0.07);
+  background: rgba(144, 238, 143, 0.07);
   color: #e3eee9;
   font-size: 13px;
   font-style: italic;
@@ -2389,7 +2390,7 @@ onBeforeUnmount(() => {
   gap: 6px;
   height: 40px;
   margin-top: auto;
-  border: 1px solid rgba(29, 233, 160, 0.5);
+  border: 1px solid rgba(144, 238, 143, 0.5);
   border-radius: 10px;
   color: var(--mint);
   font-size: 14px;
@@ -2399,7 +2400,7 @@ onBeforeUnmount(() => {
 }
 .lp-ex-link:hover {
   background: var(--mint);
-  color: #05170f;
+  color: #0a110e;
 }
 .lp-closer {
   margin-top: 20px !important;
@@ -2424,7 +2425,7 @@ onBeforeUnmount(() => {
   padding: 22px;
   border-color: transparent;
   background: #fff;
-  box-shadow: 0 24px 40px -26px rgba(4, 47, 34, 0.7);
+  box-shadow: 0 24px 40px -26px rgba(8, 77, 55, 0.7);
 }
 .lp-step-num {
   color: var(--green);
@@ -2464,7 +2465,7 @@ onBeforeUnmount(() => {
   overflow: hidden;
   border-radius: 16px;
   background: #fff;
-  box-shadow: 0 0 0 1px var(--line), 0 30px 60px -30px rgba(11, 23, 18, 0.45);
+  box-shadow: 0 0 0 1px var(--line), 0 30px 60px -30px rgba(14, 31, 23, 0.45);
 }
 .lp-canva-bar {
   display: flex;
@@ -2517,7 +2518,7 @@ onBeforeUnmount(() => {
   color: var(--ink);
   font-size: 15px;
   font-weight: 600;
-  box-shadow: 0 10px 22px -18px rgba(11, 23, 18, 0.35);
+  box-shadow: 0 10px 22px -18px rgba(14, 31, 23, 0.35);
 }
 .lp-check {
   display: inline-flex;
@@ -2630,7 +2631,7 @@ onBeforeUnmount(() => {
 /* 11 Assinatura: o que vem nela à esquerda, o preço (cartão branco) à direita. */
 .lp-sec-plans {
   background:
-    radial-gradient(ellipse 50% 60% at 75% 55%, rgba(29, 233, 160, 0.16), transparent 70%),
+    radial-gradient(ellipse 50% 60% at 75% 55%, rgba(144, 238, 143, 0.16), transparent 70%),
     var(--night);
 }
 .lp-offer {
@@ -2677,7 +2678,7 @@ onBeforeUnmount(() => {
   padding: 2px;
   border-radius: 50%;
   background: var(--mint);
-  color: #05170f;
+  color: #0a110e;
 }
 .lp-incl-short {
   display: none;
@@ -2696,7 +2697,7 @@ onBeforeUnmount(() => {
   gap: 6px;
   padding: 10px 12px;
   border-radius: 12px;
-  background: rgba(29, 233, 160, 0.08);
+  background: rgba(144, 238, 143, 0.08);
   color: var(--t-ink);
   font-size: 12.5px;
   font-weight: 600;
@@ -2732,8 +2733,8 @@ onBeforeUnmount(() => {
   min-height: 360px;
   padding: 26px 24px 22px;
   border-radius: 20px;
-  background: linear-gradient(180deg, #e3f8ef 0%, #fff 42%);
-  box-shadow: 0 0 0 2px var(--mint), 0 30px 70px -30px rgba(29, 233, 160, 0.55);
+  background: linear-gradient(180deg, #e6f5df 0%, #fff 42%);
+  box-shadow: 0 0 0 2px var(--mint), 0 30px 70px -30px rgba(144, 238, 143, 0.55);
   color: var(--ink);
   text-align: center;
 }
@@ -2747,7 +2748,7 @@ onBeforeUnmount(() => {
   padding: 5px 12px;
   border-radius: 999px;
   background: var(--mint);
-  color: #05170f;
+  color: #0a110e;
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -2856,7 +2857,7 @@ onBeforeUnmount(() => {
 .lp-price-save {
   padding: 3px 10px;
   border-radius: 10px;
-  background: #e3f8ef;
+  background: #e6f5df;
   color: var(--green-dark);
   font-size: 13px;
   font-weight: 700;
@@ -2916,7 +2917,7 @@ onBeforeUnmount(() => {
   background-clip: content-box;
   padding: 6px;
   color: var(--green-deep);
-  box-shadow: 0 20px 40px -20px rgba(4, 47, 34, 0.8);
+  box-shadow: 0 20px 40px -20px rgba(8, 77, 55, 0.8);
   text-align: center;
 }
 .lp-seal svg {
@@ -2963,12 +2964,12 @@ onBeforeUnmount(() => {
   border: 1px solid var(--line);
   border-radius: 12px;
   background: #fff;
-  box-shadow: 0 8px 18px -16px rgba(11, 23, 18, 0.35);
+  box-shadow: 0 8px 18px -16px rgba(14, 31, 23, 0.35);
   transition: border-color 0.2s ease;
 }
 .lp-faq details[open] {
   border-color: var(--green);
-  box-shadow: inset 3px 0 0 var(--green), 0 12px 24px -18px rgba(11, 23, 18, 0.4);
+  box-shadow: inset 3px 0 0 var(--green), 0 12px 24px -18px rgba(14, 31, 23, 0.4);
 }
 .lp-faq summary {
   display: flex;
@@ -3010,7 +3011,7 @@ onBeforeUnmount(() => {
 /* 14 Chamada final */
 .lp-final {
   background:
-    radial-gradient(ellipse 70% 90% at 50% 0%, rgba(18, 185, 129, 0.34), transparent 70%),
+    radial-gradient(ellipse 70% 90% at 50% 0%, rgba(21, 145, 92, 0.34), transparent 70%),
     var(--night);
 }
 .lp-final-inner {

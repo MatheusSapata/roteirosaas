@@ -75,7 +75,7 @@ const props = withDefaults(
 );
 const emit = defineEmits<{ (event: "start"): void; (event: "error"): void }>();
 
-const DEFAULT_COLOR = "#12B981";
+const DEFAULT_COLOR = "#0A6346";
 type PlayerState = "idle" | "preview" | "playing" | "paused" | "ended";
 
 const root = ref<HTMLElement | null>(null);
