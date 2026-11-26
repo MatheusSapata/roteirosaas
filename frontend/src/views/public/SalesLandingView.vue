@@ -7,12 +7,30 @@
       <span v-if="promoCountdown" class="lp-promo-time"><Timer :size="13" aria-hidden="true" /><span class="lp-hide-sm">termina em </span>{{ promoCountdown }}</span>
     </a>
 
+    <!-- Home (roteiroonline.com): cabeçalho fixo com o logo e o acesso ao painel. -->
+    <header v-if="home" class="lp-topbar">
+      <div class="lp-wrap lp-topbar-row">
+        <RouterLink to="/" class="lp-topbar-brand" aria-label="Roteiro Online - início">
+          <img :src="logoWhiteRow" alt="Roteiro Online" width="264" height="40" />
+        </RouterLink>
+        <nav class="lp-topbar-actions" aria-label="Acesso">
+          <template v-if="isLoggedIn">
+            <RouterLink :to="{ name: 'dashboard' }" class="lp-topbar-cta">Acessar painel <ArrowRight :size="16" aria-hidden="true" /></RouterLink>
+          </template>
+          <template v-else>
+            <RouterLink :to="{ name: 'login' }" class="lp-topbar-login"><LogIn :size="16" aria-hidden="true" />Entrar</RouterLink>
+            <a href="#planos" class="lp-topbar-cta" @click.prevent="goToPlans()">Assinar<span class="lp-hide-sm"> agora</span></a>
+          </template>
+        </nav>
+      </div>
+    </header>
+
     <!-- 01 Capa (escura): texto à esquerda, vídeo quadrado à direita (no celular, o vídeo fica entre o texto e os botões). -->
     <section class="lp-sec is-night lp-hero">
       <div class="lp-wrap lp-hero-grid">
         <div class="lp-hero-copy">
           <!-- No celular vira o cabeçalho: logo centralizado, com uma linha fina embaixo. -->
-          <div class="lp-hero-top">
+          <div v-if="!home" class="lp-hero-top">
             <img :src="logoWhite" alt="Roteiro Online" class="lp-logo" width="240" height="76" />
             <!-- No celular o cabeçalho usa o logo lado a lado. -->
             <img :src="logoWhiteRow" alt="Roteiro Online" class="lp-logo-row" width="264" height="40" />
@@ -483,8 +501,11 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { RouterLink } from "vue-router";
+import { useAuthStore } from "../../store/useAuthStore";
 import {
   ArrowRight,
+  LogIn,
   ArrowUpRight,
   Bot,
   Briefcase,
@@ -547,6 +568,12 @@ import exemploItalia from "../../assets/lp/exemplo-italia.webp";
  * para dentro do sistema. A assinatura leva direto ao checkout próprio (/checkout/:offerKey).
  */
 const HERO_VIDEO = "https://player-vz-19330b59-441.tv.pandavideo.com.br/embed/?v=13897fe0-22c6-420f-ad7c-523e37f8fd7f";
+// home: a mesma página de vendas como início do site (roteiroonline.com), com o cabeçalho de login.
+const props = withDefaults(defineProps<{ home?: boolean }>(), { home: false });
+const home = computed(() => props.home);
+const auth = useAuthStore();
+const isLoggedIn = computed(() => Boolean(auth.token));
+
 const PAGE_TITLE = "Roteiro Online | Páginas de roteiro que vendem";
 const PAGE_DESCRIPTION =
   "Crie páginas profissionais de roteiro em minutos e faça seu cliente sentir o valor antes mesmo de saber o preço.";
@@ -1202,6 +1229,86 @@ onBeforeUnmount(() => {
 .is-mist .lp-pain,
 .is-mist .lp-feat {
   box-shadow: 0 1px 2px rgba(11, 23, 18, 0.04), 0 12px 28px -18px rgba(11, 23, 18, 0.28);
+}
+
+/* Cabeçalho da home: fixo no topo, escuro como a capa, com o logo e o acesso ao painel. */
+.lp-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  padding: 0 var(--lp-pad-x);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(7, 19, 14, 0.86);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+.lp-topbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 64px;
+}
+.lp-topbar-brand {
+  display: flex;
+  align-items: center;
+}
+.lp-topbar-brand img {
+  width: 168px;
+  height: auto;
+}
+.lp-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.lp-topbar-login,
+.lp-topbar-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.lp-topbar-login {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #f2f7f4;
+}
+.lp-topbar-login:hover {
+  border-color: rgba(29, 233, 160, 0.55);
+  color: var(--mint);
+}
+.lp-topbar-cta {
+  background: var(--mint);
+  color: #05170f;
+}
+.lp-topbar-cta:hover {
+  background: #5ff3bd;
+}
+.lp-topbar a:focus-visible {
+  outline: 2px solid var(--mint);
+  outline-offset: 2px;
+}
+@media (max-width: 480px) {
+  .lp-topbar-row {
+    min-height: 56px;
+    gap: 10px;
+  }
+  .lp-topbar-brand img {
+    width: min(132px, 36vw);
+  }
+  .lp-topbar-login,
+  .lp-topbar-cta {
+    min-height: 36px;
+    padding: 6px 12px;
+    font-size: 13px;
+  }
 }
 
 /* 01 Capa */
