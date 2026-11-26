@@ -7,6 +7,7 @@ import { isStaleBuildError, reloadForNewBuild } from "../utils/staleBuild";
 
 // Só a página pública (o que o visitante abre) vai no arquivo principal; as telas do painel
 // e do login são baixadas quando alguém entra nelas.
+const SalesLandingView = () => import("../views/public/SalesLandingView.vue");
 const LoginView = () => import("../views/admin/LoginView.vue");
 const ForgotPasswordView = () => import("../views/admin/ForgotPasswordView.vue");
 const ResetPasswordView = () => import("../views/admin/ResetPasswordView.vue");
@@ -41,6 +42,7 @@ const platformHostSet = new Set([...defaultPlatformHosts, ...envPlatformHosts]);
 const currentHostname = typeof window !== "undefined" ? window.location.hostname.toLowerCase() : "";
 const resolvedLanguage = resolveCurrentLanguage(currentHostname);
 setCurrentLanguage(resolvedLanguage);
+const isAppHost = currentHostname.startsWith("app.");
 const isCustomDomainHost = !!currentHostname && !platformHostSet.has(currentHostname);
 
 const redirectRoutes: RouteRecordRaw[] = [
@@ -185,7 +187,10 @@ const resolveLegacyAdminManagementRedirect = (to: any) => {
 
 const platformRoutes: RouteRecordRaw[] = [
   ...redirectRoutes,
-  { path: "/", name: "marketing", component: LoginView, meta: { guestOnly: true } },
+  // roteiroonline.com abre a home (página de vendas com cabeçalho de login); app.roteiroonline.com continua no login.
+  isAppHost
+    ? { path: "/", name: "marketing", component: LoginView, meta: { guestOnly: true } }
+    : { path: "/", name: "marketing", component: SalesLandingView, props: { home: true } },
   { path: "/login", name: "login", component: LoginView, meta: { guestOnly: true } },
   { path: "/forgot-password", name: "forgot-password", component: ForgotPasswordView, meta: { guestOnly: true } },
   { path: "/reset-password", name: "reset-password", component: ResetPasswordView, meta: { guestOnly: true } },
@@ -196,7 +201,7 @@ const platformRoutes: RouteRecordRaw[] = [
   { path: "/pedido", name: "checkout-processing", component: CheckoutProcessingView, meta: { guestOnly: true } },
   { path: "/checkout/:offerKey", name: "custom-checkout", component: CustomCheckoutView, meta: { guestOnly: true } },
   { path: "/planos", redirect: "/admin/planos" },
-  { path: "/lp", name: "sales-landing", component: () => import("../views/public/SalesLandingView.vue") },
+  { path: "/lp", name: "sales-landing", component: SalesLandingView },
   {
     path: "/admin",
     component: AdminLayout,
